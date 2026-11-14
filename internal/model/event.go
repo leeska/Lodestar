@@ -54,7 +54,11 @@ func (q EventQuery) Normalize() EventQuery {
 const (
 	EventCert   = "cert"
 	EventBackup = "backup"
+	// EventAsset is an asset's renewal reminder; NodeID is "asset:<id>".
+	EventAsset = "asset"
 )
 
 // IsNodeEvent reports whether e belongs to a node (and not to a module).
-func (e Event) IsNodeEvent() bool { return e.Kind != EventCert && e.Kind != EventBackup }
+func (e Event) IsNodeEvent() bool {
+	return e.Kind != EventCert && e.Kind != EventBackup && e.Kind != EventAsset
+}

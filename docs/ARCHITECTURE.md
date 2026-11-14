@@ -44,14 +44,22 @@ Server 的发布产物包含网页，Agent 单独编译，只链接其依赖图�
 
 ## 模块
 
-项目正从探针扩成自用的服务器管理中心，功能按模块组织，仍是一个 Server 二进制加一个 Agent 二进制。
+Lodestar 要做成自托管的个人中枢（目标见 [VISION.md](VISION.md)），功能按模块组织，仍是一个 Server 二进制加一个 Agent 二进制。
 
 - **Server 端**：`internal/module` 定义接口。一个模块实现 `Module`（`ID()`），再按需实现：
   - `Migrator`：在主库里建自己的表，见下节
   - `Router`：通过 `module.Routes` 挂路由，有 `Public`、`Admin`、`Agent` 三种；鉴权和同源检查用的是 httpapi 自己那一套
+  - `Actioner`：声明给外部 agent 的能力（`internal/action`），API、MCP、OpenAPI、Skill 都从这里生成，见 [Agent 接入](MCP.md)
+  - `Jobber`：声明定时任务（`module.Job`：名字、间隔、函数），由 `internal/jobs` 统一调度，记下每次结果，开始失败和恢复时各写一条时间线
   - `Overviewer`：给后台总览提供卡片（`module.Card`：标题、结论、语气、最多 6 条待处理项、点开去哪一页）。总览页 `GET /admin/overview` 先放核心的四张（节点、到期与流量、网络探测、告警），再按模块顺序放各模块的；某个模块读数出错只把它那张卡标成「读取失败」，不影响整页
   
   `cmd/server` 的 `shippedModules()` 列出本二进制带的全部模块，顺序就是迁移的执行顺序。现有四个模块：`regiondrift`（地区偏移检测）、`remote`（远程管理：管理通道、命令、终端）和 `users`（使用者：分给朋友的账号，流量额度按月重置、到期时间、订阅 token 与只读用量页 `/u/{token}`）、`proxy`（代理：节点上的 VLESS Reality / Shadowsocks 2022 入站与转发，见下面「代理」一节）、`docker`（节点上的容器、镜像与 Compose 项目，见「Docker」一节）、`certs`（Let's Encrypt 证书的签发、续期与下发，见「证书」一节）、`backup`（加密备份到节点，见「备份」一节）和 `sites`（nginx 网站与反向代理，见「网站」一节）。模块用 `internal/httpjson` 读写 JSON、把错误翻成状态码，和 httpapi 用的是同一套规则。第一个独立出来的模块是 `internal/regiondrift`（地区偏移检测），检测逻辑本身仍在 `internal/ipguard` 和 `internal/browserworker`。
+- **核心服务**（也是模块，排在最前）：
+  - `vault`（`internal/vault`）：保险箱。敏感字段用 AES-256-GCM 加密存在主库的 `vault` 表，密钥是数据目录里随机生成的 `vault.key`（0600）；以密文 id 作附加数据，挪到别的 id 下打不开。只拿到数据库读不出内容；加密备份里两者都在。
+  - `timeline`（`internal/timeline`）：统一时间线。读的时候把告警事件（`events`）、审计（`audit_log`）和模块自己写的条目（`timeline` 表，`Emit` 写入）合成一条查询，不重复存储；模块条目保留 400 天。
+  - `assets`（`internal/assets`）：资产账本。服务器之外的域名、订阅服务、设备、证件、账户、保险等，统一记费用、周期（与节点相同的「月 / 年…」）、到期日、自动续费、提醒提前天数；各类型的字段由 `assets.Kinds` 声明，标了 secret 的存进保险箱，查看要单独请求并写审计。定时任务「资产到期提醒」在提前期、7 天、1 天和过期时各经告警渠道（事件类型 `asset`）发一次，改了到期日发一条「已续期」。`Upcoming` 把面板节点的到期也并进来。
+  - `jobs`（`internal/jobs`）：定时任务调度，后台「时间线」页下方能看到每个任务的上次结果，可以立即运行。
+  - `internal/connector`：外部数据源（RSS、网页变化、GitHub Release、日历、价格……）的统一接口和登记表，目前只有框架，情报与日程模块会在上面实现。
 - **任务类型**：`model.RegisterTaskKind` 登记每种 `Task.Type`。登记的内容包括：
   - 定义从哪个字段读、怎么校验、怎么展开成探测
   - `FixedBindings`：节点带角色，只能编辑任务来改绑定，不能批量绑定或解绑

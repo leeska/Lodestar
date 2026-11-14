@@ -10,6 +10,7 @@ package module
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/leeska/Lodestar/internal/action"
 	"github.com/leeska/Lodestar/internal/model"
@@ -119,6 +120,33 @@ func Overview(ctx context.Context, modules []Module) []Card {
 			continue
 		}
 		out = append(out, cards...)
+	}
+	return out
+}
+
+// Job is one piece of periodic work a module hands to the scheduler
+// (internal/jobs): it runs Every, its last outcome is kept and shown, and a
+// failure goes to the timeline.
+type Job struct {
+	// Name is "<module>.<job>", stable: it keys the stored state.
+	Name  string
+	Title string
+	Every time.Duration
+	Run   func(ctx context.Context) error
+}
+
+// Jobber is a module with periodic work.
+type Jobber interface {
+	Jobs() []Job
+}
+
+// Jobs collects every module's jobs, in module order.
+func Jobs(modules []Module) []Job {
+	out := []Job{}
+	for _, m := range modules {
+		if j, ok := m.(Jobber); ok {
+			out = append(out, j.Jobs()...)
+		}
 	}
 	return out
 }

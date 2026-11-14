@@ -23,9 +23,9 @@ const ago = (unix) => {
   return new Date(unix * 1000).toLocaleDateString("zh-CN");
 };
 // 审计里 HTTP 操作记的是「方法 路径」，总览里换成一句中文：删除 网站、同步 网站、新建 代理 · 规则模板。
-const RESOURCES = { nodes: "节点", tasks: "任务", sites: "网站", proxy: "代理", inbounds: "入站", templates: "规则模板", sources: "外部订阅", forwards: "转发", tunnels: "隧道", users: "使用者", certs: "证书", dns: "DNS 账号", backups: "备份", docker: "Docker", containers: "容器", images: "镜像", compose: "Compose", "alert-rules": "告警规则", notification: "通知渠道", themes: "主题", plugins: "插件", panel: "面板设置", account: "账号", totp: "两步验证", agents: "Agent", "block-checks": "被墙检测", regiondrift: "地区偏移", "ip-guard": "地区偏移", events: "事件" };
+const RESOURCES = { assets: "资产", reveal: "敏感字段", jobs: "定时任务", "api-keys": "访问密钥", nodes: "节点", tasks: "任务", sites: "网站", proxy: "代理", inbounds: "入站", templates: "规则模板", sources: "外部订阅", forwards: "转发", tunnels: "隧道", users: "使用者", certs: "证书", dns: "DNS 账号", backups: "备份", docker: "Docker", containers: "容器", images: "镜像", compose: "Compose", "alert-rules": "告警规则", notification: "通知渠道", themes: "主题", plugins: "插件", panel: "面板设置", account: "账号", totp: "两步验证", agents: "Agent", "block-checks": "被墙检测", regiondrift: "地区偏移", "ip-guard": "地区偏移", events: "事件" };
 const VERBS = { sync: "同步", run: "执行", test: "测试", issue: "签发", renew: "续期", deploy: "下发", upgrade: "升级", restart: "重启", start: "启动", stop: "停止", reset: "重置", rotate: "轮换", order: "排序", import: "导入", export: "导出", locate: "定位", pause: "暂停", resume: "恢复", enable: "启用", disable: "停用" };
-function auditLabel(action) {
+export function auditLabel(action) {
   const m = /^(GET|POST|PUT|PATCH|DELETE) \/api\/v1\/admin\/(.+)$/.exec(action || "");
   if (!m) return actionName(action);
   const parts = m[2].split("/").filter((p) => !p.startsWith("{"));

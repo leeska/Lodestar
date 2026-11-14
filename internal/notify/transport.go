@@ -47,7 +47,7 @@ var telegramTitles = map[string]string{
 	model.AlertOffline: "节点离线", model.AlertRenewal: "到期续费", model.AlertTraffic: "流量额度",
 	model.AlertThrottle: "达量降速", model.AlertCPU: "CPU 使用率", model.AlertMemory: "内存使用率",
 	"load":          "系统负载",
-	model.EventCert: "证书", model.EventBackup: "备份",
+	model.EventCert: "证书", model.EventBackup: "备份", model.EventAsset: "资产到期",
 }
 
 type Telegram struct {

@@ -17,6 +17,7 @@ import (
 
 	"github.com/leeska/Lodestar/internal/account"
 	"github.com/leeska/Lodestar/internal/agentdist"
+	"github.com/leeska/Lodestar/internal/assets"
 	"github.com/leeska/Lodestar/internal/backup"
 	"github.com/leeska/Lodestar/internal/brand"
 	"github.com/leeska/Lodestar/internal/certs"
@@ -24,6 +25,7 @@ import (
 	"github.com/leeska/Lodestar/internal/docker"
 	"github.com/leeska/Lodestar/internal/httpapi"
 	"github.com/leeska/Lodestar/internal/ipguard"
+	"github.com/leeska/Lodestar/internal/jobs"
 	"github.com/leeska/Lodestar/internal/model"
 	"github.com/leeska/Lodestar/internal/module"
 	"github.com/leeska/Lodestar/internal/notify"
@@ -35,8 +37,10 @@ import (
 	"github.com/leeska/Lodestar/internal/sites"
 	"github.com/leeska/Lodestar/internal/storage"
 	"github.com/leeska/Lodestar/internal/theme"
+	"github.com/leeska/Lodestar/internal/timeline"
 	"github.com/leeska/Lodestar/internal/totp"
 	"github.com/leeska/Lodestar/internal/users"
+	"github.com/leeska/Lodestar/internal/vault"
 	"github.com/leeska/Lodestar/web"
 )
 
@@ -150,8 +154,27 @@ func run() error {
 	var certsMod *certs.Module
 	var backupMod *backup.Module
 	var sitesMod *sites.Module
-	for _, m := range modules {
+	var jobsMod *jobs.Module
+	vaultKey, err := vault.LoadKey(*dir)
+	if err != nil {
+		return err
+	}
+	secrets, err := vault.New(store.DB(), vaultKey)
+	if err != nil {
+		return err
+	}
+	timelineMod := &timeline.Module{DB: store.DB()}
+	for i, m := range modules {
 		switch m := m.(type) {
+		case *vault.Module:
+			m.Vault = secrets
+		case *timeline.Module:
+			modules[i] = timelineMod
+		case *assets.Module:
+			m.Store, m.Nodes, m.Events = &assets.Store{DB: store.DB(), Vault: secrets}, store, store
+		case *jobs.Module:
+			m.DB, m.Timeline = store.DB(), timelineMod
+			jobsMod = m
 		case *docker.Module:
 			m.Nodes = store
 		case *certs.Module:
@@ -203,6 +226,9 @@ func run() error {
 	go func() { defer wg.Done(); certsMod.Run(ctx) }()
 	wg.Add(1)
 	go func() { defer wg.Done(); backupMod.Run(ctx) }()
+	// 各模块的定时任务（资产到期提醒、时间线清理……）统一由调度器跑，状态见 jobs.list。
+	wg.Add(1)
+	go func() { defer wg.Done(); jobsMod.Run(ctx, module.Jobs(modules)) }()
 	wg.Add(1)
 	go func() { defer wg.Done(); sitesMod.Run(ctx) }()
 	go func() {
@@ -400,5 +426,7 @@ func shippedModules() ([]module.Module, *regiondrift.Module, *remote.Module, *us
 	drift, remoteMod, usersMod, proxyMod := &regiondrift.Module{}, &remote.Module{}, &users.Module{}, &proxy.Module{}
 	// Docker 不建表，复用远程管理的通道与转接。
 	dockerMod := &docker.Module{Remote: remoteMod}
-	return []module.Module{drift, remoteMod, usersMod, proxyMod, dockerMod, &certs.Module{}, &backup.Module{}, &sites.Module{}}, drift, remoteMod, usersMod, proxyMod
+	// 核心服务也是模块：保险箱、时间线、资产与定时任务（见 docs/ARCHITECTURE.md）。
+	core := []module.Module{&vault.Module{}, &timeline.Module{}, &assets.Module{}, &jobs.Module{}}
+	return append(core, drift, remoteMod, usersMod, proxyMod, dockerMod, &certs.Module{}, &backup.Module{}, &sites.Module{}), drift, remoteMod, usersMod, proxyMod
 }
