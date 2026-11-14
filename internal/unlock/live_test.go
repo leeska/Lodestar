@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 // TestLive runs the real checks against the host's own egress. It is skipped

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/notify"
+	"github.com/leeska/Lodestar/internal/notify"
 )
 
 // The channel the Engine delivers through is whatever the service stored: an

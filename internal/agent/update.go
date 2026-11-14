@@ -18,8 +18,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/agentsig"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/agentsig"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 // 一键升级：面板点「升级 Agent」后，Server 在下一次上报的回复里带上新版本的 /dl/ 路径与
@@ -29,18 +29,18 @@ import (
 // 换文件分两种情形：
 //   - OpenRC（没有沙箱）：Agent 自己就能写 /usr/local/bin，进程内直接换；
 //   - systemd：单元开了 ProtectSystem=strict，/usr 对 Agent 只读。新文件留在状态目录
-//     （StateDirectory=tza-agent，沙箱里可写），由单元的 ExecStartPre=+… --apply-update
+//     （StateDirectory=lodestar-agent，沙箱里可写），由单元的 ExecStartPre=+… --apply-update
 //     在下一次启动前以完整权限换上。
 //
 // 两种情形都先在可执行文件旁边写好 .new 再 rename 覆盖，换到一半断电也不会留下半个文件；
 // 旧版本留作 .previous，与安装脚本的手工升级一致。
 //
-// 升级只认运维者的签名（internal/agentsig）：公钥由安装脚本钉在 /etc/tza-probe/upgrade-key.pub，
+// 升级只认运维者的签名（internal/agentsig）：公钥由安装脚本钉在 /etc/lodestar/upgrade-key.pub，
 // Server 手里没有私钥。没签名、签名不对、架构不对或不比自己新的版本一律拒收；
 // 以完整权限执行的 --apply-update 换文件前再验一遍，沙箱里的进程放进状态目录的东西不会被直接信任。
 
 // DefaultStateDir is where a downloaded upgrade waits to be applied.
-const DefaultStateDir = "/var/lib/tza-agent"
+const DefaultStateDir = "/var/lib/lodestar-agent"
 
 // ExitRestart is the exit status that asks the service manager to start the
 // Agent again. The install script's systemd unit lists it under
@@ -48,7 +48,7 @@ const DefaultStateDir = "/var/lib/tza-agent"
 // any exit.
 const ExitRestart = 3
 
-const stagedName = "tza-agent.new"
+const stagedName = "lodestar-agent.new"
 
 // ErrAlreadyCurrent means the running binary already is the one offered.
 var ErrAlreadyCurrent = errors.New("agent binary already current")
@@ -109,7 +109,7 @@ func NewUpdater(endpoint string, keys map[string]ed25519.PublicKey) (*Updater, e
 	return &Updater{
 		Endpoint:   strings.TrimSuffix(endpoint, "/"),
 		Executable: exe,
-		StateDir:   DefaultStateDir,
+		StateDir:   StateDir(),
 		Keys:       keys,
 		// 二进制十几 MB，按 JSON 接口定的 15 秒超时下不完；也不跟随跳转，与上报一致。
 		Client: &http.Client{Timeout: 10 * time.Minute, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},

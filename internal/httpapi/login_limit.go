@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/account"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/account"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 // 密码校验前按桶限制实际尝试速度，匿名桶允许 30 次突发、每 2 秒补充一次，
@@ -23,11 +23,11 @@ import (
 // 不按来源 IP 分桶：Server 常在本机反代或 CDN 之后，看到的地址并不可信。
 
 const (
-	deviceCookie       = "tza_device"
+	deviceCookie       = "lodestar_device"
 	deviceTTL          = 180 * 24 * time.Hour
 	sharedLoginLimit   = 30 // 每分钟，所有没有设备凭据的请求合计
 	deviceLoginLimit   = 10 // 每分钟，每台已登录过的设备
-	deviceSignatureTag = "tza-device-v1"
+	deviceSignatureTag = "lodestar-device-v1"
 )
 
 // deviceSigningKey derives the device-cookie key from the admin token, so

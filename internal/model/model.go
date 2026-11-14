@@ -7,11 +7,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"math"
+	"os"
 	"time"
 )
 
 // Version is overridden at release time with -ldflags "-X …/internal/model.Version=v1.0.0".
-var Version = "2.12.1-dev"
+var Version = "3.0.0-dev"
 
 const Protocol = 1
 
@@ -36,3 +37,13 @@ func Hash(s string) string { h := sha256.Sum256([]byte(s)); return hex.EncodeToS
 func finite(v float64) bool { return !math.IsNaN(v) && !math.IsInf(v, 0) }
 
 func percent(v float64) bool { return finite(v) && v >= 0 && v <= 100 }
+
+// Env reads LODESTAR_<name>, falling back to the TZA_<name> spelling used
+// before the project was renamed, so existing units and compose files keep
+// working.
+func Env(name string) string {
+	if v := os.Getenv("LODESTAR_" + name); v != "" {
+		return v
+	}
+	return os.Getenv("TZA_" + name)
+}

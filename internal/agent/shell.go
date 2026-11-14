@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
+	"github.com/leeska/Lodestar/internal/channel"
 )
 
 // ShellHandlers serves the shell capability: one-off commands and an

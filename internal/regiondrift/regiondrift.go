@@ -14,11 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/httpjson"
-	"github.com/leeska/TZA-ControlCenter/internal/ipguard"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/module"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
+	"github.com/leeska/Lodestar/internal/httpjson"
+	"github.com/leeska/Lodestar/internal/ipguard"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/module"
+	"github.com/leeska/Lodestar/internal/storage"
 )
 
 // NodeLister is the part of the core store the module reads.

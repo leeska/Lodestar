@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/leeska/Lodestar/internal/model"
 	"io"
 	"net"
 	"net/http"
@@ -21,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
+	"github.com/leeska/Lodestar/internal/channel"
 )
 
 // DockerHost serves the docker capability: Engine API calls on an allow list,
@@ -38,7 +39,7 @@ type DockerHost struct {
 }
 
 // NewDockerHost finds the socket (/var/run/docker.sock, else Docker
-// Desktop's per-user one). TZA_COMPOSE_ROOT overrides the compose root for
+// Desktop's per-user one). LODESTAR_COMPOSE_ROOT overrides the compose root for
 // development on a machine where /opt is not writable.
 func NewDockerHost() *DockerHost {
 	socket := "/var/run/docker.sock"
@@ -50,7 +51,7 @@ func NewDockerHost() *DockerHost {
 		}
 	}
 	root := channel.ComposeRoot
-	if r := os.Getenv("TZA_COMPOSE_ROOT"); r != "" {
+	if r := model.Env("COMPOSE_ROOT"); r != "" {
 		root = r
 	}
 	return &DockerHost{Socket: socket, CLI: "docker", Root: root}
@@ -496,7 +497,7 @@ func (h *DockerHost) composeRead(ctx context.Context, raw json.RawMessage, conn 
 
 // composeWrite saves a compose file after `docker compose config` accepts
 // it. A name the Agent does not know yet becomes a new project under Root;
-// the previous file is kept next to it as .tza-bak.
+// the previous file is kept next to it as .lodestar-bak.
 func (h *DockerHost) composeWrite(ctx context.Context, raw json.RawMessage, conn net.Conn) error {
 	var p channel.ComposeWriteParams
 	if err := json.Unmarshal(raw, &p); err != nil || len(p.Content) > channel.MaxComposeFile || strings.TrimSpace(p.Content) == "" {
@@ -518,7 +519,7 @@ func (h *DockerHost) composeWrite(ctx context.Context, raw json.RawMessage, conn
 	target := project.Files[0]
 	var suffix [6]byte
 	rand.Read(suffix[:])
-	candidate := filepath.Join(filepath.Dir(target), ".tza-"+hex.EncodeToString(suffix[:])+".yaml")
+	candidate := filepath.Join(filepath.Dir(target), ".lodestar-"+hex.EncodeToString(suffix[:])+".yaml")
 	if err := os.WriteFile(candidate, []byte(p.Content), 0600); err != nil {
 		return channel.WriteLine(conn, channel.DockerResult{Error: err.Error()})
 	}
@@ -528,7 +529,7 @@ func (h *DockerHost) composeWrite(ctx context.Context, raw json.RawMessage, conn
 		return channel.WriteLine(conn, channel.DockerResult{Error: "compose 文件没有通过检查", Output: tailString(out, 4096)})
 	}
 	if old, err := os.ReadFile(target); err == nil {
-		os.WriteFile(target+".tza-bak", old, 0600)
+		os.WriteFile(target+".lodestar-bak", old, 0600)
 	}
 	if err := os.Rename(candidate, target); err != nil {
 		os.Remove(candidate)

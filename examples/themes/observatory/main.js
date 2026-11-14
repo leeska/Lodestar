@@ -1,5 +1,5 @@
 import { escape as e, bytes } from "./format.mjs";
-const sdk = window.TZA;
+const sdk = window.Lodestar;
 const labels = await fetch(new URL("./labels.json", import.meta.url)).then((response) => response.json());
 document.querySelector("aside p").textContent = labels.subtitle;
 let nodes = [], query = "", order = "name", generation = 0;

@@ -16,7 +16,10 @@ import (
 
 // DatabaseName is the database file inside the data directory and the
 // archive.
-const DatabaseName = "tza-probe.db"
+const DatabaseName = "lodestar.db"
+
+// legacyDatabaseName is what backups made before the rename call the database.
+const legacyDatabaseName = "tza-probe.db"
 
 // skipped reports whether a data directory entry stays out of the archive:
 // the live database files (a consistent copy goes in instead), caches that
@@ -138,6 +141,9 @@ func Extract(r io.Reader, dir string) error {
 		name := filepath.FromSlash(strings.TrimSuffix(h.Name, "/"))
 		if name == "" || filepath.IsAbs(name) || name != filepath.Clean(name) || strings.HasPrefix(name, "..") {
 			return fmt.Errorf("备份里有不安全的路径：%q", h.Name)
+		}
+		if name == legacyDatabaseName {
+			name = DatabaseName
 		}
 		target := filepath.Join(dir, name)
 		switch h.Typeflag {

@@ -1,6 +1,6 @@
 // Developer settings document bridge v1. Never exposes cookies or arbitrary APIs.
 (() => {
-  const protocol = "tza-theme-settings", pending = new Map(), listeners = new Set();
+  const protocol = "lodestar-theme-settings", pending = new Map(), listeners = new Set();
   let sequence = 0, state, resolve;
   const ready = new Promise((r) => { resolve = r; });
   const send = (data) => parent.postMessage({ protocol, version: 1, ...data }, "*");
@@ -26,7 +26,7 @@
       pending.set(id, { resolve, reject, timer }); send({ id, method, args });
     });
   };
-  window.TZASettings = Object.freeze({
+  window.LodestarSettings = Object.freeze({
     ready, get context() { return state; },
     save: (patch) => call("save", { patch }),
     addAddon: () => call("addAddon"),
@@ -34,6 +34,8 @@
     bindNode: (node, decoration) => call("bindNode", { node, decoration }),
     onContext(fn) { listeners.add(fn); if (state) fn(state); return () => listeners.delete(fn); },
   });
+  // 改名前写的设置页用 TZASettings，同一个对象。
+  window.TZASettings = window.LodestarSettings;
   addEventListener("pagehide", () => { clearInterval(hello); clearTimeout(deadline); for (const r of pending.values()) { clearTimeout(r.timer); r.reject(new Error("设置已关闭")); } pending.clear(); listeners.clear(); });
   send({ event: "hello" });
 })();

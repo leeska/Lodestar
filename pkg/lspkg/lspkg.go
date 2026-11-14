@@ -1,11 +1,11 @@
-// Package tzapkg is the TZA package format: a zip holding theme.json plus the
+// Package lspkg is the Lodestar package format: a zip holding theme.json plus the
 // stylesheets, images and fonts it references. The Probe server installs these
-// packages and TZA-CC reviews and distributes them; both validate with this
+// packages and Lodestar reviews and distributes them; both validate with this
 // package so a package one side accepts the other side accepts too.
 //
 // CSS skins extend the built-in UI; frontend themes own an isolated HTML/JS
 // document and use the versioned public bridge. See docs/THEMES.md.
-package tzapkg
+package lspkg
 
 import (
 	"archive/zip"
@@ -95,7 +95,7 @@ type Manifest struct {
 	Layout  *Layout `json:"layout,omitempty"`
 	Builtin bool    `json:"builtin,omitempty"`
 	Rev     string  `json:"rev,omitempty"`
-	// Source is SourceMarket for a package installed from TZA-CC, empty for a
+	// Source is SourceMarket for a package installed from the former TZA-CC market, empty for a
 	// local upload.
 	Source string `json:"source,omitempty"`
 }
@@ -323,7 +323,7 @@ type Decoration struct {
 }
 
 // ReservedRuntimeID was the ID of the removed IPSentinel runtime package (the
-// browser now ships inside tza-server). It stays reserved so no uploaded
+// browser now ships inside lodestar). It stays reserved so no uploaded
 // package can ever claim it on Probes that still carry its old records.
 const ReservedRuntimeID = "ipsentinel-runtime"
 

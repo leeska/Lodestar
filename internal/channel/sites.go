@@ -2,7 +2,7 @@ package channel
 
 // The sites capability: the Server renders nginx server blocks for the
 // sites it manages on a node, and the Agent installs them as
-// /etc/nginx/conf.d/tza-site-<id>.conf, checks with nginx -t and reloads.
+// /etc/nginx/conf.d/lodestar-site-<id>.conf, checks with nginx -t and reloads.
 // Files it did not write are only read (for the list of other sites).
 const (
 	CapabilitySites = "sites"
@@ -14,7 +14,7 @@ const (
 	// the previous set.
 	KindSitesApply = "sites.apply"
 	// SiteFilePrefix names managed files in the nginx conf.d directory.
-	SiteFilePrefix = "tza-site-"
+	SiteFilePrefix = "lodestar-site-"
 	// MaxSiteFiles bounds the managed sites per node.
 	MaxSiteFiles = 200
 )

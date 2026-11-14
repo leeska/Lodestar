@@ -17,11 +17,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/account"
-	"github.com/leeska/TZA-ControlCenter/internal/agentdist"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
-	"github.com/leeska/TZA-ControlCenter/web"
+	"github.com/leeska/Lodestar/internal/account"
+	"github.com/leeska/Lodestar/internal/agentdist"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/storage"
+	"github.com/leeska/Lodestar/web"
 )
 
 // MCP accepts only its independent API key and rejects cross-origin requests.
@@ -425,7 +425,7 @@ func TestLoginCookiesAndJSONValidation(t *testing.T) {
 		t.Fatal(w.Code, w.Body.String())
 	}
 	cookies := w.Result().Cookies()
-	if len(cookies) != 2 || cookies[0].Name != "tza_session" || cookies[1].Name != deviceCookie {
+	if len(cookies) != 2 || cookies[0].Name != "lodestar_session" || cookies[1].Name != deviceCookie {
 		t.Fatal(cookies)
 	}
 	for _, c := range cookies {
@@ -476,28 +476,28 @@ func TestAgentDistributionRoutes(t *testing.T) {
 	if code, body, h := get("/install.sh"); code != 200 || !strings.HasPrefix(body, "#!/bin/sh") || !strings.HasPrefix(h.Get("Content-Type"), "text/plain") {
 		t.Fatalf("install.sh: %d %q %s", code, body[:min(len(body), 20)], h.Get("Content-Type"))
 	}
-	if code, body, h := get("/dl/tza-agent-linux-arm64"); code != 200 || body != "ELF-arm64" || h.Get("Content-Type") != "application/octet-stream" {
+	if code, body, h := get("/dl/lodestar-agent-linux-arm64"); code != 200 || body != "ELF-arm64" || h.Get("Content-Type") != "application/octet-stream" {
 		t.Fatalf("binary: %d %q %s", code, body, h.Get("Content-Type"))
 	}
-	if code, body, _ := get("/dl/tza-agent-linux-arm64.sha256"); code != 200 || !strings.HasSuffix(strings.TrimSpace(body), "  tza-agent-linux-arm64") || len(strings.Fields(body)[0]) != 64 {
+	if code, body, _ := get("/dl/lodestar-agent-linux-arm64.sha256"); code != 200 || !strings.HasSuffix(strings.TrimSpace(body), "  lodestar-agent-linux-arm64") || len(strings.Fields(body)[0]) != 64 {
 		t.Fatalf("checksum: %d %q", code, body)
 	}
 	// amd64 is not in dir; it is served only if this build embeds a copy.
-	if code, _, _ := get("/dl/tza-agent-linux-amd64"); code != 404 && code != 200 {
+	if code, _, _ := get("/dl/lodestar-agent-linux-amd64"); code != 404 && code != 200 {
 		t.Fatalf("missing arch should be 404 (or 200 when embedded), got %d", code)
 	}
-	for _, path := range []string{"/dl/tza-agent-linux-mips", "/dl/..%2F..%2Fetc%2Fpasswd", "/dl/README.md"} {
+	for _, path := range []string{"/dl/lodestar-agent-linux-mips", "/dl/..%2F..%2Fetc%2Fpasswd", "/dl/README.md"} {
 		if code, _, _ := get(path); code != 404 {
 			t.Fatalf("%s should be 404, got %d", path, code)
 		}
 	}
-	if code, _, _ := get("/dl/tza-agent-linux-arm64.sha256"); code != 200 {
+	if code, _, _ := get("/dl/lodestar-agent-linux-arm64.sha256"); code != 200 {
 		t.Fatalf("dir copy must win over any embedded copy, got %d", code)
 	}
 	// A Server without distribution configured keeps both routes closed.
 	bare := httptest.NewServer((&API{Store: s, AdminToken: model.Secret(), Assets: web.Handler()}).Handler())
 	defer bare.Close()
-	for _, path := range []string{"/install.sh", "/dl/tza-agent-linux-arm64"} {
+	for _, path := range []string{"/install.sh", "/dl/lodestar-agent-linux-arm64"} {
 		resp, err := http.Get(bare.URL + path)
 		if err != nil {
 			t.Fatal(err)

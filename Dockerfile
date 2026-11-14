@@ -7,15 +7,15 @@ ARG VERSION=
 # Embed Agents for both architectures so the image can serve the one-line installer.
 RUN VERSION=${VERSION:-$(sh scripts/version.sh)} && \
     for arch in amd64 arm64; do \
-      CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags="-s -w -X github.com/leeska/TZA-ControlCenter/internal/model.Version=$VERSION" -o internal/agentdist/bin/tza-agent-linux-$arch ./cmd/agent || exit 1; \
+      CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags="-s -w -X github.com/leeska/Lodestar/internal/model.Version=$VERSION" -o internal/agentdist/bin/lodestar-agent-linux-$arch ./cmd/agent || exit 1; \
     done \
- && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X github.com/leeska/TZA-ControlCenter/internal/model.Version=$VERSION" -o /tza-server ./cmd/server
+ && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X github.com/leeska/Lodestar/internal/model.Version=$VERSION" -o /lodestar ./cmd/server
 
 FROM alpine:3.23@sha256:075c2c1a4068c1e251228ca2b0ea8b163f835ca5d66e758b93c7fc89b1995616
-RUN apk add --no-cache ca-certificates tzdata && addgroup -g 65532 tza && adduser -D -H -u 65532 -G tza tza && mkdir /data && chown tza:tza /data
-COPY --from=build /tza-server /usr/local/bin/tza-server
+RUN apk add --no-cache ca-certificates tzdata && addgroup -g 65532 lodestar && adduser -D -H -u 65532 -G lodestar lodestar && mkdir /data && chown lodestar:lodestar /data
+COPY --from=build /lodestar /usr/local/bin/lodestar
 USER 65532:65532
 VOLUME /data
 EXPOSE 25774
-ENTRYPOINT ["/usr/local/bin/tza-server"]
+ENTRYPOINT ["/usr/local/bin/lodestar"]
 CMD ["--listen", "0.0.0.0:25774", "--data", "/data"]

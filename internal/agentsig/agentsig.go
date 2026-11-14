@@ -1,8 +1,8 @@
 // Package agentsig signs Agent binaries for one-click upgrades.
 //
 // The Server only relays upgrades; it never holds the signing key. The
-// operator generates a key pair on their own machine (tza-server agent-keygen),
-// signs each Agent build there (tza-server agent-sign) and puts the binaries,
+// operator generates a key pair on their own machine (lodestar agent-keygen),
+// signs each Agent build there (lodestar agent-sign) and puts the binaries,
 // their .sig files and the public key into the Server's agents directory.
 // The install script pins that public key on the node, and the Agent accepts
 // an upgrade only when it is signed by a pinned key and is newer than itself.
@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/leeska/TZA-ControlCenter/pkg/tzapkg"
+	"github.com/leeska/Lodestar/pkg/lspkg"
 )
 
 // Signature is the operator's statement that a binary is release Version of
@@ -35,7 +35,7 @@ type Signature struct {
 }
 
 // message is what gets signed: one line per field under a fixed prefix, so no
-// field can bleed into another and no other TZA signature can be replayed here.
+// field can bleed into another and no other Lodestar signature can be replayed here.
 func message(arch, version, sum string) []byte {
 	return []byte("tza-agent-sig-v1\n" + arch + "\n" + version + "\n" + sum + "\n")
 }
@@ -77,7 +77,7 @@ func ParseKeys(text string) (map[string]ed25519.PublicKey, error) {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		id, pub, err := tzapkg.ParsePublicKey(line)
+		id, pub, err := lspkg.ParsePublicKey(line)
 		if err != nil {
 			return nil, err
 		}
@@ -99,7 +99,7 @@ func GenerateKey(keyID string) (private, public string, err error) {
 	if err != nil {
 		return "", "", err
 	}
-	return keyID + ":" + base64.StdEncoding.EncodeToString(priv) + "\n", tzapkg.FormatPublicKey(keyID, pub) + "\n", nil
+	return keyID + ":" + base64.StdEncoding.EncodeToString(priv) + "\n", lspkg.FormatPublicKey(keyID, pub) + "\n", nil
 }
 
 var keyIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{0,31}$`)

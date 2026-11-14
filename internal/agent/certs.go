@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
+	"github.com/leeska/Lodestar/internal/channel"
 )
 
 // CertHandlers serves the certs capability: write a certificate where the
@@ -41,7 +41,7 @@ func certDir(dir string) error {
 }
 
 func writeAtomic(path string, data []byte, mode os.FileMode) error {
-	tmp := path + ".tza-new"
+	tmp := path + ".lodestar-new"
 	if err := os.WriteFile(tmp, data, mode); err != nil {
 		return err
 	}

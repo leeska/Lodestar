@@ -26,7 +26,7 @@ let nodes = [],
 // 展示方式：card = 每台主机一张卡（默认），list = 一行一台、字段横向对齐。
 // 只存在浏览器本地，刷新与换页保持；访客没选过就用当前主题声明的 layout.default_view，
 // 也没声明（或存不进去，隐私模式等）就是卡片视图。
-const VIEW_KEY = "tza-view";
+const VIEW_KEY = "lodestar-view";
 function storedView() {
   try {
     const v = localStorage.getItem(VIEW_KEY);
@@ -41,7 +41,7 @@ let view = storedView() || skinView();
 // 延迟分栏：domestic = 三网（电信 / 联通 / 移动），intl = 海外预设与自定义目标。
 // 访客的选择全局生效——同一屏的卡片与列表一起翻，方便横向比较同一栏的延迟——并存在浏览器
 // 本地，刷新与换页保持；没选过（或存不进去，隐私模式等）默认国内。
-const LATENCY_SCOPE_KEY = "tza-latency-scope";
+const LATENCY_SCOPE_KEY = "lodestar-latency-scope";
 function storedLatencyScope() {
   try {
     return localStorage.getItem(LATENCY_SCOPE_KEY) === "intl" ? "intl" : "domestic";
@@ -130,7 +130,7 @@ function viewSwitch() {
 }
 
 function renderShell() {
-  app.innerHTML = `<header data-part="public-header" class="public-header">${brandHTML()}<nav><span class="live-label"><i></i><span class="live-text">LIVE STATUS</span></span>${skinButton()}${themeButton()}<a href="/admin" class="button quiet admin-link" aria-label="管理控制台"><span class="admin-link-full">管理控制台</span><span class="admin-link-short">后台</span> ↗</a></nav></header><main class="public-main"><section class="hero"><div data-part="hero-meta" class="hero-meta"><span>最近同步</span><strong id="updated">连接中</strong><small>每秒刷新</small></div></section><section id="overview" data-part="overview" class="overview"></section><section data-part="toolbar" class="toolbar"><div class="filter-controls"><div class="search"><span>⌕</span><input id="search" aria-label="搜索节点" placeholder="搜索名称 / 地区 / 分组 / 商家 / 拼音"></div><select id="group-filter" aria-label="节点分组"><option value="">全部分组</option></select></div><div class="view-bar">${viewSwitch()}</div></section><div id="nodes" data-part="node-grid" class="node-grid"></div><footer><span>独立 · 轻量 · 可控</span><span>TZA CC</span></footer></main>`;
+  app.innerHTML = `<header data-part="public-header" class="public-header">${brandHTML()}<nav><span class="live-label"><i></i><span class="live-text">LIVE STATUS</span></span>${skinButton()}${themeButton()}<a href="/admin" class="button quiet admin-link" aria-label="管理控制台"><span class="admin-link-full">管理控制台</span><span class="admin-link-short">后台</span> ↗</a></nav></header><main class="public-main"><section class="hero"><div data-part="hero-meta" class="hero-meta"><span>最近同步</span><strong id="updated">连接中</strong><small>每秒刷新</small></div></section><section id="overview" data-part="overview" class="overview"></section><section data-part="toolbar" class="toolbar"><div class="filter-controls"><div class="search"><span>⌕</span><input id="search" aria-label="搜索节点" placeholder="搜索名称 / 地区 / 分组 / 商家 / 拼音"></div><select id="group-filter" aria-label="节点分组"><option value="">全部分组</option></select></div><div class="view-bar">${viewSwitch()}</div></section><div id="nodes" data-part="node-grid" class="node-grid"></div><footer><span>独立 · 轻量 · 可控</span><span>Lodestar</span></footer></main>`;
 
   document.querySelector("#search").oninput = (e) => {
     query = e.target.value;
@@ -239,9 +239,9 @@ function meter(label, value, sub = "") {
 // 顶部六个数字与卡片上的「指标 / 实时速率」两块抽成函数：每秒的轻刷新只换这两处的 HTML，
 // 整卡重建留给 10 秒一轮的探测明细（那一轮要打十几个请求，也会整块换 DOM）。
 // 上传 / 下载的顺序全站统一为「上传在前」，跟卡片里「上行在上」一致（用户点名的顺序）。
-// 计费汇总单位：后台「面板设置」选的统一币种，/theme-default.js 首屏写在 window.__tzaPriceUnit
+// 计费汇总单位：后台「面板设置」选的统一币种，/theme-default.js 首屏写在 window.__lodestarPriceUnit
 // 上；取不到（旧缓存、独立前台）就用内置默认 CNY，与 model.DefaultPriceUnit 一致。
-const priceUnit = typeof window.__tzaPriceUnit === "string" && window.__tzaPriceUnit ? window.__tzaPriceUnit : "CNY";
+const priceUnit = typeof window.__lodestarPriceUnit === "string" && window.__lodestarPriceUnit ? window.__lodestarPriceUnit : "CNY";
 // 汇总数字：两位小数 + 千分位，跟单台的 toFixed(2) 一套口径，长数字在磁贴里更好读。
 const money = (v) => v.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -412,7 +412,7 @@ function markLive(ok) {
 
 // 换皮肤：新皮肤可能声明了别的板面段落（layout.card_sections）与默认视图，卡片按新清单重绘；
 // 访客自己选过视图就不动。要排在下面 alignCardRows 的监听之前（同一事件按注册顺序跑）。
-document.addEventListener("tza:skin", () => {
+document.addEventListener("lodestar:skin", () => {
   // 公开页才有卡片；首屏的 /nodes 还没回来（列表还空着）就等 refresh 自己画，别先画一屏「尚无公开节点」。
   if (!document.querySelector("#nodes")?.children.length) return;
   const next = storedView() || skinView();
@@ -473,7 +473,7 @@ function alignCardRows() {
     else x.el.style.removeProperty("--row-fill");
   }
 }
-document.addEventListener("tza:skin", alignCardRows);
+document.addEventListener("lodestar:skin", alignCardRows);
 window.addEventListener("resize", alignCardRows);
 document.fonts?.ready.then(alignCardRows);
 
@@ -680,7 +680,7 @@ function renderCards() {
 // 收起后画成什么样由主题决定（样式表按 [data-rolled="true"] 选择）；默认样式不改变卡片。
 // 收起状态挂在**卡壳**上，不是重绘出来的内容：每秒轻刷新与 10 秒全量刷新都走补丁路径（只改
 // 文本/属性、不换元素），卡壳上的属性不会被擦掉；每次渲染后再统一 applyFolded() 刷一遍，刷新页面也还收着。
-const FOLD_KEY = "tza-folded-cards";
+const FOLD_KEY = "lodestar-folded-cards";
 const FOLD_ICON =
   '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4 10.2 8 6.2l4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const foldedCards = new Set(

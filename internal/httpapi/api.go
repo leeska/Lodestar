@@ -20,19 +20,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/account"
-	"github.com/leeska/TZA-ControlCenter/internal/agentdist"
-	"github.com/leeska/TZA-ControlCenter/internal/brand"
-	"github.com/leeska/TZA-ControlCenter/internal/httpjson"
-	"github.com/leeska/TZA-ControlCenter/internal/ipguard"
-	"github.com/leeska/TZA-ControlCenter/internal/mcp"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/module"
-	"github.com/leeska/TZA-ControlCenter/internal/notify"
-	"github.com/leeska/TZA-ControlCenter/internal/plugin"
-	"github.com/leeska/TZA-ControlCenter/internal/service"
-	"github.com/leeska/TZA-ControlCenter/internal/theme"
-	"github.com/leeska/TZA-ControlCenter/internal/totp"
+	"github.com/leeska/Lodestar/internal/account"
+	"github.com/leeska/Lodestar/internal/agentdist"
+	"github.com/leeska/Lodestar/internal/brand"
+	"github.com/leeska/Lodestar/internal/httpjson"
+	"github.com/leeska/Lodestar/internal/ipguard"
+	"github.com/leeska/Lodestar/internal/mcp"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/module"
+	"github.com/leeska/Lodestar/internal/notify"
+	"github.com/leeska/Lodestar/internal/plugin"
+	"github.com/leeska/Lodestar/internal/service"
+	"github.com/leeska/Lodestar/internal/theme"
+	"github.com/leeska/Lodestar/internal/totp"
 )
 
 // Repository is the persistence the HTTP contract needs: the management
@@ -156,13 +156,13 @@ func (a *API) Handler() http.Handler {
 	})
 	mux.HandleFunc("POST /api/v1/login", a.login)
 	mux.HandleFunc("POST /api/v1/logout", a.admin(func(w http.ResponseWriter, r *http.Request) {
-		if c, err := r.Cookie("tza_session"); err == nil {
+		if c, err := r.Cookie("lodestar_session"); err == nil {
 			a.mu.Lock()
 			delete(a.sessions, model.Hash(c.Value))
 			a.saveSessionsLocked()
 			a.mu.Unlock()
 		}
-		http.SetCookie(w, &http.Cookie{Name: "tza_session", Value: "", Path: "/", MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteStrictMode})
+		http.SetCookie(w, &http.Cookie{Name: "lodestar_session", Value: "", Path: "/", MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteStrictMode})
 		w.WriteHeader(204)
 	}))
 	// version 是服务端（也是它内置的 Agent 安装包）的版本：后台据此标出该升级的 Agent。
@@ -196,24 +196,24 @@ func (a *API) Handler() http.Handler {
 		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
 		if r.Method == http.MethodGet {
-			fmt.Fprintf(w, "window.__tzaDefault={theme:%q,skin:%q};\n", theme, skin)
+			fmt.Fprintf(w, "window.__lodestarDefault={theme:%q,skin:%q};\n", theme, skin)
 			// 皮肤清单（内置 + 已安装的主题包）也在这里一起发：theme-boot.js 要在首屏前认出
 			// 访客存下的皮肤，theme-css.js 要在首屏前挂上已安装主题的样式表。
 			options, _ := a.svc.SkinOptions(r.Context())
 			list, _ := json.Marshal(themeList(a.Themes, options))
-			fmt.Fprintf(w, "window.__tzaThemes=%s;\n", list)
+			fmt.Fprintf(w, "window.__lodestarThemes=%s;\n", list)
 			// 站点名称与 logo 也要在首屏前就位：theme-boot.js 据此换掉标签页标题与 favicon，
-			// app.js 拼品牌区时直接用，不先闪一下内置的 TZA ControlCenter。空值即内置品牌。
+			// app.js 拼品牌区时直接用，不先闪一下内置的 Lodestar。空值即内置品牌。
 			brandJS, _ := json.Marshal(site)
-			fmt.Fprintf(w, "window.__tzaBrand=%s;\n", brandJS)
+			fmt.Fprintf(w, "window.__lodestarBrand=%s;\n", brandJS)
 			// 计费汇总单位：公开面板顶部「每月成本 / 剩余价值汇总」用它统一折算（web/format.js
 			// 的固定参考汇率表按币种查）。跟着首屏脚本走，面板设置改完下一次打开即生效。
-			fmt.Fprintf(w, "window.__tzaPriceUnit=%q;\n", unit)
+			fmt.Fprintf(w, "window.__lodestarPriceUnit=%q;\n", unit)
 			// 前台区块开关与「需要登录」：app.js 据此不画关掉的区块、未登录时显示登录提示。
 			// 数据本身由 a.public 在服务端过滤，这里只决定版面。
 			policy := a.policy(r)
 			publicJS, _ := json.Marshal(map[string]any{"hidden": policy.hidden, "login": policy.login})
-			fmt.Fprintf(w, "window.__tzaPublic=%s;\n", publicJS)
+			fmt.Fprintf(w, "window.__lodestarPublic=%s;\n", publicJS)
 		}
 	})
 	// 后台上传的站点 logo（没有时 404）；类型白名单、SVG 检查与它自己的 CSP 见 brand.Store。
@@ -376,7 +376,7 @@ func (a *API) isAdmin(r *http.Request) bool {
 	if token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer "); ok && a.AdminToken != "" && len(token) == len(a.AdminToken) && subtle.ConstantTimeCompare([]byte(token), []byte(a.AdminToken)) == 1 {
 		return true
 	}
-	c, err := r.Cookie("tza_session")
+	c, err := r.Cookie("lodestar_session")
 	if err != nil {
 		return false
 	}
@@ -562,7 +562,7 @@ func (a *API) login(w http.ResponseWriter, r *http.Request) {
 	// someone who already knows the password.
 	if _, enabled, err := totp.Load(a.AccountDir); err != nil {
 		slog.Error("two-factor configuration unreadable", "error", err)
-		write(w, 500, map[string]string{"error": "两步验证配置无法读取，请在服务器执行 tza-server reset-password --disable-totp"})
+		write(w, 500, map[string]string{"error": "两步验证配置无法读取，请在服务器执行 lodestar reset-password --disable-totp"})
 		return
 	} else if enabled {
 		if strings.TrimSpace(v.Code) == "" {
@@ -620,7 +620,7 @@ func (a *API) startSession(w http.ResponseWriter, r *http.Request, now time.Time
 	a.sessions[model.Hash(token)] = browserSession{Expires: now.Add(12 * time.Hour), AccountHash: accountHash}
 	a.saveSessionsLocked()
 	a.mu.Unlock()
-	http.SetCookie(w, &http.Cookie{Name: "tza_session", Value: token, Path: "/", HttpOnly: true, Secure: secureRequest(r), SameSite: http.SameSiteStrictMode, MaxAge: 43200})
+	http.SetCookie(w, &http.Cookie{Name: "lodestar_session", Value: token, Path: "/", HttpOnly: true, Secure: secureRequest(r), SameSite: http.SameSiteStrictMode, MaxAge: 43200})
 	a.setDeviceCookie(w, r, now, accountHash)
 	w.WriteHeader(204)
 }

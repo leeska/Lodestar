@@ -3,9 +3,9 @@ import { PUBLIC_SECTIONS } from "./public-config.js";
 import { SKINS, registerThemes } from "./skins.js";
 import { api, send, toast, guard, modal, esc } from "./api.js";
 import { state, content, field, confirmAction } from "./admin-state.js";
-import { applyBrand, DEFAULT_NAME } from "./brand.js";
+import { applyBrand, DEFAULT_NAME, MARK } from "./brand.js";
 import { CURRENCIES } from "./admin-nodes.js";
-const MCP_DOC_URL = "https://github.com/leeska/TZA-ControlCenter/blob/main/docs/MCP.md";
+const MCP_DOC_URL = "https://github.com/leeska/Lodestar/blob/main/docs/MCP.md";
 const mcpDocs = () => `<p class="hint mcp-doc">接入文档：<a href="${MCP_DOC_URL}" target="_blank" rel="noopener noreferrer">${MCP_DOC_URL}</a></p>`;
 // 面板设置分三个子页：外观与品牌（站点品牌、默认外观、延迟色带）/ 账号与安全（后台账号、MCP Key）
 // / 数据（备份）。主题与插件各有自己的一栏，不在这里。显示项都走 /admin/panel 保存（见下方注释）。
@@ -48,7 +48,7 @@ export async function renderSettings(nodesReady) {
 // 两步验证：登录时在密码之后再要一个身份验证器（Google Authenticator、1Password 等）的 6 位验证码。
 function totpPanel(twofa) {
   if (!twofa) return "";
-  return `<section data-part="panel" class="panel webhook-panel"><div><h3>两步验证</h3><p>${twofa.enabled ? "<b>已开启</b>：登录时除了密码还要输入身份验证器里的 6 位验证码。" : "未开启。"}</p><small>开启后即使密码泄露也登录不了后台。手机丢了时在服务器执行 tza-server reset-password --data 数据目录 --disable-totp 关闭。</small></div><div class="webhook-actions">${twofa.enabled ? '<button id="totp-disable">关闭两步验证</button>' : '<button id="totp-setup" class="primary">开启两步验证</button>'}</div></section>`;
+  return `<section data-part="panel" class="panel webhook-panel"><div><h3>两步验证</h3><p>${twofa.enabled ? "<b>已开启</b>：登录时除了密码还要输入身份验证器里的 6 位验证码。" : "未开启。"}</p><small>开启后即使密码泄露也登录不了后台。手机丢了时在服务器执行 lodestar reset-password --data 数据目录 --disable-totp 关闭。</small></div><div class="webhook-actions">${twofa.enabled ? '<button id="totp-disable">关闭两步验证</button>' : '<button id="totp-setup" class="primary">开启两步验证</button>'}</div></section>`;
 }
 
 function wireTotp(twofa) {
@@ -116,11 +116,11 @@ function priceUnitPanel(settings) {
 }
 
 function accountView(acct, mcp) {
-  return `${acct ? `<section data-part="panel" class="panel webhook-panel"><div><h3>后台账号</h3><p>${acct.configured ? `当前用户名：<b>${esc(acct.username)}</b>` : "尚未设置账号，请在服务器执行 tza-server reset-password 创建账号。"}</p><small>修改后其他已登录的浏览器需要重新登录。忘记密码时在服务器执行 tza-server reset-password --data 数据目录，会生成新密码。</small></div><div class="webhook-actions"><button id="edit-account" class="primary">${acct.configured ? "修改账号" : "设置账号"}</button></div></section>` : ""}<section data-part="panel" class="panel webhook-panel"><div><h3>MCP API Key</h3><p>${mcp.configured ? `已启用 · 生成于 ${esc(new Date(mcp.created_at).toLocaleString())}` : "尚未生成，MCP 接口未启用。"}</p><small>用于 AI 客户端连接并管理节点、任务和设置。仅用于 MCP；重新生成或撤销后旧 Key 立即失效。</small><p>连接地址：<code>${esc(location.origin + "/mcp")}</code></p><p class="hint">请求头：Authorization: Bearer &lt;API Key&gt;</p>${mcpDocs()}</div><div class="webhook-actions"><button id="generate-mcp-key" class="primary">${mcp.configured ? "重新生成" : "生成 API Key"}</button>${mcp.configured ? '<button id="revoke-mcp-key">撤销</button>' : ""}</div></section>`;
+  return `${acct ? `<section data-part="panel" class="panel webhook-panel"><div><h3>后台账号</h3><p>${acct.configured ? `当前用户名：<b>${esc(acct.username)}</b>` : "尚未设置账号，请在服务器执行 lodestar reset-password 创建账号。"}</p><small>修改后其他已登录的浏览器需要重新登录。忘记密码时在服务器执行 lodestar reset-password --data 数据目录，会生成新密码。</small></div><div class="webhook-actions"><button id="edit-account" class="primary">${acct.configured ? "修改账号" : "设置账号"}</button></div></section>` : ""}<section data-part="panel" class="panel webhook-panel"><div><h3>MCP API Key</h3><p>${mcp.configured ? `已启用 · 生成于 ${esc(new Date(mcp.created_at).toLocaleString())}` : "尚未生成，MCP 接口未启用。"}</p><small>用于 AI 客户端连接并管理节点、任务和设置。仅用于 MCP；重新生成或撤销后旧 Key 立即失效。</small><p>连接地址：<code>${esc(location.origin + "/mcp")}</code></p><p class="hint">请求头：Authorization: Bearer &lt;API Key&gt;</p>${mcpDocs()}</div><div class="webhook-actions"><button id="generate-mcp-key" class="primary">${mcp.configured ? "重新生成" : "生成 API Key"}</button>${mcp.configured ? '<button id="revoke-mcp-key">撤销</button>' : ""}</div></section>`;
 }
 
 function dataView() {
-  return `<section data-part="panel" class="panel webhook-panel"><div><h3>数据备份</h3><p>下载整个数据库的一份快照：节点、任务、历史与设置都在里面。不用停服，面板和 Agent 上报照常。</p><small>要每天自动、加密地把整个数据目录存到别的节点，用左侧的「备份」页。升级到会改数据库结构的版本之前先下载一份。恢复时先停服，把它放进数据目录、命名为 tza-probe.db（替换原文件），并删掉同目录的 tza-probe.db-wal 与 tza-probe.db-shm，再启动。站点 logo（branding/）、主题包（themes/）与插件（plugins/）是数据目录里的文件，不在这份快照里，要一起备份就连同数据目录整个拷走。</small></div><div class="webhook-actions"><a id="download-backup" class="button primary" href="/api/v1/admin/backup" download>下载备份</a></div></section>`;
+  return `<section data-part="panel" class="panel webhook-panel"><div><h3>数据备份</h3><p>下载整个数据库的一份快照：节点、任务、历史与设置都在里面。不用停服，面板和 Agent 上报照常。</p><small>要每天自动、加密地把整个数据目录存到别的节点，用左侧的「备份」页。升级到会改数据库结构的版本之前先下载一份。恢复时先停服，把它放进数据目录、命名为 lodestar.db（替换原文件），并删掉同目录的 lodestar.db-wal 与 lodestar.db-shm，再启动。站点 logo（branding/）、主题包（themes/）与插件（plugins/）是数据目录里的文件，不在这份快照里，要一起备份就连同数据目录整个拷走。</small></div><div class="webhook-actions"><a id="download-backup" class="button primary" href="/api/v1/admin/backup" download>下载备份</a></div></section>`;
 }
 
 function wireLook(settings) {
@@ -180,13 +180,13 @@ function wireAccountView(acct, mcp) {
   content().querySelector("#edit-account")?.addEventListener("click", () => accountForm(acct));
 }
 // 站点品牌：名称换掉标签页标题与品牌区的 PROBE，logo 换掉 t·z·a 字标与 favicon。两项各自保存、
-// 各自清除；都清掉就回到内置的 TZA CC 品牌。保存后 applyBrand 当场换上本页的标题、图标与侧栏，
+// 各自清除；都清掉就回到内置的 Lodestar 品牌。保存后 applyBrand 当场换上本页的标题、图标与侧栏，
 // 公开面板与别的访客下一次打开时由 /theme-default.js 在首屏前带上。
 const LOGO_TYPES = "image/png,image/jpeg,image/gif,image/webp,image/x-icon,image/vnd.microsoft.icon,image/svg+xml,.ico,.svg";
 function brandPanel(settings) {
   const name = settings.site_name || "";
   const logo = settings.site_logo || "";
-  const preview = logo ? `<img class="brand-logo" src="${esc(logo)}" alt="当前 logo">` : `<span class="brand-mark">t<span>z</span>a</span>`;
+  const preview = logo ? `<img class="brand-logo" src="${esc(logo)}" alt="当前 logo">` : MARK;
   return `<section data-part="panel" class="panel webhook-panel brand-panel"><div><h3>站点品牌</h3><p>浏览器标签页标题、公开面板与后台左上角显示的名称和 logo。留空即默认的 ${DEFAULT_NAME}。</p><small>logo 同时用作标签页图标，方形图最清楚：PNG、JPEG、GIF、WebP、ICO 或 SVG（不能含脚本），最大 512 KB。存在数据目录的 branding/ 下，不在数据库备份里。</small></div><div class="webhook-actions"><div class="brand-row"><label class="window-field">站点名称<input id="site-name" type="text" maxlength="32" placeholder="${DEFAULT_NAME}" value="${esc(name)}" autocomplete="off"></label><button id="save-site-name" class="primary">保存名称</button></div><div class="brand-row"><span class="brand-preview" aria-label="当前 logo">${preview}</span><label class="button theme-upload">${logo ? "更换 logo" : "上传 logo"}<input id="site-logo-file" type="file" accept="${LOGO_TYPES}" hidden></label>${logo ? '<button id="remove-site-logo">移除 logo</button>' : ""}</div></div></section>`;
 }
 

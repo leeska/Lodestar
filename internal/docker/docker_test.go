@@ -15,14 +15,14 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/leeska/TZA-ControlCenter/internal/agent"
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
-	"github.com/leeska/TZA-ControlCenter/internal/docker"
-	"github.com/leeska/TZA-ControlCenter/internal/httpapi"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/module"
-	"github.com/leeska/TZA-ControlCenter/internal/remote"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
+	"github.com/leeska/Lodestar/internal/agent"
+	"github.com/leeska/Lodestar/internal/channel"
+	"github.com/leeska/Lodestar/internal/docker"
+	"github.com/leeska/Lodestar/internal/httpapi"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/module"
+	"github.com/leeska/Lodestar/internal/remote"
+	"github.com/leeska/Lodestar/internal/storage"
 )
 
 // 后台经管理通道操作节点上的 Docker：列出容器、镜像与 Compose 项目，启停容器，保存 compose
@@ -33,7 +33,7 @@ func TestDockerOverChannel(t *testing.T) {
 	remoteMod := &remote.Module{}
 	dockerMod := &docker.Module{Remote: remoteMod}
 	mods := []module.Module{remoteMod, dockerMod}
-	store, err := storage.OpenWith(filepath.Join(t.TempDir(), "tza-probe.db"), module.Migrations(mods))
+	store, err := storage.OpenWith(filepath.Join(t.TempDir(), "lodestar.db"), module.Migrations(mods))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestDockerOverChannel(t *testing.T) {
 	}
 
 	// 假 Docker Engine 与假 docker 命令。
-	dir, _ := os.MkdirTemp("/tmp", "tzad")
+	dir, _ := os.MkdirTemp("/tmp", "lsd")
 	defer os.RemoveAll(dir)
 	ln, err := net.Listen("unix", filepath.Join(dir, "d.sock"))
 	if err != nil {

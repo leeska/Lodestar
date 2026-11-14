@@ -1,12 +1,12 @@
 # MCP 接入指南
 
-TZA ControlCenter 在 `POST /mcp` 提供 MCP 接口，AI 客户端可查询节点、探测结果和告警，也可管理节点、任务、提醒规则及通知和面板设置，并把通知插件设为告警渠道。服务端与后台共用业务校验，写入会立即反映到面板。
+Lodestar 在 `POST /mcp` 提供 MCP 接口，AI 客户端可查询节点、探测结果和告警，也可管理节点、任务、提醒规则及通知和面板设置，并把通知插件设为告警渠道。服务端与后台共用业务校验，写入会立即反映到面板。
 
 ## 1. 生成 API Key
 
 1. 使用用户名密码登录 `/admin`。
 2. 打开 **面板设置 → MCP API Key**，点击 **生成 API Key**。
-3. 复制并保存完整 Key，格式为 `tza_mcp_…`。Key 只显示一次，关闭后无法再次查看。
+3. 复制并保存完整 Key，格式为 `lodestar_mcp_…`。Key 只显示一次，关闭后无法再次查看。
 4. 记下同一区块中的连接地址，例如 `https://probe.example.com/mcp`。
 
 安装、升级脚本不会生成或打印 MCP Key。首次生成前，MCP 请求返回 HTTP 401。数据库只保存 Key 的 SHA-256 摘要，服务重启后 Key 仍有效。
@@ -19,18 +19,18 @@ TZA ControlCenter 在 `POST /mcp` 提供 MCP 接口，AI 客户端可查询节�
 
 | 配置项 | 值 |
 | --- | --- |
-| 名称 | `tza-probe`，也可自定义 |
+| 名称 | `lodestar`，也可自定义 |
 | 服务地址 | `https://probe.example.com/mcp` |
 | 传输 | HTTP / Streamable HTTP |
 | 请求头名 | `Authorization` |
-| 请求头值 | `Bearer tza_mcp_…`，替换为完整 Key |
+| 请求头值 | `Bearer lodestar_mcp_…`，替换为完整 Key |
 
 若客户端接受 `mcpServers`、`type`、`url`、`headers` 这种 JSON 配置结构，可使用下面的示例。不同客户端的字段、文件位置和添加入口可能不同，请按客户端的配置格式填写上述地址与请求头。
 
 ```json
 {
   "mcpServers": {
-    "tza-probe": {
+    "lodestar": {
       "type": "http",
       "url": "https://probe.example.com/mcp",
       "headers": {
@@ -56,9 +56,9 @@ MCP Key 具有下表中全部工具的权限，包含写入与删除；当前没
 | 后台用户名密码、浏览器 Cookie | 登录管理后台；Cookie 不能访问 MCP |
 | MCP API Key | 仅访问 `/mcp`，不能登录后台或访问管理 HTTP API |
 | 节点密钥 | Agent 上报、领取和完成任务，不能访问 MCP |
-| 旧 `admin-token` / `TZA_ADMIN_TOKEN` | 兼容管理 HTTP API，不用于后台登录或 MCP |
+| 旧 `admin-token` / `LODESTAR_ADMIN_TOKEN` | 兼容管理 HTTP API，不用于后台登录或 MCP |
 
-从旧版升级后，如果客户端原来使用管理密钥或面板 Cookie，请在后台生成 MCP Key，再更新客户端的 `Authorization` 请求头。忘记后台密码可在服务器执行 `tza-server reset-password --data 数据目录`；忘记 MCP Key 则在后台重新生成。
+从旧版升级后，如果客户端原来使用管理密钥或面板 Cookie，请在后台生成 MCP Key，再更新客户端的 `Authorization` 请求头。忘记后台密码可在服务器执行 `lodestar reset-password --data 数据目录`；忘记 MCP Key 则在后台重新生成。
 
 ## 4. 工具清单
 

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 // Heartbeat only updates contact and diagnostics. Metrics, samples and the

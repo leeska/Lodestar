@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/notify"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/notify"
+	"github.com/leeska/Lodestar/internal/storage"
 )
 
 func open(t *testing.T) *Service {

@@ -1,13 +1,13 @@
 // 亮暗主题：偏好存于 localStorage，"auto" 跟随系统。后台设的默认明暗（"auto" / "light" /
-// "dark"，由 /theme-default.js 写在 window.__tzaDefault 上）用于访客还没自己选过的时候；
+// "dark"，由 /theme-default.js 写在 window.__lodestarDefault 上）用于访客还没自己选过的时候；
 // theme-boot.js 在样式生效前已按同样规则设置了 <html data-theme>，这里负责切换按钮和系统偏好变化。
 // 外观风格（data-skin）在 skins.js，两者正交：applyTheme 只管明暗，底色交给 skinChrome()。
 import { skinChrome } from "./skins.js";
 
-const KEY = "tza-theme";
+const KEY = "lodestar-theme";
 const ORDER = ["auto", "light", "dark"];
 // 后台默认值：认不出来（含未配置）就是内置默认「跟随系统」。
-const DEFAULT = ORDER.includes(window.__tzaDefault?.theme) ? window.__tzaDefault.theme : "auto";
+const DEFAULT = ORDER.includes(window.__lodestarDefault?.theme) ? window.__lodestarDefault.theme : "auto";
 const LABEL = { auto: "跟随系统", light: "浅色", dark: "深色" };
 // 后台「前台默认外观」的下拉项就用这一份，别在 admin.js 里再抄一遍标签。
 export const THEMES = ORDER.map((id) => ({ id, name: LABEL[id] }));

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 // Transition persists debounce and edge state atomically with its durable

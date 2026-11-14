@@ -94,8 +94,8 @@ func TestSourceInstallerPreservesOldReleaseTag(t *testing.T) {
 		"id":      "#!/bin/sh\nprintf '0\\n'\n",
 		"cp":      "#!/bin/sh\nexit 0\n",
 		"install": "#!/bin/sh\nexit 99\n",
-		"go":      "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$TZA_VERSION_GO_ARGS\"\n",
-		"git":     "#!/bin/sh\nif [ \"$1\" = clone ]; then exec \"$TZA_VERSION_REAL_GIT\" clone --quiet --branch \"$5\" \"$TZA_VERSION_REPO\" \"$7\"; fi\nexec \"$TZA_VERSION_REAL_GIT\" \"$@\"\n",
+		"go":      "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$LODESTAR_VERSION_GO_ARGS\"\n",
+		"git":     "#!/bin/sh\nif [ \"$1\" = clone ]; then exec \"$LODESTAR_VERSION_REAL_GIT\" clone --quiet --branch \"$5\" \"$LODESTAR_VERSION_REPO\" \"$7\"; fi\nexec \"$LODESTAR_VERSION_REAL_GIT\" \"$@\"\n",
 	}
 	for name, text := range commands {
 		if err := os.WriteFile(filepath.Join(bin, name), []byte(text), 0700); err != nil {
@@ -103,7 +103,7 @@ func TestSourceInstallerPreservesOldReleaseTag(t *testing.T) {
 		}
 	}
 	c := exec.Command("sh", script, "--ref", "v1.5.2", "--no-systemd")
-	c.Env = append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"), "TZA_VERSION_REAL_GIT="+git, "TZA_VERSION_REPO="+repo, "TZA_VERSION_GO_ARGS="+log)
+	c.Env = append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"), "LODESTAR_VERSION_REAL_GIT="+git, "LODESTAR_VERSION_REPO="+repo, "LODESTAR_VERSION_GO_ARGS="+log)
 	out, err := c.CombinedOutput()
 	if e, ok := err.(*exec.ExitError); !ok || e.ExitCode() != 99 {
 		t.Fatalf("installer did not stop at mocked install: %s %v", out, err)
@@ -123,14 +123,14 @@ func TestSourceInstallerPreservesOldReleaseTag(t *testing.T) {
 	}
 }
 
-// install.sh carries a copy of deploy/tza-browser.service for when neither the
+// install.sh carries a copy of deploy/lodestar-browser.service for when neither the
 // release package nor GitHub provides it; the two must not drift apart.
 func TestInstallerBrowserUnitMatchesDeployFile(t *testing.T) {
 	script, err := os.ReadFile("../../deploy/install.sh")
 	if err != nil {
 		t.Fatal(err)
 	}
-	unit, err := os.ReadFile("../../deploy/tza-browser.service")
+	unit, err := os.ReadFile("../../deploy/lodestar-browser.service")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,27 +142,27 @@ func TestInstallerBrowserUnitMatchesDeployFile(t *testing.T) {
 	body := text[start+len("cat > \"$BROWSER_UNIT\" <<'UNIT'\n"):]
 	body = body[:strings.Index(body, "\nUNIT\n")]
 	if body != strings.TrimRight(string(unit), "\n") {
-		t.Fatal("install.sh's tza-browser.service fallback differs from deploy/tza-browser.service")
+		t.Fatal("install.sh's lodestar-browser.service fallback differs from deploy/lodestar-browser.service")
 	}
-	for _, want := range []string{"PrivateNetwork=yes", "User=tza-browser", "browser-worker --socket /run/tza-browser/control.sock"} {
+	for _, want := range []string{"PrivateNetwork=yes", "User=lodestar-browser", "browser-worker --socket /run/lodestar-browser/control.sock"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("browser unit lacks %s", want)
 		}
 	}
 }
 
-// install.sh writes deploy/nginx-tza-probe-log.conf into /etc/nginx/conf.d; the
+// install.sh writes deploy/nginx-lodestar-log.conf into /etc/nginx/conf.d; the
 // copy inside the script must stay identical, and the site example must use it.
 func TestInstallerNginxLogMatchesDeployFile(t *testing.T) {
 	script, err := os.ReadFile("../../deploy/install.sh")
 	if err != nil {
 		t.Fatal(err)
 	}
-	conf, err := os.ReadFile("../../deploy/nginx-tza-probe-log.conf")
+	conf, err := os.ReadFile("../../deploy/nginx-lodestar-log.conf")
 	if err != nil {
 		t.Fatal(err)
 	}
-	const open = "cat > \"${WORK}/tza-probe-log.conf\" <<'NGINX'\n"
+	const open = "cat > \"${WORK}/lodestar-log.conf\" <<'NGINX'\n"
 	text := string(script)
 	start := strings.Index(text, open)
 	if start < 0 {
@@ -171,13 +171,13 @@ func TestInstallerNginxLogMatchesDeployFile(t *testing.T) {
 	body := text[start+len(open):]
 	body = body[:strings.Index(body, "\nNGINX\n")]
 	if body != strings.TrimRight(string(conf), "\n") {
-		t.Fatal("install.sh's nginx log map differs from deploy/nginx-tza-probe-log.conf")
+		t.Fatal("install.sh's nginx log map differs from deploy/nginx-lodestar-log.conf")
 	}
 	site, err := os.ReadFile("../../deploy/nginx-site.conf")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(site), "if=$tza_loggable;") || strings.Contains(string(site), "map ") {
-		t.Fatal("deploy/nginx-site.conf must use $tza_loggable without defining it again")
+	if !strings.Contains(string(site), "if=$lodestar_loggable;") || strings.Contains(string(site), "map ") {
+		t.Fatal("deploy/nginx-site.conf must use $lodestar_loggable without defining it again")
 	}
 }

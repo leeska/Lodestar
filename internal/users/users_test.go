@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/httpapi"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/module"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
-	"github.com/leeska/TZA-ControlCenter/internal/users"
+	"github.com/leeska/Lodestar/internal/httpapi"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/module"
+	"github.com/leeska/Lodestar/internal/storage"
+	"github.com/leeska/Lodestar/internal/users"
 )
 
 func TestStatusAndPeriods(t *testing.T) {

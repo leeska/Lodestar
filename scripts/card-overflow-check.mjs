@@ -13,20 +13,20 @@
 //
 // 用法：
 //   node scripts/card-overflow-check.mjs                     # 默认量本机 http://127.0.0.1:25774/
-//   TZA_CHECK_URL=https://probe.example.com/ node scripts/card-overflow-check.mjs
+//   LODESTAR_CHECK_URL=https://probe.example.com/ node scripts/card-overflow-check.mjs
 //   环境变量：WIDTHS（逗号分隔，默认 320,344,360,375,390,414）、VIEWS（默认 card,list）、
-//            PUPPETEER_CORE、CHROME_PATH（默认 /usr/bin/chromium）、TZA_SKIN、TZA_THEME
+//            PUPPETEER_CORE、CHROME_PATH（默认 /usr/bin/chromium）、LODESTAR_SKIN、LODESTAR_THEME
 //   · 没有 puppeteer-core / chromium → 打印 SKIP 并以 0 退出。
 import { existsSync } from "node:fs";
 
 const CORE = process.env.PUPPETEER_CORE ||
   "/tmp/pptr/node_modules/puppeteer-core/lib/puppeteer/puppeteer-core.js";
 const CHROME = process.env.CHROME_PATH || "/usr/bin/chromium";
-const URL_ = process.env.TZA_CHECK_URL || "http://127.0.0.1:25774/";
+const URL_ = process.env.LODESTAR_CHECK_URL || "http://127.0.0.1:25774/";
 const WIDTHS = (process.env.WIDTHS || "320,344,360,375,390,414").split(",").map((v) => Number(v.trim()));
 const VIEWS = (process.env.VIEWS || "card,list").split(",").map((v) => v.trim()).filter(Boolean);
-const SKIN = process.env.TZA_SKIN || "glass";
-const THEME = process.env.TZA_THEME || "light";
+const SKIN = process.env.LODESTAR_SKIN || "glass";
+const THEME = process.env.LODESTAR_THEME || "light";
 
 if (!existsSync(CORE) || !existsSync(CHROME)) {
   console.log(`SKIP: 没有 puppeteer-core（${CORE}）或 chromium（${CHROME}）——布局守卫只在有真浏览器的机器上跑`);
@@ -45,9 +45,9 @@ for (const view of VIEWS) {
     // 皮肤 / 明暗 / 展示方式各套都量：三者的圆角、内边距与列宽预算都不同，混着才拦得住某一套特有的事。
     await page.evaluateOnNewDocument((skin, theme, view) => {
       try {
-        localStorage.setItem("tza-skin", skin);
-        localStorage.setItem("tza-theme", theme);
-        localStorage.setItem("tza-view", view);
+        localStorage.setItem("lodestar-skin", skin);
+        localStorage.setItem("lodestar-theme", theme);
+        localStorage.setItem("lodestar-view", view);
       } catch {}
     }, SKIN, THEME, view);
     await page.goto(URL_, { waitUntil: "networkidle2", timeout: 90000 });

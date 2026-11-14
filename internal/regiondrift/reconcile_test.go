@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/ipguard"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/ipguard"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 type fakeNodes []string

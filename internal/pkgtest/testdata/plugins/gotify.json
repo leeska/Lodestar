@@ -5,7 +5,7 @@
   "name": "Gotify",
   "hint": "自建推送服务",
   "version": "1.0.0",
-  "author": "TZA",
+  "author": "Lodestar",
   "notify": {
     "hosts": ["*"],
     "settings": [

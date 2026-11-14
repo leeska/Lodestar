@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 // Optional so adapters written for the original report/jobs protocol keep

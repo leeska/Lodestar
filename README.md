@@ -1,6 +1,8 @@
-# TZA ControlCenter
+# Lodestar
 
-一个主机与网络探针：**一个仓库、Server / Agent 两个程序、一个 SQLite 数据库**。后台与公开页随 Server 嵌入发布，没有 Node 构建依赖。
+自托管的个人中枢（目标见 [docs/VISION.md](docs/VISION.md)），从服务器管理起步：**一个仓库、Server / Agent 两个程序、一个 SQLite 数据库**。后台与公开页随 Server 嵌入发布，没有 Node 构建依赖。
+
+v3.0.0 起由 TZA ControlCenter 改名为 Lodestar，旧安装的自动迁移见 [部署文档](docs/DEPLOYMENT.md#从-tza-改名为-lodestarv300)。
 
 当前源码版本见 `internal/model/model.go`，发布版本以对应 tag 和二进制输出为准。
 
@@ -32,13 +34,13 @@ Linux 主机（amd64 / arm64），一条命令装成 systemd 服务。两种方�
 安装最新发布：
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/leeska/TZA-ControlCenter/main/deploy/install.sh | sudo sh
+curl -fsSL https://raw.githubusercontent.com/leeska/Lodestar/main/deploy/install.sh | sudo sh
 ```
 
 安装指定版本（把 `v1.0.0` 换成要装的版本）：
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/leeska/TZA-ControlCenter/main/deploy/install.sh | sudo sh -s -- --release v1.0.0
+curl -fsSL https://raw.githubusercontent.com/leeska/Lodestar/main/deploy/install.sh | sudo sh -s -- --release v1.0.0
 ```
 
 **从源码构建**：在本机编译 Server 与 amd64 / arm64 两个 Agent，需要 Go 1.27 与 git。本机编出的 Agent 没有签名，不能在后台一键升级。
@@ -46,27 +48,27 @@ curl -fsSL https://raw.githubusercontent.com/leeska/TZA-ControlCenter/main/deplo
 构建 `main` 分支：
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/leeska/TZA-ControlCenter/main/deploy/install.sh | sudo sh -s -- --source
+curl -fsSL https://raw.githubusercontent.com/leeska/Lodestar/main/deploy/install.sh | sudo sh -s -- --source
 ```
 
 构建指定分支或 tag（把 `dev` 换成要构建的分支或 tag）：
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/leeska/TZA-ControlCenter/main/deploy/install.sh | sudo sh -s -- --ref dev
+curl -fsSL https://raw.githubusercontent.com/leeska/Lodestar/main/deploy/install.sh | sudo sh -s -- --ref dev
 ```
 
-两种方式都安装 `/usr/local/bin/tza-server` 与 systemd 单元、建好 `/var/lib/tza-probe`。重复执行即升级（可以在两种方式之间切换）：旧二进制保留为 `tza-server.previous`，服务自动重启并核对运行的是新版本。其他参数：`--listen ADDR`、`--data DIR`、`--no-systemd`。
+两种方式都安装 `/usr/local/bin/lodestar` 与 systemd 单元、建好 `/var/lib/lodestar`。重复执行即升级（可以在两种方式之间切换）：旧二进制保留为 `lodestar.previous`，服务自动重启并核对运行的是新版本。其他参数：`--listen ADDR`、`--data DIR`、`--no-systemd`。
 
-装完脚本会打印后台用户名、密码（密码只在首次安装时显示一次，登录后可在“面板设置 → 后台账号”修改；忘记密码执行 `sudo tza-server reset-password --data /var/lib/tza-probe`）。访问 `http://127.0.0.1:25774/admin` 用用户名密码登录。MCP API Key 在“面板设置”中生成。跨主机接入需在前面配置 HTTPS 反代，见 [部署说明](docs/DEPLOYMENT.md)。
+装完脚本会打印后台用户名、密码（密码只在首次安装时显示一次，登录后可在“面板设置 → 后台账号”修改；忘记密码执行 `sudo lodestar reset-password --data /var/lib/lodestar`）。访问 `http://127.0.0.1:25774/admin` 用用户名密码登录。MCP API Key 在“面板设置”中生成。跨主机接入需在前面配置 HTTPS 反代，见 [部署说明](docs/DEPLOYMENT.md)。
 
 Docker 部署（镜像本地构建，数据放命名卷）：
 
 ```sh
-git clone --depth 1 https://github.com/leeska/TZA-ControlCenter && cd TZA-ControlCenter
+git clone --depth 1 https://github.com/leeska/Lodestar && cd Lodestar
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
-后台初始密码不会写进容器日志（日志会被永久保留）：首次启动把它写进数据卷的 `admin-password.txt`，用 `docker compose -f deploy/docker-compose.yml exec tza-server cat /data/admin-password.txt` 读取，登录改密后删除该文件；也可以在 compose 里配置 `TZA_ADMIN_PASSWORD`（8–128 个字符）自定义初始密码。
+后台初始密码不会写进容器日志（日志会被永久保留）：首次启动把它写进数据卷的 `admin-password.txt`，用 `docker compose -f deploy/docker-compose.yml exec lodestar cat /data/admin-password.txt` 读取，登录改密后删除该文件；也可以在 compose 里配置 `LODESTAR_ADMIN_PASSWORD`（8–128 个字符）自定义初始密码。
 
 被监控主机不需要装 Go：后台新增节点后，“接入”弹窗给出的 `curl ... | sh -s -- --endpoint ... --token ...` 命令会下载并启动 Agent。
 
@@ -75,16 +77,16 @@ docker compose -f deploy/docker-compose.yml up -d --build
 需要 Go 1.27，不需要 CGO、外部数据库或 Node。
 
 ```sh
-go build -o bin/tza-server ./cmd/server
-go build -o bin/tza-agent ./cmd/agent
-./bin/tza-server --listen 127.0.0.1:25774 --data ./data
+go build -o bin/lodestar ./cmd/server
+go build -o bin/lodestar-agent ./cmd/agent
+./bin/lodestar --listen 127.0.0.1:25774 --data ./data
 ```
 
-首次启动的日志会给出后台用户名 `admin` 与随机初始密码（只显示这一次；也可先执行 `./bin/tza-server init --data ./data` 在终端拿到）。访问 `http://127.0.0.1:25774/admin` 用它登录；忘记密码执行 `./bin/tza-server reset-password --data ./data`。也可设置 `TZA_ADMIN_TOKEN`（至少 32 个字符），密钥不写入日志。接入配置里的地址必须能从 Agent 主机访问，远程机器不能用 `127.0.0.1` 或 `localhost`。也可以下载 `agent.json` 手动运行：
+首次启动的日志会给出后台用户名 `admin` 与随机初始密码（只显示这一次；也可先执行 `./bin/lodestar init --data ./data` 在终端拿到）。访问 `http://127.0.0.1:25774/admin` 用它登录；忘记密码执行 `./bin/lodestar reset-password --data ./data`。也可设置 `LODESTAR_ADMIN_TOKEN`（至少 32 个字符），密钥不写入日志。接入配置里的地址必须能从 Agent 主机访问，远程机器不能用 `127.0.0.1` 或 `localhost`。也可以下载 `agent.json` 手动运行：
 
 ```sh
 chmod 600 agent.json
-./bin/tza-agent --config agent.json
+./bin/lodestar-agent --config agent.json
 ```
 
 ```json
@@ -154,7 +156,7 @@ chmod 600 agent.json
 Server 在 `POST /mcp` 提供 [Model Context Protocol](https://modelcontextprotocol.io) 端点，用“面板设置 → MCP API Key”生成的独立 Key（`Authorization: Bearer <API Key>`）鉴权。Key 只在生成时显示一次，可重新生成或撤销，旧 Key 立即失效；管理密钥和面板 Cookie 无法访问 MCP。工具覆盖节点、任务、提醒规则及通知和面板设置，读写与面板走同一套校验；已存的 Bot Token / Webhook 不回显。**写工具立即生效、删除不可撤销**，接入前请确认客户端会在执行前征求你的同意。
 
 ```json
-{ "mcpServers": { "tza-probe": { "type": "http", "url": "https://probe.example.com/mcp", "headers": { "Authorization": "Bearer MCP_API_KEY" } } } }
+{ "mcpServers": { "lodestar": { "type": "http", "url": "https://probe.example.com/mcp", "headers": { "Authorization": "Bearer MCP_API_KEY" } } } }
 ```
 
 共 29 个工具，包含查询和修改节点、任务、提醒规则、通知（含通知插件）及面板设置，列出已装插件。`update_*` 只修改提交的字段。完整的 Key 管理、客户端配置、工具清单、curl 自检和排错步骤见 [MCP 接入指南](docs/MCP.md)；协议字段见 [HTTP 协议](docs/API.md)。
@@ -177,12 +179,12 @@ Server 在 `POST /mcp` 提供 [Model Context Protocol](https://modelcontextproto
 
 ```sh
 bash scripts/pipeline.sh check   # gofmt / go vet / go test（有 gcc 时加 -race）/ web/*.js 语法 / 前端集成检查
-bash scripts/pipeline.sh build   # dist/tza-probe-linux-{amd64,arm64}.tar.gz(+.sha256)
+bash scripts/pipeline.sh build   # dist/lodestar-linux-{amd64,arm64}.tar.gz(+.sha256)
 bash scripts/pipeline.sh all     # 默认：check 后 build
 GITHUB_TOKEN=... bash scripts/release.sh vX.Y.Z dist   # 打 tag、建 Release、上传发行包
 ```
 
-`UI_SMOKE=0` 跳过前端集成检查，`OUT=<目录>` 换产物目录，`TZA_NODE` / `TZA_NPM` 指定 Node 与 npm，`TZA_BUN` 指定 Bun。
+`UI_SMOKE=0` 跳过前端集成检查，`OUT=<目录>` 换产物目录，`LODESTAR_NODE` / `LODESTAR_NPM` 指定 Node 与 npm，`LODESTAR_BUN` 指定 Bun。
 
 本项目不做远程终端、任意命令、文件管理、多数据库和自动更新。Agent 一键升级只装运维者用自己私钥签过名的新版本，签名私钥不放在 Server 上，Server 不能借它在节点上运行别的程序，见 [部署说明](docs/DEPLOYMENT.md)。插件只做声明式的（通知渠道、探测目标集，数据与模板由 Probe 解释执行）：不做可执行代码的插件、前端注入脚本、Agent 端插件或任何远程命令通道。主题与插件都在后台上传 zip 安装，不连接任何市场。
 

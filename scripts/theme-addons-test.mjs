@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-const require = createRequire(path.join(process.env.TZA_UI_DEPS || "/tmp/tza-ui-deps", "package.json"));
+const require = createRequire(path.join(process.env.LODESTAR_UI_DEPS || "/tmp/lodestar-ui-deps", "package.json"));
 const { JSDOM } = require("jsdom"), { build } = require("esbuild");
 const root = fileURLToPath(new URL("../", import.meta.url));
 const bundle = await build({ stdin: { contents: 'export { renderThemes } from "./web/admin-themes.js"; export { state } from "./web/admin-state.js";', resolveDir: root }, bundle: true, format: "iife", globalName: "Themes", write: false });

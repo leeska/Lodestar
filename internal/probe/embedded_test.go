@@ -14,7 +14,7 @@ import (
 	"github.com/nxtrace/NTrace-core/ipgeo"
 	"github.com/nxtrace/NTrace-core/trace"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 func TestMapTraceResultKeepsEvidenceAndMasksAddresses(t *testing.T) {
@@ -147,30 +147,30 @@ func TestTraceMethodSelection(t *testing.T) {
 // tracer. It only runs when explicitly asked, because it needs root and a host
 // with a direct internet path:
 //
-//	sudo TZA_LIVE_TRACE_TARGET=1.1.1.1 \
-//	  TZA_LIVE_TRACE_GEO=IPAPI.com go test ./internal/probe/ -run LiveTrace -v
+//	sudo LODESTAR_LIVE_TRACE_TARGET=1.1.1.1 \
+//	  LODESTAR_LIVE_TRACE_GEO=IPAPI.com go test ./internal/probe/ -run LiveTrace -v
 //
 // Do not run this on a host whose egress goes through a local proxy or
 // Fake-IP resolver: the hops would describe the proxy, not the operator line.
 func TestEmbeddedLiveTrace(t *testing.T) {
-	target := os.Getenv("TZA_LIVE_TRACE_TARGET")
+	target := os.Getenv("LODESTAR_LIVE_TRACE_TARGET")
 	if target == "" {
-		t.Skip("set TZA_LIVE_TRACE_TARGET=<ip> to run a live trace")
+		t.Skip("set LODESTAR_LIVE_TRACE_TARGET=<ip> to run a live trace")
 	}
 	if os.Geteuid() != 0 {
 		t.Skip("raw socket probe requires root")
 	}
 	ip := net.ParseIP(target)
 	if ip == nil || ip.To4() == nil {
-		t.Fatalf("TZA_LIVE_TRACE_TARGET must be an IPv4 literal, got %q", target)
+		t.Fatalf("LODESTAR_LIVE_TRACE_TARGET must be an IPv4 literal, got %q", target)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	method := os.Getenv("TZA_LIVE_TRACE_METHOD")
+	method := os.Getenv("LODESTAR_LIVE_TRACE_METHOD")
 	if method == "" {
 		method = "tcp"
 	}
-	out := (Embedded{GeoProvider: os.Getenv("TZA_LIVE_TRACE_GEO"), Method: method}).Trace(ctx, ip, 443)
+	out := (Embedded{GeoProvider: os.Getenv("LODESTAR_LIVE_TRACE_GEO"), Method: method}).Trace(ctx, ip, 443)
 	t.Logf("status: received=%d latency=%v reason=%q", out.Received, out.Latency, out.Reason)
 	for _, h := range out.Hops {
 		t.Logf("  %2d  %-16s %-10s %.1f ms", h.TTL, h.Address, h.ASN, h.RTT)

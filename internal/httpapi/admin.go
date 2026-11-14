@@ -11,14 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/account"
-	"github.com/leeska/TZA-ControlCenter/internal/brand"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/notify"
-	"github.com/leeska/TZA-ControlCenter/internal/service"
-	"github.com/leeska/TZA-ControlCenter/internal/theme"
-	"github.com/leeska/TZA-ControlCenter/internal/totp"
-	"github.com/leeska/TZA-ControlCenter/pkg/tzapkg"
+	"github.com/leeska/Lodestar/internal/account"
+	"github.com/leeska/Lodestar/internal/brand"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/notify"
+	"github.com/leeska/Lodestar/internal/service"
+	"github.com/leeska/Lodestar/internal/theme"
+	"github.com/leeska/Lodestar/internal/totp"
+	"github.com/leeska/Lodestar/pkg/lspkg"
 )
 
 // themeView is one skin as the browser needs it: installed packages carry the
@@ -75,7 +75,7 @@ func (a *API) adminRoutes(mux *http.ServeMux) {
 		if acct, err := account.Load(a.AccountDir); err == nil {
 			name = acct.Username
 		}
-		issuer := "TZA ControlCenter"
+		issuer := "Lodestar"
 		if panel, err := a.svc.Panel(r.Context()); err == nil && panel.SiteName != "" {
 			issuer = panel.SiteName
 		}
@@ -189,7 +189,7 @@ func (a *API) adminRoutes(mux *http.ServeMux) {
 			write(w, 413, map[string]string{"error": "附加包过大"})
 			return
 		}
-		m, _, err := tzapkg.Open(body)
+		m, _, err := lspkg.Open(body)
 		if err != nil || m.Type != theme.TypeAddon || m.For != id {
 			write(w, 400, map[string]string{"error": "只能添加依附当前主题的附加包"})
 			return
@@ -276,12 +276,12 @@ func (a *API) adminRoutes(mux *http.ServeMux) {
 		if !ok {
 			return
 		}
-		p, err := tzapkg.OpenPlugin(body)
+		p, err := lspkg.OpenPlugin(body)
 		if err != nil {
 			write(w, 400, map[string]string{"error": err.Error()})
 			return
 		}
-		if p.ID == tzapkg.ReservedRuntimeID {
+		if p.ID == lspkg.ReservedRuntimeID {
 			write(w, 400, map[string]string{"error": "此插件 ID 为保留 ID，不能用于上传的插件"})
 			return
 		}
@@ -292,8 +292,8 @@ func (a *API) adminRoutes(mux *http.ServeMux) {
 		if !ok {
 			return
 		}
-		preview, err := tzapkg.OpenPlugin(body)
-		if err != nil || preview.ID == tzapkg.ReservedRuntimeID {
+		preview, err := lspkg.OpenPlugin(body)
+		if err != nil || preview.ID == lspkg.ReservedRuntimeID {
 			write(w, 400, map[string]string{"error": "请上传有效的通知或目标集插件"})
 			return
 		}
@@ -637,7 +637,7 @@ func (a *API) adminRoutes(mux *http.ServeMux) {
 			return
 		}
 		defer f.Close()
-		name := "tza-backup-" + time.Now().UTC().Format("20060102-150405") + ".db"
+		name := "lodestar-backup-" + time.Now().UTC().Format("20060102-150405") + ".db"
 		w.Header().Set("Content-Type", "application/vnd.sqlite3")
 		w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
 		w.Header().Set("Cache-Control", "no-store")
@@ -783,7 +783,7 @@ func rawBody(w http.ResponseWriter, r *http.Request) (json.RawMessage, bool) {
 // the password changed.
 func (a *API) dropOtherSessions(r *http.Request, accountHash string) {
 	keep := ""
-	if c, err := r.Cookie("tza_session"); err == nil {
+	if c, err := r.Cookie("lodestar_session"); err == nil {
 		keep = model.Hash(c.Value)
 	}
 	a.mu.Lock()

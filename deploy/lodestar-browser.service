@@ -1,17 +1,17 @@
 [Unit]
-Description=TZA ControlCenter browser worker (region drift check)
-Documentation=https://github.com/leeska/TZA-ControlCenter/blob/main/docs/IP-GUARD-INTEGRATION.md
-After=tza-server.service
+Description=Lodestar browser worker (region drift check)
+Documentation=https://github.com/leeska/Lodestar/blob/main/docs/IP-GUARD-INTEGRATION.md
+After=lodestar.service
 
 [Service]
 # Chromium reads Google / Meta pages for the region drift check. It has no network
 # of its own: PrivateNetwork leaves only loopback, and every connection goes through
 # the Server's private socket and from there through the node's Agent.
-User=tza-browser
-Group=tza-browser
-SupplementaryGroups=tza-browser-control
-ExecStart=/usr/local/bin/tza-server browser-worker --socket /run/tza-browser/control.sock --state /var/lib/tza-browser
-StateDirectory=tza-browser
+User=lodestar-browser
+Group=lodestar-browser
+SupplementaryGroups=lodestar-browser-control
+ExecStart=/usr/local/bin/lodestar browser-worker --socket /run/lodestar-browser/control.sock --state /var/lib/lodestar-browser
+StateDirectory=lodestar-browser
 StateDirectoryMode=0700
 Restart=on-failure
 RestartSec=5
@@ -23,7 +23,7 @@ ProtectHome=yes
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes
-ReadWritePaths=/run/tza-browser
+ReadWritePaths=/run/lodestar-browser
 NoNewPrivileges=yes
 CapabilityBoundingSet=
 LockPersonality=yes

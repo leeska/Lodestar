@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 // Store only a digest; the secret is returned once when generated.
@@ -43,7 +43,7 @@ func (a *API) mcpKeyRoutes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("POST /api/v1/admin/mcp-key", a.admin(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
-		key := "tza_mcp_" + model.Secret()
+		key := "lodestar_mcp_" + model.Secret()
 		now := time.Now().UTC()
 		value, err := json.Marshal(mcpKeyRecord{Hash: model.Hash(key), CreatedAt: now})
 		if err == nil {

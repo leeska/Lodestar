@@ -16,7 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/leeska/TZA-ControlCenter/pkg/tzapkg"
+	"github.com/leeska/Lodestar/pkg/lspkg"
 )
 
 func main() {
@@ -47,7 +47,7 @@ func pack(dir, out string) error {
 	if err != nil {
 		return err
 	}
-	m, _, err := tzapkg.Open(archive)
+	m, _, err := lspkg.Open(archive)
 	if err != nil {
 		return err
 	}

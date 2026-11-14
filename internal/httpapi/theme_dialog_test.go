@@ -11,10 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
-	"github.com/leeska/TZA-ControlCenter/internal/theme"
-	"github.com/leeska/TZA-ControlCenter/web"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/storage"
+	"github.com/leeska/Lodestar/internal/theme"
+	"github.com/leeska/Lodestar/web"
 )
 
 type themeEnv struct {

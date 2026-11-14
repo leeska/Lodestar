@@ -16,15 +16,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/agent"
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
-	"github.com/leeska/TZA-ControlCenter/internal/httpapi"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/module"
-	"github.com/leeska/TZA-ControlCenter/internal/proxy"
-	"github.com/leeska/TZA-ControlCenter/internal/remote"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
-	"github.com/leeska/TZA-ControlCenter/internal/users"
+	"github.com/leeska/Lodestar/internal/agent"
+	"github.com/leeska/Lodestar/internal/channel"
+	"github.com/leeska/Lodestar/internal/httpapi"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/module"
+	"github.com/leeska/Lodestar/internal/proxy"
+	"github.com/leeska/Lodestar/internal/remote"
+	"github.com/leeska/Lodestar/internal/storage"
+	"github.com/leeska/Lodestar/internal/users"
 )
 
 // fakeNode is a node on the management channel with fake systemd and kernel.
@@ -42,7 +42,7 @@ func (n *fakeNode) setStats(raw string) {
 }
 
 func (n *fakeNode) config(t *testing.T) map[string]any {
-	raw, err := os.ReadFile(filepath.Join(n.root, "etc/tza-proxy/xray.json"))
+	raw, err := os.ReadFile(filepath.Join(n.root, "etc/lodestar-proxy/xray.json"))
 	if err != nil {
 		return nil
 	}
@@ -54,7 +54,7 @@ func (n *fakeNode) config(t *testing.T) map[string]any {
 }
 
 func (n *fakeNode) unit() string {
-	raw, _ := os.ReadFile(filepath.Join(n.root, "etc/systemd/system/tza-proxy-xray.service"))
+	raw, _ := os.ReadFile(filepath.Join(n.root, "etc/systemd/system/lodestar-proxy-xray.service"))
 	return string(raw)
 }
 
@@ -75,7 +75,7 @@ func TestForwardsOverChannel(t *testing.T) {
 	defer cancel()
 	userMod, proxyMod, remoteMod := &users.Module{}, &proxy.Module{}, &remote.Module{}
 	mods := []module.Module{remoteMod, userMod, proxyMod}
-	store, err := storage.OpenWith(filepath.Join(t.TempDir(), "tza-probe.db"), module.Migrations(mods))
+	store, err := storage.OpenWith(filepath.Join(t.TempDir(), "lodestar.db"), module.Migrations(mods))
 	if err != nil {
 		t.Fatal(err)
 	}

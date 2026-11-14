@@ -6,7 +6,7 @@
 // Run the worker in a separate, network-less sandbox pointed at the socket:
 //
 //	browser-e2e -socket /shared/control.sock -expected-ip $(curl -s https://api64.ipify.org) -country HK
-//	tza-server browser-worker -socket /shared/control.sock -state /tmp/state   # in --network none
+//	lodestar browser-worker -socket /shared/control.sock -state /tmp/state   # in --network none
 //
 // It enqueues one Google and one Meta baseline, waits for both and prints the
 // stored jobs as JSON; the exit status is 0 when both completed with a reading.
@@ -27,7 +27,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/ipguard"
+	"github.com/leeska/Lodestar/internal/ipguard"
 )
 
 func main() {

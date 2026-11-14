@@ -1,4 +1,4 @@
-package tzapkg
+package lspkg
 
 import (
 	"crypto/ed25519"
@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// Signature is TZA-CC's statement that an archive is the reviewed release of a
+// Signature is Lodestar's statement that an archive is the reviewed release of a
 // package. CC signs on approval with its Ed25519 key; the Probe server checks
 // it against the public keys it trusts before installing from the market.
 type Signature struct {

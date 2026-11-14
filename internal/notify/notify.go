@@ -14,7 +14,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 type Repository interface {
@@ -241,7 +241,7 @@ func (Webhook) Send(ctx context.Context, endpoint string, e model.Event) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "TZA-ControlCenter/"+model.Version)
+	req.Header.Set("User-Agent", "Lodestar/"+model.Version)
 	client := http.Client{Timeout: 5 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	resp, err := client.Do(req)
 	if err != nil {

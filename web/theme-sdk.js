@@ -2,7 +2,7 @@
 // Include before the theme bundle: <script src="/theme-sdk.js"></script>.
 (function () {
   "use strict";
-  const protocol = "tza-frontend";
+  const protocol = "lodestar-frontend";
   const pending = new Map(), listeners = new Set();
   let sequence = 0, state, resolveReady, rejectReady;
   const ready = new Promise((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
@@ -38,7 +38,7 @@
     });
   };
   const reportError = (error) => send({ event: "error", message: String(error?.message || error).slice(0, 300) });
-  window.TZA = Object.freeze({
+  window.Lodestar = Object.freeze({
     version: 1, ready,
     get context() { return state; },
     api: (path) => call("api", { path }),
@@ -50,6 +50,8 @@
     onContext(fn) { listeners.add(fn); if (state) fn(state); return () => listeners.delete(fn); },
     reportError,
   });
+  // 改名前写的主题用 window.TZA，同一个对象。
+  window.TZA = window.Lodestar;
   addEventListener("error", (event) => { if (event.error || event.target?.tagName === "SCRIPT") reportError(event.error || "主题脚本加载失败"); }, true);
   addEventListener("unhandledrejection", (event) => reportError(event.reason));
   addEventListener("pagehide", () => {

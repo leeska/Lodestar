@@ -11,9 +11,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/leeska/TZA-ControlCenter/internal/agentdist"
-	"github.com/leeska/TZA-ControlCenter/internal/agentsig"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/agentdist"
+	"github.com/leeska/Lodestar/internal/agentsig"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 // 这两个子命令在运维者自己的电脑上用：私钥不该出现在 Server 上，Server 只拿到签好的
@@ -28,7 +28,7 @@ func agentKeygenCommand(args []string) error {
 		return err
 	}
 	if *id == "" || *out == "" {
-		return errors.New("用法：tza-server agent-keygen --id <key id> --out <私钥文件>")
+		return errors.New("用法：lodestar agent-keygen --id <key id> --out <私钥文件>")
 	}
 	private, public, err := agentsig.GenerateKey(*id)
 	if err != nil {
@@ -62,7 +62,7 @@ func agentKeygenCommand(args []string) error {
 	return nil
 }
 
-// agentSignCommand signs Agent binaries named tza-agent-linux-<arch>, writing
+// agentSignCommand signs Agent binaries named lodestar-agent-linux-<arch>, writing
 // <binary>.sig beside each.
 func agentSignCommand(args []string) error {
 	fs := flag.NewFlagSet("agent-sign", flag.ContinueOnError)
@@ -72,7 +72,7 @@ func agentSignCommand(args []string) error {
 		return err
 	}
 	if *keyPath == "" || *version == "" || fs.NArg() == 0 {
-		return errors.New("用法：tza-server agent-sign --key <私钥文件> --version X.Y.Z tza-agent-linux-amd64 [tza-agent-linux-arm64 ...]")
+		return errors.New("用法：lodestar agent-sign --key <私钥文件> --version X.Y.Z lodestar-agent-linux-amd64 [lodestar-agent-linux-arm64 ...]")
 	}
 	if !agentsig.Releasable(*version) {
 		return fmt.Errorf("版本 %q 须为 MAJOR.MINOR.PATCH（不带 -dev 之类后缀）：Agent 只接受比自己新的签名版本，带后缀的版本排不出先后", *version)
@@ -86,9 +86,9 @@ func agentSignCommand(args []string) error {
 		return err
 	}
 	for _, path := range fs.Args() {
-		arch := strings.TrimPrefix(filepath.Base(path), "tza-agent-linux-")
+		arch := strings.TrimPrefix(filepath.Base(path), "lodestar-agent-linux-")
 		if _, _, ok := agentdist.ParseDownload(filepath.Base(path)); !ok || strings.HasSuffix(path, ".sha256") {
-			return fmt.Errorf("%s：文件名须为 tza-agent-linux-<amd64|arm64>", path)
+			return fmt.Errorf("%s：文件名须为 lodestar-agent-linux-<amd64|arm64>", path)
 		}
 		data, err := os.ReadFile(path)
 		if err != nil {
@@ -106,7 +106,7 @@ func agentSignCommand(args []string) error {
 		fmt.Printf("已签名 %s（%s，版本 %s，密钥 %s）\n", path, arch, *version, keyID)
 	}
 	if *version != model.Version {
-		fmt.Printf("提示：这个 tza-server 自己是 %s；签名写的是 %s，请确认它就是那批 Agent 编译时的版本号。\n", model.Version, *version)
+		fmt.Printf("提示：这个 lodestar 自己是 %s；签名写的是 %s，请确认它就是那批 Agent 编译时的版本号。\n", model.Version, *version)
 	}
 	return nil
 }

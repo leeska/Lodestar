@@ -15,29 +15,29 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/account"
-	"github.com/leeska/TZA-ControlCenter/internal/agentdist"
-	"github.com/leeska/TZA-ControlCenter/internal/backup"
-	"github.com/leeska/TZA-ControlCenter/internal/brand"
-	"github.com/leeska/TZA-ControlCenter/internal/certs"
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
-	"github.com/leeska/TZA-ControlCenter/internal/docker"
-	"github.com/leeska/TZA-ControlCenter/internal/httpapi"
-	"github.com/leeska/TZA-ControlCenter/internal/ipguard"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/module"
-	"github.com/leeska/TZA-ControlCenter/internal/notify"
-	"github.com/leeska/TZA-ControlCenter/internal/plugin"
-	"github.com/leeska/TZA-ControlCenter/internal/proxy"
-	"github.com/leeska/TZA-ControlCenter/internal/regiondrift"
-	"github.com/leeska/TZA-ControlCenter/internal/remote"
-	"github.com/leeska/TZA-ControlCenter/internal/service"
-	"github.com/leeska/TZA-ControlCenter/internal/sites"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
-	"github.com/leeska/TZA-ControlCenter/internal/theme"
-	"github.com/leeska/TZA-ControlCenter/internal/totp"
-	"github.com/leeska/TZA-ControlCenter/internal/users"
-	"github.com/leeska/TZA-ControlCenter/web"
+	"github.com/leeska/Lodestar/internal/account"
+	"github.com/leeska/Lodestar/internal/agentdist"
+	"github.com/leeska/Lodestar/internal/backup"
+	"github.com/leeska/Lodestar/internal/brand"
+	"github.com/leeska/Lodestar/internal/certs"
+	"github.com/leeska/Lodestar/internal/channel"
+	"github.com/leeska/Lodestar/internal/docker"
+	"github.com/leeska/Lodestar/internal/httpapi"
+	"github.com/leeska/Lodestar/internal/ipguard"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/module"
+	"github.com/leeska/Lodestar/internal/notify"
+	"github.com/leeska/Lodestar/internal/plugin"
+	"github.com/leeska/Lodestar/internal/proxy"
+	"github.com/leeska/Lodestar/internal/regiondrift"
+	"github.com/leeska/Lodestar/internal/remote"
+	"github.com/leeska/Lodestar/internal/service"
+	"github.com/leeska/Lodestar/internal/sites"
+	"github.com/leeska/Lodestar/internal/storage"
+	"github.com/leeska/Lodestar/internal/theme"
+	"github.com/leeska/Lodestar/internal/totp"
+	"github.com/leeska/Lodestar/internal/users"
+	"github.com/leeska/Lodestar/web"
 )
 
 func main() {
@@ -92,17 +92,17 @@ func run() error {
 		return err
 	}
 	// Docker 与手动启动不经过安装脚本的 init，首次启动时在这里建账号。初始密码不写日志
-	// ——容器日志会被永久保留：配置了 TZA_ADMIN_PASSWORD 就用它，否则写进数据目录的
+	// ——容器日志会被永久保留：配置了 LODESTAR_ADMIN_PASSWORD 就用它，否则写进数据目录的
 	// 一次性文件 admin-password.txt，登录改密后删除该文件。
-	if env := os.Getenv("TZA_ADMIN_PASSWORD"); env != "" {
+	if env := model.Env("ADMIN_PASSWORD"); env != "" {
 		if _, err := account.Load(*dir); errors.Is(err, account.ErrNotFound) {
 			if err := account.Validate(account.DefaultUsername, env); err != nil {
-				return fmt.Errorf("TZA_ADMIN_PASSWORD %w", err)
+				return fmt.Errorf("LODESTAR_ADMIN_PASSWORD %w", err)
 			}
 			if err := account.Save(*dir, account.DefaultUsername, env); err != nil {
 				return err
 			}
-			slog.Info("administrator account created from TZA_ADMIN_PASSWORD; change it in the panel")
+			slog.Info("administrator account created from LODESTAR_ADMIN_PASSWORD; change it in the panel")
 		} else if err != nil {
 			return err
 		}
@@ -114,6 +114,9 @@ func run() error {
 			return err
 		}
 		slog.Warn("administrator account created; initial credentials are in admin-password.txt in the data directory, delete that file after signing in", "dir", *dir)
+	}
+	if err := storage.AdoptLegacyDatabase(*dir); err != nil {
+		return err
 	}
 	dbPath := databasePath(*dir)
 	modules, drift, remoteMod, usersMod, proxyMod := shippedModules()
@@ -224,7 +227,7 @@ func run() error {
 	}()
 	done := make(chan error, 1)
 	go func() {
-		slog.Info("TZA ControlCenter listening", "address", *addr, "version", model.Version)
+		slog.Info("Lodestar listening", "address", *addr, "version", model.Version)
 		done <- server.ListenAndServe()
 	}()
 	select {
@@ -246,13 +249,13 @@ func run() error {
 }
 
 func databasePath(dir string) string {
-	return filepath.Join(dir, "tza-probe.db")
+	return filepath.Join(dir, storage.DatabaseFile)
 }
 
-// adminToken is the administrator key: TZA_ADMIN_TOKEN, or the admin-token
+// adminToken is the administrator key: LODESTAR_ADMIN_TOKEN, or the admin-token
 // file in dir, created with a fresh key the first time.
 func adminToken(dir string) (token string, err error) {
-	token = os.Getenv("TZA_ADMIN_TOKEN")
+	token = model.Env("ADMIN_TOKEN")
 	if token == "" {
 		path := filepath.Join(dir, "admin-token")
 		data, err := os.ReadFile(path)
@@ -289,7 +292,7 @@ func adminToken(dir string) (token string, err error) {
 // dataDir parses the --data flag shared by the subcommands. The directory
 // must already exist: creating it here as root would leave it owned by root.
 func dataDir(name string, args []string, extra func(*flag.FlagSet)) (string, error) {
-	fs := flag.NewFlagSet("tza-server "+name, flag.ContinueOnError)
+	fs := flag.NewFlagSet("lodestar "+name, flag.ContinueOnError)
 	dir := fs.String("data", "./data", "private data directory")
 	if extra != nil {
 		extra(fs)
@@ -314,7 +317,7 @@ func dataDir(name string, args []string, extra func(*flag.FlagSet)) (string, err
 // empty directory, or a database at this schema). It never writes: the
 // installer calls it with the new binary before replacing the old one.
 func checkDataCommand(args []string) error {
-	fs := flag.NewFlagSet("tza-server check-data", flag.ContinueOnError)
+	fs := flag.NewFlagSet("lodestar check-data", flag.ContinueOnError)
 	dir := fs.String("data", "./data", "private data directory")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -348,7 +351,7 @@ func initCommand(args []string) error {
 		fmt.Printf("后台密码：%s\n", password)
 		fmt.Println("（密码只显示这一次，请立即保存；登录后可在“面板设置 → 后台账号”修改）")
 	} else {
-		fmt.Printf("后台用户名：%s（账号已存在，密码不再显示；忘记密码可执行 tza-server reset-password）\n", username)
+		fmt.Printf("后台用户名：%s（账号已存在，密码不再显示；忘记密码可执行 lodestar reset-password）\n", username)
 	}
 	return nil
 }

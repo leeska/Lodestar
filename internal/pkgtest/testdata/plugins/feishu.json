@@ -5,7 +5,7 @@
   "name": "飞书机器人",
   "hint": "群自定义机器人 Webhook，支持签名校验",
   "version": "1.0.0",
-  "author": "TZA",
+  "author": "Lodestar",
   "notify": {
     "hosts": ["open.feishu.cn", "open.larksuite.com"],
     "settings": [

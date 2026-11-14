@@ -304,15 +304,18 @@ input[type="checkbox"] {
   letter-spacing: -2px;
   border-radius: var(--radius-md);
   color: #fff;
-  padding: 5px 11px var(--space-1-5) 9px;
+  padding: 7px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
 }
 
-.brand-mark span {
-  color: #7ce8ff;
+.brand-mark svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
 }
 
 .brand > span:last-child {
@@ -330,7 +333,7 @@ input[type="checkbox"] {
   margin-top: 3px;
 }
 
-/* 后台上传的 logo 替换 t·z·a 字标：与字标同高，按比例缩放，不加皮肤给字标的底色与描边。
+/* 后台上传的 logo 替换四角星标记：与字标同高，按比例缩放，不加皮肤给字标的底色与描边。
    自定义站点名称可能是中文或混排：不再用 PROBE 那样的大字距。 */
 .brand-logo {
   display: block;
@@ -341,10 +344,10 @@ input[type="checkbox"] {
   border-radius: var(--radius-sm);
 }
 
-/* 内置品牌字：t·z·a 字标后面跟 CC，和字标一样粗、略小。 */
+/* 内置品牌字：四角星后面跟 Lodestar。 */
 .brand > span.brand-default {
-  font-size: 19px;
-  letter-spacing: 1px;
+  font-size: 18px;
+  letter-spacing: 0.5px;
   font-weight: 800;
   line-height: 1;
   white-space: nowrap;
@@ -4429,7 +4432,7 @@ label .local-time:empty {
 }
 
 /* 登录页左下角与后台侧栏底部的署名是一句短标签，窄一点的窗口里会折成两行
-   （「TZA PROBE / CONTROL / PLANE」「TZA PROBE / V2」），锁成一行。 */
+   （「LODESTAR / CONTROL / PLANE」「LODESTAR / V2」），锁成一行。 */
 .login-story-foot small,
 .sidebar-bottom small {
   white-space: nowrap;
@@ -4841,7 +4844,7 @@ td .due.expired + small {
 }
 
 /* ==========================================================================
-   （已停用）原市场卡片样式；Probe 不再连接 TZA-CC，下面的 .market-* 规则仅部分仍被已安装列表复用。
+   （已停用）原市场卡片样式；Probe 不再连接 Lodestar，下面的 .market-* 规则仅部分仍被已安装列表复用。
    没有封面时画三格色样。
    ========================================================================== */
 /* 不用 .panel-head：那里的 button 规则会把分段按钮画成一枚枚推钮。 */

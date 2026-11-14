@@ -1,6 +1,6 @@
 # 2026-11-08 联合审查整改清单
 
-范围：TZA-Probe、TZA-CC、IPSentinel。
+范围：Lodestar、Lodestar、IPSentinel。
 本文整理本轮审查发现和已接受的通用插件方向，不表示整改或生产发布已完成。
 
 ## 当前状态
@@ -132,8 +132,8 @@ Go 与 Python 使用同一私有策略指纹向量，日程实际内容进入批
 - amd64/arm64 Agent 交叉构建通过，arm64 未现场执行；
   新 Go 首启宿主未在 Linux 跑完整步骤，新 Python 接口也未重新生成正式候选制品。
 
-证据目录为 `/tmp/tza-enable-workflow-evidence-20261108/`，
-完整 check 为 `/tmp/tza-enable-adoption-current-check-20261108.log`。
+证据目录为 `/tmp/lodestar-enable-workflow-evidence-20261108/`，
+完整 check 为 `/tmp/lodestar-enable-adoption-current-check-20261108.log`。
 本次不把 Python 核对专项通过算作一键启用、升级回退或 G04 完成。
 
 后续启动与配置增量：
@@ -149,8 +149,8 @@ Go 与 Python 使用同一私有策略指纹向量，日程实际内容进入批
   独立工作流/Agent/运行制品/进程专项竞态也通过。
 - IPSentinel 最新启用真实 Chromium 的完整套件为 121 通过、4 跳过、
   18 个子用例通过。四个跳过仍为仅适用于 Linux 的身份/委派专项。
-- 日志为 `/tmp/tza-enable-runtime-current-check-20261108.log`、
-  `/tmp/tza-enable-runtime-peer-race-20261108.log` 与
+- 日志为 `/tmp/lodestar-enable-runtime-current-check-20261108.log`、
+  `/tmp/lodestar-enable-runtime-peer-race-20261108.log` 与
   `/tmp/ipsentinel-workflow-runtime-browser-20261108.log`。
 - 最终补测覆盖资源不足时等待 20 次仍不消耗启动尝试，以及只读恢复不预留资源；
   放行后继续原步骤，未换业务身份或请求 ID。
@@ -160,7 +160,7 @@ Go 与 Python 使用同一私有策略指纹向量，日程实际内容进入批
   fence、完整配置和首版修订。候选 Agent 仅绑定到 QA 私有挂载空间，未覆盖生产文件。
 - 两个 QA 单元均 success / exit 0 / inactive，测试 UID 无残留进程；
   生产 Agent 仍 active、PID 31805，进程二进制与生产磁盘文件一致。
-  证据为 `/tmp/tza-workflow-runtime-evidence-20261108/`。
+  证据为 `/tmp/lodestar-workflow-runtime-evidence-20261108/`。
 
 这些结果尚不能证明正常 Agent 已可一次确认完成启用；完整新流程尚未在 Linux 验收。
 
@@ -181,7 +181,7 @@ Go 与 Python 使用同一私有策略指纹向量，日程实际内容进入批
 - 追加的 Linux 锁监测测试先在原锁持有期间保持运行，再释放锁，助手上下文随后自动取消；
   该专项 0.40 秒通过，原流程锁失效后不继续子动作。成功只读交付消费后的清理也有本地回归。
 
-证据目录：`/tmp/tza-component-privilege-evidence-20261108/`。
+证据目录：`/tmp/lodestar-component-privilege-evidence-20261108/`。
 
 尚未在正常轮询接入该内部后端，也未完成真实 systemd 助手的已批准组合首启正向验收。
 当前 Linux 正向测试使用无浏览器的固定文件组件核对跨进程交付；
@@ -206,7 +206,7 @@ Go 与 Python 使用同一私有策略指纹向量，日程实际内容进入批
   过期观察与新鲜同实例恢复、迟到请求封存、最终关联回执被替换和删节点清理。
 - Probe 完整 check 通过（33 包、竞态、vet、前端及临时服务检查）；
   最后补充主控恢复/证据保护后的专项再次竞态与 vet 验证。
-  证据位于 `/tmp/tza-workflow-controller-evidence-20261108/`。
+  证据位于 `/tmp/lodestar-workflow-controller-evidence-20261108/`。
 
 后续已接入版本化 HTTP 与正常安装活动的组合轮询分支，见下节；
 完整一次确认和新 Linux 全流程验收仍未完成。
@@ -247,7 +247,7 @@ G01 本次接入保持原 `identity`、`pending.json` 和 `receipts` 布局，
 本次 G01 增量在 Debian 13 amd64 专用非 root 用户下通过公共存储 7 项、
 Agent 相关 5 项测试。QA 临时单元成功退出并回收，生产 Agent 仍 active、
 PID 31805 未变；未现场执行 arm64，也未重新执行浏览器更新回退。
-本次证据目录为 `/tmp/tza-component-foundation-evidence-20261108/`。
+本次证据目录为 `/tmp/lodestar-component-foundation-evidence-20261108/`。
 本次增量的完整 check 也已通过：Go 全量、竞态、vet、前端回归及服务 DOM 检查；
 可选角色包自检因缺少 Pillow/numpy 跳过，DOM 检查不覆盖视觉布局。
 
@@ -262,7 +262,7 @@ IPSentinel Socket/协议回归 8 项，零失败零跳过。
 该 Socket 执行器为 Go 测试实现，未启动浏览器；不等于第二个正式运行组件已落地。
 两个架构 Agent 交叉编译通过，arm64 未现场执行。
 QA 单元已退出回收、QA 用户无残留进程，生产 Agent active 且 PID 31805 未变。
-证据保存在 `/tmp/tza-component-delivery-evidence-20261108/`。
+证据保存在 `/tmp/lodestar-component-delivery-evidence-20261108/`。
 本次完整 check 通过：27 个 Go 包、全量竞态、vet、前端回归和一次性服务 DOM 检查；
 可选角色包自检因缺少 Pillow/numpy 跳过，DOM 检查不覆盖视觉布局。
 
@@ -289,8 +289,8 @@ Debian 13 上此前的真实服务验收通过：UID 986/985 的两个组件不�
 最终完整 check 通过：30 个 Go 包、全量竞态、vet、前端回归及服务 DOM 检查。
 amd64/arm64 Agent 交叉编译通过；arm64 未现场执行。
 可选角色包自检因缺少 Pillow/numpy 跳过，DOM 检查不覆盖视觉布局。
-日志及源文件/候选构建摘要位于 `/tmp/tza-component-resources-evidence-20261108/`，
-最终流水线日志为 `/tmp/tza-component-resources-final-check-20261108.log`。
+日志及源文件/候选构建摘要位于 `/tmp/lodestar-component-resources-evidence-20261108/`，
+最终流水线日志为 `/tmp/lodestar-component-resources-final-check-20261108.log`。
 新版联合 Linux 用例已包含预留重启恢复、OOM 后保持预留、进程清理后回收及其他组件继续运行，
 但上传遇到 Termark 的 SSH 握手 EOF，尚未启动新版现场用例；连接恢复后须执行。
 最后成功观察后无法重新确认生产 Agent 当前状态，不能将此前 PID 观察当作持续在线证明。
@@ -314,7 +314,7 @@ Termark 连接已恢复，新版 Debian 13 amd64 联合验收通过（5.62 秒�
 生产 Agent active、PID 31805 未变。
 父 cgroup 的独立非 root 验收也通过：256 MiB / 60% CPU / 128 Tasks 的服务，
 检测结果为扣除 Agent 余量后的 64 MiB / 600 millicores / 64 PIDs。
-现场日志、最终状态和服务定义保存在 `/tmp/tza-component-discovery-evidence-20261108/`。
+现场日志、最终状态和服务定义保存在 `/tmp/lodestar-component-discovery-evidence-20261108/`。
 这一结果取代上文“新版联合用例因 SSH EOF 尚未启动”的暂时状态。
 
 `componenttask` 已接入 IPSentinel 查询、提交及取消，公共层不依赖浏览器业务类型。
@@ -327,7 +327,7 @@ Termark 连接已恢复，新版 Debian 13 amd64 联合验收通过（5.62 秒�
 本次完整 check 通过：31 个 Go 包、全量竞态、vet、前端回归及服务 DOM 检查；
 最后将资源等待后的任务期限复核接入后，公共任务/IPSentinel/Agent 竞态再次通过。
 最终 amd64/arm64 Agent 构建通过，arm64 未现场执行。
-完整日志为 `/tmp/tza-component-discovery-final-check-20261108.log`；
+完整日志为 `/tmp/lodestar-component-discovery-final-check-20261108.log`；
 证据目录同时保存最后任务期限回归及源文件/构建 SHA-256。
 角色包自检因缺少 Pillow/numpy 跳过，DOM 检查不证明视觉布局。
 
@@ -338,8 +338,8 @@ G05 的通知/目标集统一入口与本机浏览器验收已完成。
 真实通知测试覆盖留空密钥再次保存后仍成功鉴权、密钥不回显及使用中插件拒绝移除；
 目标集筛选、默认停用草稿、无节点保存及移除后保留 11 个目标快照均通过。
 390px 和 1365px 页面无横向溢出；截图和脱敏 API 结果保存在
-`/tmp/tza-declarative-ui-20261108/`。隔离服务和自建浏览器会话已停止。
-完整 check 日志为 `/tmp/tza-plugin-workflow-inputs-check-20261108.log`。
+`/tmp/lodestar-declarative-ui-20261108/`。隔离服务和自建浏览器会话已停止。
+完整 check 日志为 `/tmp/lodestar-plugin-workflow-inputs-check-20261108.log`。
 运行组件的最终完整流程及界面验收仍待 G04 实现后执行。
 
 ## 必补验收
@@ -378,7 +378,7 @@ G05 的通知/目标集统一入口与本机浏览器验收已完成。
 - 两个方向保留同一 executor instance；排空/激活 epoch 为 4→6→6→8。
   journal 保留 1–29，最终 ACK 29；确认前记录页已写入文件并执行 fsync。
   激活结果为 `started_paused`，不代表业务已自动恢复派发。
-- 最终所有 QA 服务 inactive，QA worker 无剩余进程；生产 `tza-agent.service`
+- 最终所有 QA 服务 inactive，QA worker 无剩余进程；生产 `lodestar-agent.service`
   保持 active，PID 前后均为 31805。未替换生产 Agent 或轮换生产密钥。
 - 首次最新 macOS 完整自检为 29/30：psutil 枚举消失进程时发生
   `proc_cmdline` 异常，监督器明确报错并完成清理，剩余进程为零；
@@ -390,8 +390,8 @@ G04 必须把版本声明、业务范围及必要策略迁移纳入同一次精�
 同时兼容不接收新增来源的 0.4.1；不能统一扩大允许列表或取消指纹校验。
 目前自动组合迁移尚未实现，现场使用的是明确审查的本地策略接纳流程。
 
-本机汇总证据目录：`/tmp/tza-remediation-evidence-20261108/`。
-Linux 原件位于隔离目录 `/opt/tza-remediation-qa-20261108/`，包含成功回执、
+本机汇总证据目录：`/tmp/lodestar-remediation-evidence-20261108/`。
+Linux 原件位于隔离目录 `/opt/lodestar-remediation-qa-20261108/`，包含成功回执、
 受阻启动记录、初始失败日志及已校验的历史 QA 安装归档。
 
 ### 整改后门槛
@@ -436,9 +436,9 @@ Linux 原件位于隔离目录 `/opt/tza-remediation-qa-20261108/`，包含成�
 - Debian 13 真实 peer 专项通过：SO_PEERCRED 确认查询、取消、配置、记录及 ACK 都为 UID 65534，root peer 拒绝。
   候选 Agent 只挂载到 QA 单元的私有命名空间；生产 PID 31805、原定时器保持 active，原生产二进制摘要未替换。
 
-证据：`/tmp/tza-quiescence-full-check-20261108.log`、
-`/tmp/tza-quiescence-final-guards-20261108.log`、`/tmp/tza-quiescence-consent-race-20261108.log`、
-`/tmp/tza-quiescence-structured-peer-20261108.log` 与 `/tmp/tza-quiescence-linux-v2-result-20261108.json`。
+证据：`/tmp/lodestar-quiescence-full-check-20261108.log`、
+`/tmp/lodestar-quiescence-final-guards-20261108.log`、`/tmp/lodestar-quiescence-consent-race-20261108.log`、
+`/tmp/lodestar-quiescence-structured-peer-20261108.log` 与 `/tmp/lodestar-quiescence-linux-v2-result-20261108.json`。
 测试覆盖丢暂停/取消/提交回执/ACK 回复、未知受理、身份变化、分页积压与失败不停止。
 仍需完整组合生命周期、干净节点成功首启与本轮 Chromium 全链路验收。
 
@@ -460,11 +460,11 @@ Linux 原件位于隔离目录 `/opt/tza-remediation-qa-20261108/`，包含成�
 以及同类调研路线图中的本机纯监控模式、可恢复加密备份、长期指标/性能实测与批量接入。
 因此不能将本次首启入口增量记作 G04 或总体目标完成。
 
-本机原始证据：`/tmp/tza-workflow-preparation-full-check-20261108.log`、
-`/tmp/tza-workflow-preparation-exact-final-20261108.log`、
-`/tmp/tza-workflow-preparation-authority-final-20261108.log`、
-`/tmp/tza-workflow-legacy-preparation-result-20261108.json` 与
-`/tmp/tza-workflow-browser-20261108/`；临时路径不承诺长期保存。
+本机原始证据：`/tmp/lodestar-workflow-preparation-full-check-20261108.log`、
+`/tmp/lodestar-workflow-preparation-exact-final-20261108.log`、
+`/tmp/lodestar-workflow-preparation-authority-final-20261108.log`、
+`/tmp/lodestar-workflow-legacy-preparation-result-20261108.json` 与
+`/tmp/lodestar-workflow-browser-20261108/`；临时路径不承诺长期保存。
 
 ### 组合暂停内部增量（2026-11-08）
 
@@ -475,8 +475,8 @@ Linux 原件位于隔离目录 `/opt/tza-remediation-qa-20261108/`，包含成�
 - 本轮 check 通过：33 个 Go 包、全量竞态 265 秒、vet、JS 语法及 DOM/一次性服务 smoke。
   后续新增固定 Linux 宿主与续行窗口守卫后，五个相关包专项竞态再次通过；Linux amd64/arm64 Agent 构建通过。
   角色包 selftest 因本机缺少 Pillow/numpy 跳过，不计通过；本轮未运行真实 Linux 暂停验收。
-- 日志：`/tmp/tza-pause-full-check-20261108.log`、`/tmp/tza-pause-final-window-race-20261108.log`；
-  证据汇总于 `/tmp/tza-pause-evidence-20261108/`，临时目录不承诺长期保存。
+- 日志：`/tmp/lodestar-pause-full-check-20261108.log`、`/tmp/lodestar-pause-final-window-race-20261108.log`；
+  证据汇总于 `/tmp/lodestar-pause-evidence-20261108/`，临时目录不承诺长期保存。
 - 已增加固定 Linux 宿主的安装/指纹/服务/内核限额核验及原共享监督器停机和资源回收；未在生产执行。
 - 上述为内部增量时的验收范围；其后的通道、界面与本机政策增量见下一节。
   本增量不代表 G04 或总路线图已经完成，没有执行生产暂停或部署。
@@ -511,10 +511,10 @@ Linux 原件位于隔离目录 `/opt/tza-remediation-qa-20261108/`，包含成�
   这是隔离环境控制器配置的未解决问题，不能据此放宽产品的容量探测。
   未跳过资源检查或伪造暂停成功。所有本轮 QA 单元均已退出；修正 QA 委派后仍需继续完整验收。
   测试空间不足时先终止独立 QA 单元；旧生成运行树经校验归档，必要压缩包迁到本机并比对 SHA-256 后才释放远端副本。
-- 日志：`/tmp/tza-pause-combined-flow-check-20261108.log`、
-  `/tmp/tza-pause-local-policy-final-race-20261108.log`、
-  `/tmp/tza-pause-local-policy-vet-20261108.log`；
-  界面材料位于 `/tmp/tza-pause-browser-20261108/`，临时目录不承诺长期保存。
+- 日志：`/tmp/lodestar-pause-combined-flow-check-20261108.log`、
+  `/tmp/lodestar-pause-local-policy-final-race-20261108.log`、
+  `/tmp/lodestar-pause-local-policy-vet-20261108.log`；
+  界面材料位于 `/tmp/lodestar-pause-browser-20261108/`，临时目录不承诺长期保存。
 
 ### 线上宿主隔离验收增量（2026-11-08）
 
@@ -528,7 +528,7 @@ Linux 原件位于隔离目录 `/opt/tza-remediation-qa-20261108/`，包含成�
   worker 和内核限制验收，133.06 秒。核对本机撤销拒绝、原计划续行、进程树停止、
   资源回收、实例/游标/配置保留和暂停后不重连。没有凭 inactive 猜测清理成功。
 - QA 候选归档摘要：`14a6c0d112c5781fddb2aeeeaafda760d3d12116e1618b14fc15aeb8e066cc33`。
-  证据：`/tmp/tza-online-qa-20261108/attempt2/acceptance.json` 与 `test.log`。
+  证据：`/tmp/lodestar-online-qa-20261108/attempt2/acceptance.json` 与 `test.log`。
 - 追加公网业务任务时，默认关闭的派发状态正确返回 409；追加用例改走正常管理动作
   显式授权 QA 派发，不直接改数据库。公网任务、补传和 Agent 会话重建正在独立核验。
 - 后续公网验证排除了私有 `/run` 导致 DNS 软链失效的 QA 问题，并发现签名宿主锁遗漏
@@ -548,7 +548,7 @@ Linux 原件位于隔离目录 `/opt/tza-remediation-qa-20261108/`，包含成�
   实际请求 `https://fonts.gstatic.com` 不在批准目录内，被正确拦截；较早尝试另有 `browser_error`。
   明确保留 failed，不计业务观测成功或地区恢复。测试通过表示失败传播和生命周期正确。
   最新归档为 `98a933b793a0ad2efc7db33f71a5835bdb11c27057c1f0516dc513615568114e`；
-  原始完整证据保存在 `/tmp/tza-online-qa-20261108/attempt8/acceptance.json` 与 `test.log`。
+  原始完整证据保存在 `/tmp/lodestar-online-qa-20261108/attempt8/acceptance.json` 与 `test.log`。
   Python 最新 suite 127 通过、4 跳过、22 子用例；Agent 包 race/vet 通过，回环自检 30/30。
 
 ### 三服务公网复验与宿主字体依赖（2026-11-09）
@@ -560,7 +560,7 @@ Linux 原件位于隔离目录 `/opt/tza-remediation-qa-20261108/`，包含成�
   字体数据纳入宿主文件摘要锁，缺失时拒绝构建/缓存复用。QA 共校验 157 个宿主库/字体文件，
   文件仅在私有命名空间可见，没有安装宿主包或改动生产数据。
 - 当前 QA 候选归档为 `e59569f03d579cd60b305f3c9f07f9b300aac94036b1ef48f19ae0c376ce3374`；
-  原始业务结果、回执和日志在 `/tmp/tza-business-qa-20261109/attempt10/`，
+  原始业务结果、回执和日志在 `/tmp/lodestar-business-qa-20261109/attempt10/`，
   简明结果为 `evidence/business-results.json`。临时目录不承诺长期保存。
 - 真实三服务验收 162.97 秒通过：逐项显式授权任务、完整终态补传与 ACK、
   原四步暂停、进程树/资源回收、重建组件会话后继续保持暂停。测试通过表示链路与证据正确，
@@ -583,11 +583,11 @@ Linux 原件位于隔离目录 `/opt/tza-remediation-qa-20261108/`，包含成�
 会话临时材料位于本机 `/tmp`，不保证长期保存；实施回归时需将必要用例迁入对应仓库。
 材料中复现测试的失败表示发现缺陷，不能当作修复后的测试失败记录。
 
-- `/tmp/tza-audit-20261108/reproductions.log`
-- `/tmp/tza-audit-20261108/cc-reproduction.log`
-- `/tmp/tza-audit-20261108/overlay.json`
-- `/tmp/tza-audit-20261108/cc-overlay.json`
+- `/tmp/lodestar-audit-20261108/reproductions.log`
+- `/tmp/lodestar-audit-20261108/cc-reproduction.log`
+- `/tmp/lodestar-audit-20261108/overlay.json`
+- `/tmp/lodestar-audit-20261108/cc-overlay.json`
 - `/tmp/ipsentinel-review-20261108.py`
 - `/tmp/ipsentinel-review-20261108.log`
-- `/tmp/tza-probe-audit-vulnerabilities.log`
-- `/tmp/tza-cc-audit-vulnerabilities.log`
+- `/tmp/lodestar-audit-vulnerabilities.log`
+- `/tmp/lodestar-cc-audit-vulnerabilities.log`

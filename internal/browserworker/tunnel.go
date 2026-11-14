@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/ipguard"
+	"github.com/leeska/Lodestar/internal/ipguard"
 )
 
 // Permitted is the browser-side allowlist: HTTPS on 443 to the service's origins

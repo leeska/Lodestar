@@ -30,6 +30,32 @@ func probeKeyExpr(prefix string) string {
 		field("host") + "||'|'||" + field("port") + "||'|'||" + field("region") + "||'|'||" + field("carrier")
 }
 
+// DatabaseFile is the database inside the data directory; LegacyDatabaseFile
+// is its name before the project was renamed to Lodestar.
+const (
+	DatabaseFile       = "lodestar.db"
+	LegacyDatabaseFile = "tza-probe.db"
+)
+
+// AdoptLegacyDatabase renames a database left under the old name (with its
+// WAL and shared-memory files) to DatabaseFile. It does nothing when the new
+// file already exists or there is no old one.
+func AdoptLegacyDatabase(dir string) error {
+	if _, err := os.Stat(filepath.Join(dir, DatabaseFile)); !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if _, err := os.Stat(filepath.Join(dir, LegacyDatabaseFile)); errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	for _, suffix := range []string{"-wal", "-shm", "-journal", ""} {
+		err := os.Rename(filepath.Join(dir, LegacyDatabaseFile+suffix), filepath.Join(dir, DatabaseFile+suffix))
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
+}
+
 // CheckDataDir reports, without creating or changing anything, whether this
 // binary (with the given migrations) can run on the data directory dir: no
 // database yet, a v2.0.0 database, or a migration-managed one no newer than
@@ -37,7 +63,11 @@ func probeKeyExpr(prefix string) string {
 // old one, so an upgrade that would refuse to start stops while the running
 // server is still untouched.
 func CheckDataDir(dir string, list []Migration) error {
-	current := filepath.Join(dir, "tza-probe.db")
+	current := filepath.Join(dir, DatabaseFile)
+	if _, err := os.Stat(current); errors.Is(err, os.ErrNotExist) {
+		// Not renamed yet: AdoptLegacyDatabase does that when the server starts.
+		current = filepath.Join(dir, LegacyDatabaseFile)
+	}
 	if _, err := os.Stat(current); errors.Is(err, os.ErrNotExist) {
 		if _, err := os.Stat(filepath.Join(dir, "tza-v2.db")); err == nil {
 			return fmt.Errorf("%s holds an older database (tza-v2.db) that this version cannot upgrade: use a new data directory", dir)

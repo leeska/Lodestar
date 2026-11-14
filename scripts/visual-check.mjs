@@ -1,29 +1,29 @@
 // 真实浏览器视觉验收：对公开页、详情弹窗和后台截图，桌面与手机各一份。
 // 仅针对独立 loopback 数据目录运行，不创建或修改任何数据。
 //
-//   TZA_UI_DEPS=/tmp/tza-ui-deps TZA_TEST_URL=http://127.0.0.1:25874 \
-//   TZA_TEST_CREDENTIALS_FILE=/tmp/tza-ui-credentials TZA_SHOT_DIR=/tmp/tza-shots \
+//   LODESTAR_UI_DEPS=/tmp/lodestar-ui-deps LODESTAR_TEST_URL=http://127.0.0.1:25874 \
+//   LODESTAR_TEST_CREDENTIALS_FILE=/tmp/lodestar-ui-credentials LODESTAR_SHOT_DIR=/tmp/lodestar-shots \
 //   node scripts/visual-check.mjs
 //
-// 依赖 playwright（npm install --prefix $TZA_UI_DEPS playwright）。若不想让 Playwright
-// 下载浏览器，可用 TZA_CHROME 指向已有的 Chromium / headless shell 可执行文件。
+// 依赖 playwright（npm install --prefix $LODESTAR_UI_DEPS playwright）。若不想让 Playwright
+// 下载浏览器，可用 LODESTAR_CHROME 指向已有的 Chromium / headless shell 可执行文件。
 import { createRequire } from "node:module";
 import { readFile, mkdir } from "node:fs/promises";
 
-const deps = process.env.TZA_UI_DEPS;
-if (!deps) throw new Error("TZA_UI_DEPS 未设置");
+const deps = process.env.LODESTAR_UI_DEPS;
+if (!deps) throw new Error("LODESTAR_UI_DEPS 未设置");
 const { chromium } = createRequire(deps + "/package.json")("playwright");
 
-const base = process.env.TZA_TEST_URL || "http://127.0.0.1:25874";
-const credentials = await readFile(process.env.TZA_TEST_CREDENTIALS_FILE, "utf8");
+const base = process.env.LODESTAR_TEST_URL || "http://127.0.0.1:25874";
+const credentials = await readFile(process.env.LODESTAR_TEST_CREDENTIALS_FILE, "utf8");
 const username = credentials.match(/^后台用户名：(.+)$/m)?.[1];
 const password = credentials.match(/^后台密码：(.+)$/m)?.[1];
 if (!username || !password) throw new Error("需要一次性 Server 的 init 输出");
-const out = process.env.TZA_SHOT_DIR || "/tmp/tza-shots";
+const out = process.env.LODESTAR_SHOT_DIR || "/tmp/lodestar-shots";
 await mkdir(out, { recursive: true });
 
 const browser = await chromium.launch(
-  process.env.TZA_CHROME ? { executablePath: process.env.TZA_CHROME } : {},
+  process.env.LODESTAR_CHROME ? { executablePath: process.env.LODESTAR_CHROME } : {},
 );
 const errors = [];
 
@@ -31,7 +31,7 @@ async function open(viewport, theme) {
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1 });
   // 通过与 theme.js 相同的 localStorage 键预设主题，等价于用户手动切换后的刷新。
   // 初始化脚本每次导航都会执行，只在尚未设置时写入，以便验证切换后的保持。
-  if (theme) await ctx.addInitScript((t) => localStorage.getItem("tza-theme") || localStorage.setItem("tza-theme", t), theme);
+  if (theme) await ctx.addInitScript((t) => localStorage.getItem("lodestar-theme") || localStorage.setItem("lodestar-theme", t), theme);
   const page = await ctx.newPage();
   page.on("pageerror", (e) => errors.push(`[pageerror] ${e.message}`));
   page.on("console", (m) => {

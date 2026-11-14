@@ -27,7 +27,7 @@ const (
 	// Messages as for the shell capability's terminal.
 	KindDockerExec = "docker.exec"
 	// ComposeRoot holds the projects made from the panel, one directory each.
-	ComposeRoot = "/opt/tza-compose"
+	ComposeRoot = "/opt/lodestar-compose"
 	// MaxComposeFile bounds a compose file.
 	MaxComposeFile = 256 << 10
 	// MaxDockerBody bounds an Engine API answer passed back to the Server.

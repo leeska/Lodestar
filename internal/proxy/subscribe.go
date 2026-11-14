@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/leeska/TZA-ControlCenter/internal/users"
+	"github.com/leeska/Lodestar/internal/users"
 )
 
 // Subscription formats.
@@ -184,7 +184,7 @@ func clashProxy(e Entry, m Member) string {
 
 func clashConfig(rules []Rule, entries []Entry, extra []ExtNode, m Member) []byte {
 	var b strings.Builder
-	b.WriteString("# TZA CC 订阅：" + strings.ReplaceAll(m.Name, "\n", " ") + "\n")
+	b.WriteString("# Lodestar 订阅：" + strings.ReplaceAll(m.Name, "\n", " ") + "\n")
 	b.WriteString("mixed-port: 7890\nallow-lan: false\nmode: rule\nlog-level: warning\nipv6: true\nunified-delay: true\n")
 	b.WriteString("dns:\n  enable: true\n  ipv6: true\n  enhanced-mode: fake-ip\n  fake-ip-filter:\n    - \"+.lan\"\n    - \"+.local\"\n  default-nameserver:\n    - 223.5.5.5\n    - 119.29.29.29\n  nameserver:\n    - https://223.5.5.5/dns-query\n    - https://doh.pub/dns-query\n")
 	if usesChina(rules) {

@@ -11,24 +11,24 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/pkgtest"
-	"github.com/leeska/TZA-ControlCenter/pkg/tzapkg"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/pkgtest"
+	"github.com/leeska/Lodestar/pkg/lspkg"
 )
 
-type memPlugins map[string]tzapkg.Plugin
+type memPlugins map[string]lspkg.Plugin
 
-func (m memPlugins) Plugin(id string) (tzapkg.Plugin, error) {
+func (m memPlugins) Plugin(id string) (lspkg.Plugin, error) {
 	p, ok := m[id]
 	if !ok {
-		return tzapkg.Plugin{}, errors.New("没有安装这个插件")
+		return lspkg.Plugin{}, errors.New("没有安装这个插件")
 	}
 	return p, nil
 }
 
-func parse(t *testing.T, id string) tzapkg.Plugin {
+func parse(t *testing.T, id string) lspkg.Plugin {
 	t.Helper()
-	p, err := tzapkg.ParsePlugin(pkgtest.PluginJSON(t, id))
+	p, err := lspkg.ParsePlugin(pkgtest.PluginJSON(t, id))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,20 +47,20 @@ func (r toServer) RoundTrip(req *http.Request) (*http.Response, error) {
 
 func TestEventVars(t *testing.T) {
 	v := EventVars(model.Event{ID: 42, Kind: model.AlertCPU, NodeName: "东京\n1", NodeID: "n1", Active: true, At: 1760533200, Message: "当前 CPU：97.0%"})
-	if v["title"] != "TZA CC · 告警触发 · CPU 使用率 · 东京 1" || v["urgent"] != "1" || v["priority"] != "4" || v["active"] != "true" || v["id"] != "42" || v["timestamp"] != "1760533200" {
+	if v["title"] != "Lodestar · 告警触发 · CPU 使用率 · 东京 1" || v["urgent"] != "1" || v["priority"] != "4" || v["active"] != "true" || v["id"] != "42" || v["timestamp"] != "1760533200" {
 		t.Fatalf("firing vars: %v", v)
 	}
 	if !strings.Contains(v["text"], "类型：CPU 使用率") || strings.Contains(v["text"], "通道") || v["kind_name"] != "CPU 使用率" || v["time"] != "2025-10-15 13:00:00 UTC" {
 		t.Fatalf("text: %q", v["text"])
 	}
 	test := EventVars(model.Event{Kind: "test", Message: "测试", At: 1})
-	if test["status"] != "连接测试" || test["urgent"] != "" || test["priority"] != "2" || test["title"] != "TZA CC · 连接测试" || test["id"] != "" || strings.Contains(test["text"], "通道") {
+	if test["status"] != "连接测试" || test["urgent"] != "" || test["priority"] != "2" || test["title"] != "Lodestar · 连接测试" || test["id"] != "" || strings.Contains(test["text"], "通道") {
 		t.Fatalf("test vars: %v", test)
 	}
 	if rec := EventVars(model.Event{Kind: model.AlertOffline}); rec["status"] != "告警解除" || rec["priority"] != "3" || rec["active"] != "false" || rec["urgent"] != "" {
 		t.Fatalf("recovery vars: %v", rec)
 	}
-	for _, name := range tzapkg.EventVars {
+	for _, name := range lspkg.EventVars {
 		if _, ok := v[name]; !ok {
 			t.Fatalf("event.%s missing", name)
 		}
@@ -83,7 +83,7 @@ func TestPluginChannelDelivers(t *testing.T) {
 	if err := tr.Send(context.Background(), c, model.Event{ID: 7, Kind: model.AlertOffline, Active: true, NodeName: "东京", Message: "离线"}); err != nil {
 		t.Fatal(err)
 	}
-	if got.auth != "Bearer tk_secret" || got.body["topic"] != "probe" || got.body["priority"] != float64(4) || got.body["title"] != "TZA CC · 告警触发 · 节点离线 · 东京" {
+	if got.auth != "Bearer tk_secret" || got.body["topic"] != "probe" || got.body["priority"] != float64(4) || got.body["title"] != "Lodestar · 告警触发 · 节点离线 · 东京" {
 		t.Fatalf("request: %+v", got)
 	}
 }

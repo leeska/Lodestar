@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
+	"github.com/leeska/Lodestar/internal/storage"
 )
 
 func Migrations() []storage.Migration {

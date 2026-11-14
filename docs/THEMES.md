@@ -41,7 +41,7 @@ matcha.zip
   "name": "抹茶",
   "hint": "示例主题包 · 平涂 · 抹茶绿",
   "version": "1.0.0",
-  "author": "TZA ControlCenter",
+  "author": "Lodestar",
   "chrome": { "light": "#eef0e2", "dark": "#141811" },
   "swatch": ["#eef0e2", "#fbfaf3", "#5f8f3a"],
   "styles": ["theme.css"]
@@ -73,20 +73,20 @@ matcha.zip
 ```
 
 入口必须是包内存在的 `.html` 文件。可以携带 HTML、JS、CSS 等资源；可执行文件始终受隔离文档 CSP 约束，无法读取后台 DOM、会话和存储。不要把管理员接口地址交给主题脚本。
-在入口中先引入 `<script src="/theme-settings-sdk.js"></script>`，再加载自己的脚本。使用全局 `TZASettings`：
+在入口中先引入 `<script src="/theme-settings-sdk.js"></script>`，再加载自己的脚本。使用全局 `LodestarSettings`：
 
 ```js
-TZASettings.onContext(({ theme, addons, nodes, mode }) => {
+LodestarSettings.onContext(({ theme, addons, nodes, mode }) => {
   // theme 包含清单和当前 options；addons 仅当前主题的附加包。
   // nodes 仅包含 id / name / region / decoration。
   // 每次保存成功后重新推送 context。
 });
-await TZASettings.ready;
-await TZASettings.save({ motion: "off" });
-await TZASettings.addAddon(); // 在按钮点击中调用，由核心选择文件并导入
-await TZASettings.uploadAddon(fileInput.files[0]); // File/Blob，依附当前主题的 zip
-await TZASettings.bindNode(nodeID, "my-pack/character-id");
-await TZASettings.bindNode(nodeID, ""); // 恢复自动匹配
+await LodestarSettings.ready;
+await LodestarSettings.save({ motion: "off" });
+await LodestarSettings.addAddon(); // 在按钮点击中调用，由核心选择文件并导入
+await LodestarSettings.uploadAddon(fileInput.files[0]); // File/Blob，依附当前主题的 zip
+await LodestarSettings.bindNode(nodeID, "my-pack/character-id");
+await LodestarSettings.bindNode(nodeID, ""); // 恢复自动匹配
 ```
 
 只允许修改本主题已声明的设置，导入 `for` 等于本主题 id 的附加包，以及绑定本主题或其附加包内存在的角色。节点绑定只修改 `decoration`，保留节点的其他配置。请求由父页面代办，弹窗关闭后销毁桥接监听与 iframe。

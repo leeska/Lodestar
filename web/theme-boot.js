@@ -1,12 +1,12 @@
 // 在样式表加载前同步执行：按已存偏好、后台设的默认外观、或系统设置确定 <html data-theme>（明暗）与
 // <html data-skin>（外观风格），避免首屏闪烁。
 // 保持为经典脚本且不使用内联，以满足 Server 的 script-src 'self' CSP。
-// 后台默认值由 /theme-default.js（上一行引用，同一份 CSP 下也是 self）写在 window.__tzaDefault 上。
+// 后台默认值由 /theme-default.js（上一行引用，同一份 CSP 下也是 self）写在 window.__lodestarDefault 上。
 // 切换逻辑见 theme.js / skins.js。
 (function () {
-  var d = window.__tzaDefault || {};
+  var d = window.__lodestarDefault || {};
   // 认得的皮肤：/theme-default.js 发来的清单（内置 + 已安装的主题包）；没有清单时只认内置默认主题。
-  var list = window.__tzaThemes || [{ id: "shadcn" }];
+  var list = window.__lodestarThemes || [{ id: "shadcn" }];
   var known = function (id) {
     // 附加包（type: "addon"）不是外观，不能当皮肤用。
     for (var i = 0; i < list.length; i++) if (list[i].id === id && list[i].type !== "addon") return true;
@@ -15,19 +15,31 @@
   // 后台默认：没配过就是内置默认（跟随系统 + 现代极简），与 model.DefaultPanel* 一致。
   var themeDefault = d.theme === "light" || d.theme === "dark" ? d.theme : "auto";
   var skinDefault = known(d.skin) ? d.skin : "shadcn";
+  // 改名前的偏好存在 tza-* 键里：第一次打开时原样搬到 lodestar-*，旧键删掉。
+  try {
+    for (var k = localStorage.length - 1; k >= 0; k--) {
+      var old = localStorage.key(k);
+      if (old && old.indexOf("tza-") === 0) {
+        var next = "lodestar-" + old.slice(4);
+        if (localStorage.getItem(next) === null) localStorage.setItem(next, localStorage.getItem(old));
+        localStorage.removeItem(old);
+      }
+    }
+  } catch (e) {}
   var pref = null;
   try {
-    pref = localStorage.getItem("tza-theme");
+    pref = localStorage.getItem("lodestar-theme");
   } catch (e) {}
   var skin = null;
   try {
-    skin = localStorage.getItem("tza-skin");
+    skin = localStorage.getItem("lodestar-skin");
   } catch (e) {}
   // Recovery/preview URL works even when a theme's own JavaScript is broken.
-  var override = new URLSearchParams(location.search).get("tza-theme");
+  var params = new URLSearchParams(location.search);
+  var override = params.get("lodestar-theme") || params.get("tza-theme");
   if (known(override)) {
     skin = override;
-    try { localStorage.setItem("tza-skin", skin); } catch (e) {}
+    try { localStorage.setItem("lodestar-skin", skin); } catch (e) {}
   }
   // 访客自己选过就听他的（localStorage 有值），没选过才用后台默认。
   if (pref !== "light" && pref !== "dark" && pref !== "auto") pref = themeDefault;
@@ -57,7 +69,7 @@
   }
   // 站点品牌：后台设了名称 / logo 就在首屏前换掉标签页标题与 favicon（index.html 把 <title> 与
   // <link rel="icon"> 放在本脚本之前）。后台保存后的即时替换见 brand.js 的 applyBrand。
-  var brand = window.__tzaBrand || {};
+  var brand = window.__lodestarBrand || {};
   var name = typeof brand.name === "string" ? brand.name.trim() : "";
   if (name) document.title = name;
   if (typeof brand.logo === "string" && brand.logo) {

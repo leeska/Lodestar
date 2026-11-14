@@ -11,21 +11,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
+	"github.com/leeska/Lodestar/internal/channel"
 )
 
 // 真实 systemd 下的验收（只在带 systemd 的 Linux 容器里跑）：
 //
-//	TZA_PROXY_SYSTEMD=1 TZA_KERNEL=xray TZA_KERNEL_BIN=/w/xray TZA_KERNEL_CONFIG=/w/xray.json TZA_KERNEL_PORT=443 go test -run TestProxyHostSystemd
+//	LODESTAR_PROXY_SYSTEMD=1 LODESTAR_KERNEL=xray LODESTAR_KERNEL_BIN=/w/xray LODESTAR_KERNEL_CONFIG=/w/xray.json LODESTAR_KERNEL_PORT=443 go test -run TestProxyHostSystemd
 //
-// 装内核、应用配置、服务以 tza-proxy 用户跑起来并监听端口，再移除。
+// 装内核、应用配置、服务以 lodestar-proxy 用户跑起来并监听端口，再移除。
 func TestProxyHostSystemd(t *testing.T) {
-	if os.Getenv("TZA_PROXY_SYSTEMD") != "1" {
+	if os.Getenv("LODESTAR_PROXY_SYSTEMD") != "1" {
 		t.Skip("needs a systemd host")
 	}
-	kernel := os.Getenv("TZA_KERNEL")
-	binary, _ := os.ReadFile(os.Getenv("TZA_KERNEL_BIN"))
-	config, _ := os.ReadFile(os.Getenv("TZA_KERNEL_CONFIG"))
+	kernel := os.Getenv("LODESTAR_KERNEL")
+	binary, _ := os.ReadFile(os.Getenv("LODESTAR_KERNEL_BIN"))
+	config, _ := os.ReadFile(os.Getenv("LODESTAR_KERNEL_CONFIG"))
 	h := NewProxyHost()
 	handlers := h.Handlers()
 	call := func(kind string, params any, body []byte) channel.ProxyResult {
@@ -52,25 +52,25 @@ func TestProxyHostSystemd(t *testing.T) {
 	}
 	deadline := time.Now().Add(10 * time.Second)
 	for {
-		conn, err := net.DialTimeout("tcp", "127.0.0.1:"+os.Getenv("TZA_KERNEL_PORT"), time.Second)
+		conn, err := net.DialTimeout("tcp", "127.0.0.1:"+os.Getenv("LODESTAR_KERNEL_PORT"), time.Second)
 		if err == nil {
 			conn.Close()
 			break
 		}
 		if time.Now().After(deadline) {
-			out, _ := h.Run(context.Background(), "journalctl", "-u", "tza-proxy-"+kernel, "--no-pager")
+			out, _ := h.Run(context.Background(), "journalctl", "-u", "lodestar-proxy-"+kernel, "--no-pager")
 			t.Fatalf("端口没有在监听：%v\n%s", err, out)
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
-	out, _ := h.Run(context.Background(), "systemctl", "show", "-p", "User", "tza-proxy-"+kernel)
-	if !strings.Contains(string(out), "User=tza-proxy") {
+	out, _ := h.Run(context.Background(), "systemctl", "show", "-p", "User", "lodestar-proxy-"+kernel)
+	if !strings.Contains(string(out), "User=lodestar-proxy") {
 		t.Fatalf("%s", out)
 	}
 	if r := call(channel.KindProxyRemove, channel.ProxyRemoveParams{Kernel: kernel}, nil); r.Error != "" {
 		t.Fatal(r)
 	}
-	if out, _ := h.Run(context.Background(), "systemctl", "is-active", "tza-proxy-"+kernel); strings.TrimSpace(string(out)) == "active" {
+	if out, _ := h.Run(context.Background(), "systemctl", "is-active", "lodestar-proxy-"+kernel); strings.TrimSpace(string(out)) == "active" {
 		t.Fatal("移除后服务还在跑")
 	}
 }

@@ -22,5 +22,5 @@ SOFTWARE.
 
 ---
 
-本仓库整体按上述 MIT 条款发布。tza-agent 二进制链接了 GPL-3.0 的 NTrace-core，
+本仓库整体按上述 MIT 条款发布。lodestar-agent 二进制链接了 GPL-3.0 的 NTrace-core，
 该二进制按 GPL-3.0 分发，详见 NOTICE。

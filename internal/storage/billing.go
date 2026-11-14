@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 // CorrectTraffic changes the billed total without rewriting raw interface counters.

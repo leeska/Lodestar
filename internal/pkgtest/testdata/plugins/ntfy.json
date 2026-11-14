@@ -5,7 +5,7 @@
   "name": "ntfy",
   "hint": "开源推送服务，支持 ntfy.sh 与自建服务器、访问令牌",
   "version": "1.0.0",
-  "author": "TZA",
+  "author": "Lodestar",
   "notify": {
     "hosts": ["*"],
     "settings": [

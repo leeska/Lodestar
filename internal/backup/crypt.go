@@ -31,7 +31,7 @@ const (
 	ChunkSize = 64 << 10
 	lastFlag  = 1 << 31
 	// Extension of backup files.
-	Extension = ".tzabk"
+	Extension = ".lsbk"
 )
 
 // Params are the scrypt cost parameters.
@@ -192,10 +192,10 @@ type Reader struct {
 func NewReader(r io.Reader, passphrase string) (*Reader, error) {
 	header := make([]byte, len(magic)+3+16+8)
 	if _, err := io.ReadFull(r, header); err != nil {
-		return nil, errors.New("不是 TZA 备份文件（文件太短）")
+		return nil, errors.New("不是 Lodestar 备份文件（文件太短）")
 	}
 	if string(header[:len(magic)]) != magic {
-		return nil, errors.New("不是 TZA 备份文件")
+		return nil, errors.New("不是 Lodestar 备份文件")
 	}
 	rest := header[len(magic):]
 	var k Key

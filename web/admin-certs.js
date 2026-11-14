@@ -82,7 +82,7 @@ function dnsForm(existing) {
 
 function targetRow(t = {}) {
   const options = state.nodes.map((n) => `<option value="${esc(n.id)}" ${n.id === t.node_id ? "selected" : ""}>${esc(n.name)}</option>`).join("");
-  return `<div class="cert-target-row"><select name="t_node" required><option value="">选择节点</option>${options}</select><input name="t_dir" value="${esc(t.dir || "")}" placeholder="目录，留空为 /etc/tza-certs/<域名>"><input name="t_reload" value="${esc(t.reload || "")}" placeholder="重载命令，如 systemctl reload nginx"><button type="button" class="danger-text" data-remove-target>移除</button></div>`;
+  return `<div class="cert-target-row"><select name="t_node" required><option value="">选择节点</option>${options}</select><input name="t_dir" value="${esc(t.dir || "")}" placeholder="目录，留空为 /etc/lodestar-certs/<域名>"><input name="t_reload" value="${esc(t.reload || "")}" placeholder="重载命令，如 systemctl reload nginx"><button type="button" class="danger-text" data-remove-target>移除</button></div>`;
 }
 
 function certForm(existing, data) {

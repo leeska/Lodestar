@@ -8,7 +8,7 @@ import (
 
 func TestDatabasePath(t *testing.T) {
 	dir := t.TempDir()
-	current, legacy := filepath.Join(dir, "tza-probe.db"), filepath.Join(dir, "tza-v2.db")
+	current, legacy := filepath.Join(dir, "lodestar.db"), filepath.Join(dir, "tza-v2.db")
 	if got := databasePath(dir); got != current {
 		t.Fatalf("empty dir: %s", got)
 	}

@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
-	"github.com/leeska/TZA-ControlCenter/web"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/storage"
+	"github.com/leeska/Lodestar/web"
 )
 
 // 前台按模块开关与「整个前台需要登录」：关掉的区块访客拿不到（404 / 字段清空），需要登录时
@@ -52,7 +52,7 @@ func TestPublicSections(t *testing.T) {
 		t.Helper()
 		_, body := request("GET", "/theme-default.js", "", nil)
 		for _, line := range strings.Split(string(body), "\n") {
-			if v, ok := strings.CutPrefix(line, "window.__tzaPublic="); ok {
+			if v, ok := strings.CutPrefix(line, "window.__lodestarPublic="); ok {
 				var out map[string]any
 				if err := json.Unmarshal([]byte(strings.TrimSuffix(v, ";")), &out); err != nil {
 					t.Fatalf("首屏开关不是 JSON: %q", line)

@@ -18,7 +18,7 @@ export function customThemeDialog(theme, refresh) {
     d.append(input); input.click();
   });
   const base = `/admin/themes/${encodeURIComponent(theme.id)}`;
-  const post = (value) => { if (alive) frame.contentWindow?.postMessage({ protocol: "tza-theme-settings", version: 1, ...value }, "*"); };
+  const post = (value) => { if (alive) frame.contentWindow?.postMessage({ protocol: "lodestar-theme-settings", version: 1, ...value }, "*"); };
   const context = async () => {
     const [themes, nodes] = await Promise.all([api("/admin/themes"), api("/admin/nodes")]);
     if (!alive) return;
@@ -30,7 +30,7 @@ export function customThemeDialog(theme, refresh) {
   };
   const receive = async (event) => {
     const data = event.data;
-    if (!alive || event.source !== frame.contentWindow || event.origin !== "null" || data?.protocol !== "tza-theme-settings" || data.version !== 1) return;
+    if (!alive || event.source !== frame.contentWindow || event.origin !== "null" || data?.protocol !== "lodestar-theme-settings" || data.version !== 1) return;
     if (busy) { if (data.id) post({ id: data.id, error: "上一项设置正在保存" }); return; }
     busy = true;
     try {

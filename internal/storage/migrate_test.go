@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 // legacyDatabase writes what v2.0.0 left behind: schema.sql at user_version 30.
@@ -29,7 +29,7 @@ func extra(name string, up func(*MigrationContext) error) []Migration {
 
 func TestLegacyDatabaseUpgradesInPlace(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "tza-probe.db")
+	path := filepath.Join(dir, "lodestar.db")
 	legacyDatabase(t, path)
 	if err := CheckDataDir(dir, CoreMigrations()); err != nil {
 		t.Fatalf("v2.0.0 database refused by the pre-upgrade check: %v", err)
@@ -67,7 +67,7 @@ func TestLegacyDatabaseUpgradesInPlace(t *testing.T) {
 }
 
 func TestFailedMigrationRollsBackAndRetries(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "tza-probe.db")
+	path := filepath.Join(t.TempDir(), "lodestar.db")
 	store, err := Open(path)
 	if err != nil {
 		t.Fatal(err)
@@ -92,7 +92,7 @@ func TestFailedMigrationRollsBackAndRetries(t *testing.T) {
 
 func TestNewerDatabaseIsRefused(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "tza-probe.db")
+	path := filepath.Join(dir, "lodestar.db")
 	store, err := OpenWith(path, extra("demo", func(*MigrationContext) error { return nil }))
 	if err != nil {
 		t.Fatal(err)

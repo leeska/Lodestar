@@ -9,7 +9,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 func (s *Store) Nodes(ctx context.Context, now time.Time) ([]model.NodeView, error) {

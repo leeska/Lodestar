@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
+	"github.com/leeska/Lodestar/internal/storage"
 )
 
 // LegacyFile is where v2.0.0 kept the region drift tables, next to the main

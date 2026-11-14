@@ -11,11 +11,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/httpjson"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/module"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
-	"github.com/leeska/TZA-ControlCenter/internal/users"
+	"github.com/leeska/Lodestar/internal/httpjson"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/module"
+	"github.com/leeska/Lodestar/internal/storage"
+	"github.com/leeska/Lodestar/internal/users"
 )
 
 // Module serves 代理. Fields are nil until the database is open (only
@@ -450,7 +450,7 @@ func (m *Module) subscription(w http.ResponseWriter, req *http.Request) {
 	}
 	w.Header().Set("Subscription-Userinfo", info)
 	w.Header().Set("Profile-Update-Interval", "12")
-	title := "TZA · " + u.Name
+	title := "Lodestar · " + u.Name
 	w.Header().Set("Profile-Title", "base64:"+base64.StdEncoding.EncodeToString([]byte(title)))
 	ext := map[string]string{FormatClash: ".yaml", FormatSingBox: ".json", FormatBase64: ".txt"}[format]
 	w.Header().Set("Content-Disposition", "attachment; filename*=UTF-8''"+url.PathEscape(title+ext))

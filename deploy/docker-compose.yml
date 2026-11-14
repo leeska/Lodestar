@@ -2,21 +2,21 @@
 #   docker compose -f deploy/docker-compose.yml up -d --build
 #   docker compose -f deploy/docker-compose.yml logs -f
 # 首次启动把初始后台密码写进数据卷的 /data/admin-password.txt（不进日志）：
-#   docker compose -f deploy/docker-compose.yml exec tza-server cat /data/admin-password.txt
-# 也可以在 services.tza-server.environment 里配 TZA_ADMIN_PASSWORD（8–128 个字符）自定义初始密码
-# 忘记后台密码：docker exec tza-server tza-server reset-password --data /data
+#   docker compose -f deploy/docker-compose.yml exec lodestar cat /data/admin-password.txt
+# 也可以在 services.lodestar.environment 里配 LODESTAR_ADMIN_PASSWORD（8–128 个字符）自定义初始密码
+# 忘记后台密码：docker exec lodestar lodestar reset-password --data /data
 services:
-  tza-server:
+  lodestar:
     build:
       context: ..
       dockerfile: Dockerfile
-    image: tza-probe:local
-    container_name: tza-server
+    image: lodestar:local
+    container_name: lodestar
     restart: unless-stopped
     ports:
       - "127.0.0.1:25774:25774"
     volumes:
-      - tza-data:/data
+      - lodestar-data:/data
 
 volumes:
-  tza-data:
+  lodestar-data:

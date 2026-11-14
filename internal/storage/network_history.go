@@ -8,7 +8,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 // NetworkHistory aggregates completed TCP probes per target and time bucket.

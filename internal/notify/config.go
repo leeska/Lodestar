@@ -4,7 +4,7 @@ import (
 	"errors"
 	"regexp"
 
-	"github.com/leeska/TZA-ControlCenter/pkg/tzapkg"
+	"github.com/leeska/Lodestar/pkg/lspkg"
 )
 
 // Config is the one notification channel in use. Where it is stored is not
@@ -52,7 +52,7 @@ func (c Config) Validate() error {
 		}
 		return nil
 	case "plugin":
-		if !tzapkg.ValidID(c.Plugin) {
+		if !lspkg.ValidID(c.Plugin) {
 			return errors.New("请选择通知插件")
 		}
 		return nil

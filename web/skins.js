@@ -1,12 +1,12 @@
 // 外观风格（皮肤）：内置的现代极简（默认），加上已安装的主题包（官方的其它外观也是
 // 主题包，在后台「主题」页上传 zip 安装）。
 // 明暗（data-theme）仍由 theme.js 决定，风格（data-skin）由这里决定，两者正交：
-// 同一套皮肤在浅色与深色下各有一份令牌。偏好存 localStorage 的 tza-skin，
+// 同一套皮肤在浅色与深色下各有一份令牌。偏好存 localStorage 的 lodestar-skin，
 // theme-boot.js 在样式表生效前已把 data-skin 写到 <html> 上，避免首屏闪一下默认皮肤。
 //
-// 清单的唯一来源是服务端（internal/theme）：/theme-default.js 把它放在 window.__tzaThemes 上，
+// 清单的唯一来源是服务端（internal/theme）：/theme-default.js 把它放在 window.__lodestarThemes 上，
 // 后台装 / 删主题包之后由 registerThemes() 换成新清单。没有清单时（jsdom 测试、旧缓存）只认内置默认主题。
-const KEY = "tza-skin";
+const KEY = "lodestar-skin";
 
 // 顺序即菜单顺序，第一套是内置默认（与 internal/theme 的 Builtins、model.DefaultPanelSkin 一致）。
 const BUILTIN = [
@@ -20,12 +20,12 @@ const registry = (list) => {
 };
 
 // 导出的是活绑定：registerThemes() 换掉之后，import 它的模块（后台设置页）读到的就是新清单。
-export let SKINS = registry(window.__tzaThemes);
+export let SKINS = registry(window.__lodestarThemes);
 
 export function registerThemes(list) {
   SKINS = registry(list);
-  // 装饰项的挑选（decorations.js）现读 window.__tzaThemes，一起换成新清单。
-  if (Array.isArray(list)) window.__tzaThemes = list;
+  // 装饰项的挑选（decorations.js）现读 window.__lodestarThemes，一起换成新清单。
+  if (Array.isArray(list)) window.__lodestarThemes = list;
   // 后台改了主题设置会重新登记清单：当前主题的 data-opt-* 跟着换。
   applyOptions();
   for (const b of document.querySelectorAll("[data-skin-toggle]")) b.hidden = SKINS.length < 2;
@@ -36,8 +36,8 @@ const byId = (id) => SKINS.find((s) => s.id === id);
 const esc = (v) =>
   String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-// 后台设的默认皮肤（/theme-default.js 写在 window.__tzaDefault 上）；认不出来就是内置默认。
-const defaultSkin = () => (byId(window.__tzaDefault?.skin) ? window.__tzaDefault.skin : BUILTIN[0].id);
+// 后台设的默认皮肤（/theme-default.js 写在 window.__lodestarDefault 上）；认不出来就是内置默认。
+const defaultSkin = () => (byId(window.__lodestarDefault?.skin) ? window.__lodestarDefault.skin : BUILTIN[0].id);
 
 export function skinPreference() {
   let v = null;
@@ -104,14 +104,14 @@ export function applySkin(skin = skinPreference()) {
   paintChrome();
   closeMenu();
   // 依赖皮肤的渲染（板面段落、卡片装饰）在这里重做，而不是每秒轮询。
-  document.dispatchEvent(new CustomEvent("tza:skin", { detail: skin }));
+  document.dispatchEvent(new CustomEvent("lodestar:skin", { detail: skin }));
 }
 
 // ---- 主题设置（见 docs/THEMES.md「主题设置」）：主题在 theme.json 里声明菜单，管理员在后台
 // 「主题」页调，值随清单发来（options）。正在用的那套的 toggle / choice 写成 <html data-opt-<id>>；
 // addons 是关掉的装饰来源（附加包 id；主题自己的 id 代表它自带的装饰项），由 decorations.js 经 disabledSources() 读。
 export function skinOption(skin, key) {
-  const t = (window.__tzaThemes || SKINS).find((x) => x.id === skin);
+  const t = (window.__lodestarThemes || SKINS).find((x) => x.id === skin);
   const st = (t?.settings || []).find((x) => x.id === key);
   if (!st) return undefined;
   const v = t.options?.[key];
@@ -122,7 +122,7 @@ export function skinOption(skin, key) {
 
 // 这套主题在设置里关掉的装饰来源；没有 addons 设置项就是全开。
 export function disabledSources(skin) {
-  const t = (window.__tzaThemes || SKINS).find((x) => x.id === skin);
+  const t = (window.__lodestarThemes || SKINS).find((x) => x.id === skin);
   const st = (t?.settings || []).find((x) => x.type === "addons");
   return new Set(st ? skinOption(skin, st.id) : []);
 }
@@ -142,8 +142,8 @@ function paintChrome() {
 export function setSkin(id) {
   if (!byId(id)) return;
   const url = new URL(location.href);
-  if (url.searchParams.has("tza-theme")) {
-    url.searchParams.delete("tza-theme");
+  if (url.searchParams.has("lodestar-theme")) {
+    url.searchParams.delete("lodestar-theme");
     history.replaceState(null, "", url.pathname + url.search + url.hash);
   }
   try {

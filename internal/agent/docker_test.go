@@ -13,7 +13,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
+	"github.com/leeska/Lodestar/internal/channel"
 )
 
 // fakeEngine is a Docker Engine API on a unix socket that records requests.
@@ -30,7 +30,7 @@ func (f *fakeEngine) seen() string {
 
 func startEngine(t *testing.T, root string) (*DockerHost, *fakeEngine) {
 	t.Helper()
-	dir, err := os.MkdirTemp("/tmp", "tzad") // unix socket paths are short
+	dir, err := os.MkdirTemp("/tmp", "lsd") // unix socket paths are short
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -11,20 +11,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
-// TestPerfProfile 在一份接近线上规模的数据上量各条热路径的耗时，只在 TZA_PERF=1 时跑：
+// TestPerfProfile 在一份接近线上规模的数据上量各条热路径的耗时，只在 LODESTAR_PERF=1 时跑：
 // 10 台节点、每台 8 个 TCP 目标（30 秒）+ 8 个回程（1 小时）、8 天探测结果（第 8 天供
-// Clean 删）、30 天分钟样本、45 天小时桶。造数据要几分钟：设 TZA_PERF_DB=/path/seed.db
+// Clean 删）、30 天分钟样本、45 天小时桶。造数据要几分钟：设 LODESTAR_PERF_DB=/path/seed.db
 // 时造好的库留在那里，下次直接复制一份来量（量的过程会删改数据，原件不动）。
 func TestPerfProfile(t *testing.T) {
-	if os.Getenv("TZA_PERF") == "" {
-		t.Skip("set TZA_PERF=1")
+	if os.Getenv("LODESTAR_PERF") == "" {
+		t.Skip("set LODESTAR_PERF=1")
 	}
 	ctx := context.Background()
 	now := time.Date(2026, 10, 12, 12, 0, 0, 0, time.UTC)
-	base := os.Getenv("TZA_PERF_DB")
+	base := os.Getenv("LODESTAR_PERF_DB")
 	if base == "" {
 		base = filepath.Join(t.TempDir(), "seed.db")
 	}

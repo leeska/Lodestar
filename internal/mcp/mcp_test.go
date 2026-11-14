@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/notify"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/notify"
 )
 
 type fakeSource struct {
@@ -458,7 +458,7 @@ func TestModernRevisionRoundTrip(t *testing.T) {
 	}
 	meta, _ := discover["_meta"].(map[string]any)
 	info, _ := meta[serverInfoKey].(map[string]any)
-	if info["name"] != "tza-probe" || info["version"] != "1.0.0-test" {
+	if info["name"] != "lodestar" || info["version"] != "1.0.0-test" {
 		t.Fatalf("serverInfo: %v", meta)
 	}
 

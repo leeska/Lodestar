@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 // 后台「前台默认外观」的可选值有两份清单：服务端的 model.PanelThemes / PanelSkins 管校验，
@@ -70,12 +70,12 @@ func TestPriceUnitChoicesMatchFrontend(t *testing.T) {
 			t.Errorf("admin-nodes.js 的 CURRENCIES 里没有 %q 选项", unit)
 		}
 	}
-	// 首屏脚本要带上汇总单位（app.js 的概览磁贴从 window.__tzaPriceUnit 读），漏了就都按 CNY 折。
+	// 首屏脚本要带上汇总单位（app.js 的概览磁贴从 window.__lodestarPriceUnit 读），漏了就都按 CNY 折。
 	apiJS, err := os.ReadFile("../internal/httpapi/api.go")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(apiJS), "__tzaPriceUnit") {
-		t.Errorf("/theme-default.js 没有下发 __tzaPriceUnit")
+	if !strings.Contains(string(apiJS), "__lodestarPriceUnit") {
+		t.Errorf("/theme-default.js 没有下发 __lodestarPriceUnit")
 	}
 }

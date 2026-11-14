@@ -1,27 +1,27 @@
 // Integration checks against a disposable local Server; never target production.
 // Install jsdom 26 and esbuild 0.25 into a temporary directory, then set
-// TZA_UI_DEPS, TZA_TEST_URL, TZA_TEST_ADMIN_FILE, TZA_TEST_CREDENTIALS_FILE and TZA_TEST_THEMES as shown in docs/VERIFICATION.md.
+// LODESTAR_UI_DEPS, LODESTAR_TEST_URL, LODESTAR_TEST_ADMIN_FILE, LODESTAR_TEST_CREDENTIALS_FILE and LODESTAR_TEST_THEMES as shown in docs/VERIFICATION.md.
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-const base = process.env.TZA_TEST_URL;
+const base = process.env.LODESTAR_TEST_URL;
 if (!base || !["127.0.0.1", "localhost"].includes(new URL(base).hostname))
   throw new Error("Disposable loopback test server required");
 const require = createRequire(
-  path.join(process.env.TZA_UI_DEPS, "package.json"),
+  path.join(process.env.LODESTAR_UI_DEPS, "package.json"),
 );
 const { JSDOM, VirtualConsole } = require("jsdom");
 const { build } = require("esbuild");
 const root = fileURLToPath(new URL("../", import.meta.url));
 // 断言卡片上的数字用页面自己的格式化函数：写死字符串的话，格式化改了断言还在绿。
 const { bytes, gib } = await import(new URL("../web/format.js", import.meta.url).href);
-const credentials = await readFile(process.env.TZA_TEST_CREDENTIALS_FILE, "utf8");
+const credentials = await readFile(process.env.LODESTAR_TEST_CREDENTIALS_FILE, "utf8");
 const username = credentials.match(/^后台用户名：(.+)$/m)?.[1];
 const password = credentials.match(/^后台密码：(.+)$/m)?.[1];
 assert(username && password, "需要一次性 Server 的 init 输出");
-const token = (await readFile(process.env.TZA_TEST_ADMIN_FILE, "utf8")).trim();
+const token = (await readFile(process.env.LODESTAR_TEST_ADMIN_FILE, "utf8")).trim();
 const bundle = await build({
   entryPoints: [path.join(root, "web/app.js")],
   bundle: true,
@@ -226,14 +226,14 @@ assert($("#install-command").textContent === `curl -fsSL ${base}/install.sh | sh
 $(".close").click();
 const adminHeaders = { Authorization: "Bearer " + token };
 // 复古印刷 / 二次元不内置，是仓库 themes/ 下的官方主题包（上传 zip 安装）。
-// 流水线把它们打成 zip（tools/themepack）放进 TZA_TEST_THEMES，这里像管理员上传一样装上，
+// 流水线把它们打成 zip（tools/themepack）放进 LODESTAR_TEST_THEMES，这里像管理员上传一样装上，
 // 后面的皮肤断言才有东西可测。没装之前，内置的是现代极简（默认）与液态玻璃。
 {
   const before = await (await fetch(base + "/api/v1/admin/themes", { headers: adminHeaders })).json();
   assert.deepEqual(before.map((t) => t.id), ["shadcn"], "没装主题包时只有内置的现代极简");
-  assert(process.env.TZA_TEST_THEMES, "需要 TZA_TEST_THEMES（tools/themepack 打出的官方主题包目录）");
+  assert(process.env.LODESTAR_TEST_THEMES, "需要 LODESTAR_TEST_THEMES（tools/themepack 打出的官方主题包目录）");
   for (const id of ["press", "anime", "glass"]) {
-    const zip = await readFile(path.join(process.env.TZA_TEST_THEMES, id + ".zip"));
+    const zip = await readFile(path.join(process.env.LODESTAR_TEST_THEMES, id + ".zip"));
     const r = await fetch(base + "/api/v1/admin/themes", { method: "POST", headers: { ...adminHeaders, "Content-Type": "application/zip" }, body: zip });
     assert.equal(r.status, 200, `装官方主题包 ${id}: ${await r.clone().text()}`);
     assert.equal((await r.json()).id, id);
@@ -1174,10 +1174,10 @@ const saveLook = async (theme, skin) => {
 await saveLook("dark", "press");
 await saveLook("auto", "shadcn");
 // 站点品牌：改名称后本页的标签页标题与侧栏品牌当场换掉，首屏脚本也跟上；logo 上传后侧栏、
-// favicon 与设置页预览都用它；两项清掉回到内置的 TZA CC（t·z·a 字标 + CC）。
+// favicon 与设置页预览都用它；两项清掉回到内置的 Lodestar（t·z·a 字标 + CC）。
 const brandBoot = async () => {
   const js = await (await fetch(base + "/theme-default.js")).text();
-  return JSON.parse(js.match(/^window\.__tzaBrand=(.*);$/m)[1]);
+  return JSON.parse(js.match(/^window\.__lodestarBrand=(.*);$/m)[1]);
 };
 assert.deepEqual(await brandBoot(), { name: "", logo: "" }, "未配置时首屏品牌为空");
 assert.equal($("#site-name").value, "", "未配置时站点名称为空");
@@ -1206,8 +1206,8 @@ assert.equal((await brandBoot()).logo, "", "移除后首屏没有 logo");
 assert.equal(w.document.querySelector('link[rel="icon"]')?.getAttribute("href") ?? "/favicon.svg", "/favicon.svg", "favicon 回到默认");
 $("#site-name").value = "";
 $("#save-site-name").click();
-await until(() => w.document.title === "TZA CC", "清空站点名称后标题回到默认");
-assert($(".sidebar .brand .brand-mark") && $(".sidebar .brand").textContent.startsWith("tzaCC"), "侧栏回到内置品牌");
+await until(() => w.document.title === "Lodestar", "清空站点名称后标题回到默认");
+assert($(".sidebar .brand .brand-mark") && $(".sidebar .brand").textContent.trim() === "Lodestar", "侧栏回到内置品牌");
 assert.deepEqual(await brandBoot(), { name: "", logo: "" }, "清除后首屏品牌为空");
 // 设置页分子标签：MCP Key 与后台账号在「账号与安全」，备份在「数据」。
 assert.deepEqual(
@@ -1220,12 +1220,12 @@ $('[data-settings-view="data"]').click();
 await until(() => $("#download-backup"), "数据子页");
 $('[data-settings-view="account"]').click();
 await until(() => $("#generate-mcp-key"), "账号与安全子页");
-assert(!$(".market-connect") && !w.document.body.textContent.includes("TZA-CC"), "设置里不再有 TZA-CC 账号");
+assert(!$(".market-connect") && !w.document.body.textContent.includes("TZA-CC"), "设置里不再有已下线的 TZA-CC 市场账号");
 // MCP Key management is reachable from settings and never exposed on later reads.
 $("#generate-mcp-key").click();
 await until(() => $("#mcp-api-key"), "generate MCP key");
 const firstMCPKey = $("#mcp-api-key").value;
-assert(firstMCPKey.startsWith("tza_mcp_"));
+assert(firstMCPKey.startsWith("lodestar_mcp_"));
 await until(() => $("#revoke-mcp-key"), "configured MCP key");
 const mcpCall = async (key) => fetch(base + "/mcp", {
   method: "POST", headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
@@ -1250,7 +1250,7 @@ $("#confirm-mcp").click();
 await until(() => !$("#revoke-mcp-key"), "revoke MCP key");
 assert.equal((await mcpCall(secondMCPKey)).status, 401);
 
-// Probe 不连 TZA-CC：主题与插件各占侧栏一栏，只有已安装列表与上传入口，没有市场子页。
+// Probe 不连 Lodestar：主题与插件各占侧栏一栏，只有已安装列表与上传入口，没有市场子页。
 assert(!$('[data-tab="market"]'), "没有单独的「市场」栏");
 $('[data-tab="themes"]').click();
 await until(() => $("#theme-file"), "themes page");
@@ -1390,7 +1390,7 @@ assert(!card.querySelector(".latency-bands").classList.contains("named"), "国�
 const intlCard = findPublicCard();
 assert(intlCard.querySelector('[data-latency-scope="intl"]').classList.contains("active"), "点了国际，选中态要跟上");
 assert.equal(
-  publicDOM.window.localStorage.getItem("tza-latency-scope"),
+  publicDOM.window.localStorage.getItem("lodestar-latency-scope"),
   "intl",
   "延迟分栏的选择要记在浏览器本地",
 );
@@ -1510,7 +1510,7 @@ assert(
   "the stylesheet must not disable the browser's scroll anchoring",
 );
 assert(cardText.includes("TCP 延迟"), "latency section keeps its heading");
-// 外观风格（皮肤）：默认「现代极简」，另有「液态玻璃」与主题包。偏好走 localStorage 的 tza-skin，
+// 外观风格（皮肤）：默认「现代极简」，另有「液态玻璃」与主题包。偏好走 localStorage 的 lodestar-skin，
 // 由 theme-boot.js 在样式表之前写到 <html data-skin>（否则先闪一下默认皮肤）。
 {
   const pubDoc = publicDOM.window.document;
@@ -1547,7 +1547,7 @@ assert(cardText.includes("TCP 延迟"), "latency section keeps its heading");
   pubDoc.querySelector('[data-skin-option="press"]').dispatchEvent(new publicDOM.window.MouseEvent("click", { bubbles: true }));
   await themeCSSLoaded();
   assert.equal(pubDoc.documentElement.dataset.skin, "press", "选「复古印刷」要落到 <html data-skin>");
-  assert.equal(publicDOM.window.localStorage.getItem("tza-skin"), "press", "偏好要存进 localStorage");
+  assert.equal(publicDOM.window.localStorage.getItem("lodestar-skin"), "press", "偏好要存进 localStorage");
   assert(menu.hidden, "选完菜单要收起");
   assert(/复古印刷/.test(skinBtn.textContent), "按钮文字跟着换");
   // 第三张皮肤：内置的液态玻璃。
@@ -1555,14 +1555,14 @@ assert(cardText.includes("TCP 延迟"), "latency section keeps its heading");
   pubDoc.querySelector('[data-skin-option="glass"]').dispatchEvent(new publicDOM.window.MouseEvent("click", { bubbles: true }));
   await themeCSSLoaded();
   assert.equal(pubDoc.documentElement.dataset.skin, "glass", "选「液态玻璃」要落到 <html data-skin>");
-  assert.equal(publicDOM.window.localStorage.getItem("tza-skin"), "glass", "偏好要存进 localStorage");
+  assert.equal(publicDOM.window.localStorage.getItem("lodestar-skin"), "glass", "偏好要存进 localStorage");
   assert(/液态玻璃/.test(skinBtn.textContent), "按钮文字跟着换");
   // 第四张皮肤：二次元（线路机角色立绘）。
   skinBtn.dispatchEvent(new publicDOM.window.MouseEvent("click", { bubbles: true }));
   pubDoc.querySelector('[data-skin-option="anime"]').dispatchEvent(new publicDOM.window.MouseEvent("click", { bubbles: true }));
   await themeCSSLoaded();
   assert.equal(pubDoc.documentElement.dataset.skin, "anime", "选「二次元」要落到 <html data-skin>");
-  assert.equal(publicDOM.window.localStorage.getItem("tza-skin"), "anime", "偏好要存进 localStorage");
+  assert.equal(publicDOM.window.localStorage.getItem("lodestar-skin"), "anime", "偏好要存进 localStorage");
   assert(/二次元/.test(skinBtn.textContent), "按钮文字跟着换");
   // 名单外的节点也摆立绘：落到二次元清单里标了 default 的通用人物（所有线路机在二次元皮肤下都有人物、观感统一）。
   const genericCasts = [...pubDoc.querySelectorAll('[data-part="card-backdrop"]')];
@@ -1589,7 +1589,7 @@ assert(cardText.includes("TCP 延迟"), "latency section keeps its heading");
   foldClick(foldHost.querySelector(".fold-name"));
   assert.equal(foldCard.dataset.rolled, "true", "点「卷起」要把卡片标成卷起");
   assert.deepEqual(
-    JSON.parse(publicDOM.window.localStorage.getItem("tza-folded-cards")),
+    JSON.parse(publicDOM.window.localStorage.getItem("lodestar-folded-cards")),
     ["fold-fixture"],
     "卷起状态要记住（刷新之后还卷着）",
   );
@@ -1608,7 +1608,7 @@ assert(cardText.includes("TCP 延迟"), "latency section keeps its heading");
     "摊开后 aria-expanded 回到 true",
   );
   assert.deepEqual(
-    JSON.parse(publicDOM.window.localStorage.getItem("tza-folded-cards")),
+    JSON.parse(publicDOM.window.localStorage.getItem("lodestar-folded-cards")),
     [],
     "摊开后本地那份状态也要清掉",
   );
@@ -1628,14 +1628,14 @@ assert(cardText.includes("TCP 延迟"), "latency section keeps its heading");
   skinBtn.dispatchEvent(new publicDOM.window.MouseEvent("click", { bubbles: true }));
   pubDoc.querySelector('[data-skin-option="shadcn"]').dispatchEvent(new publicDOM.window.MouseEvent("click", { bubbles: true }));
   assert.equal(pubDoc.documentElement.dataset.skin, "shadcn", "能切回默认皮肤");
-  assert.equal(publicDOM.window.localStorage.getItem("tza-skin"), null, "默认皮肤不留偏好键");
+  assert.equal(publicDOM.window.localStorage.getItem("lodestar-skin"), null, "默认皮肤不留偏好键");
 
   // 皮肤表本身：只在 data-skin="<id>" 下生效。每张皮肤各有一条必须有的底座：
   // 印刷＝纸底 + 圆角归零，极简＝中性令牌 + 圆角统一到 --shadcn-radius。
   // 复古印刷与二次元是主题包：样式表由 /theme-default.js 的清单给出地址（/themes/<id>/…），
   // 只在选中时挂上；index.html 里没有它们。现代极简是内置默认，样式表就在 index.html 里。
   const homeHTML = await (await fetch(base + "/")).text();
-  const themeList = publicDOM.window.__tzaThemes;
+  const themeList = publicDOM.window.__lodestarThemes;
   const themeCSS = async (id) => {
     assert(!homeHTML.includes(`/${id}.css`), `${id}.css 不该再写死在 index.html 里`);
     const href = themeList.find((t) => t.id === id)?.css?.[0];
@@ -1993,21 +1993,21 @@ assert(cardText.includes("TCP 延迟"), "latency section keeps its heading");
     url: base + "/",
     runScripts: "outside-only",
   });
-  bootDOM.window.localStorage.setItem("tza-skin", "press");
-  bootDOM.window.localStorage.setItem("tza-theme", "light");
+  bootDOM.window.localStorage.setItem("lodestar-skin", "press");
+  bootDOM.window.localStorage.setItem("lodestar-theme", "light");
   // 和 index.html 一样先有 /theme-default.js 的清单：复古印刷等是主题包，不在清单里就认不出来。
   bootDOM.window.eval(await (await fetch(base + "/theme-default.js")).text());
   bootDOM.window.eval(await (await fetch(base + "/theme-boot.js")).text());
   assert.equal(bootDOM.window.document.documentElement.dataset.skin, "press", "首屏就要定好皮肤，不能等 app.js");
   assert.equal(bootDOM.window.document.documentElement.dataset.theme, "light", "明暗同样照旧");
-  bootDOM.window.localStorage.setItem("tza-skin", "glass");
+  bootDOM.window.localStorage.setItem("lodestar-skin", "glass");
   bootDOM.window.eval(await (await fetch(base + "/theme-boot.js")).text());
   assert.equal(bootDOM.window.document.documentElement.dataset.skin, "glass", "第三张皮肤同样要在首屏定好");
   // 认不出来的值退回默认皮肤，别把 <html data-skin> 写成任意字符串。
-  bootDOM.window.localStorage.setItem("tza-skin", "anime");
+  bootDOM.window.localStorage.setItem("lodestar-skin", "anime");
   bootDOM.window.eval(await (await fetch(base + "/theme-boot.js")).text());
   assert.equal(bootDOM.window.document.documentElement.dataset.skin, "anime", "第四张皮肤同样要在首屏定好");
-  bootDOM.window.localStorage.setItem("tza-skin", "no-such-skin");
+  bootDOM.window.localStorage.setItem("lodestar-skin", "no-such-skin");
   bootDOM.window.eval(await (await fetch(base + "/theme-boot.js")).text());
   assert.equal(bootDOM.window.document.documentElement.dataset.skin, "shadcn", "无法识别的皮肤要退回默认（现代极简）");
 }
@@ -2308,7 +2308,7 @@ assert(
 );
 assert(listTab.classList.contains("active") && !cardTab.classList.contains("active"), "开关的高亮要跟着换");
 assert.equal(
-  publicDOM.window.localStorage.getItem("tza-view"),
+  publicDOM.window.localStorage.getItem("lodestar-view"),
   "list",
   "展示方式要记在浏览器本地",
 );
@@ -2531,7 +2531,7 @@ assert(
   !publicDOM.window.document.querySelector("#nodes").classList.contains("node-list"),
   "切回卡片视图要换回栅格布局",
 );
-assert.equal(publicDOM.window.localStorage.getItem("tza-view"), "card", "选择要跟着一起写回");
+assert.equal(publicDOM.window.localStorage.getItem("lodestar-view"), "card", "选择要跟着一起写回");
 // 刷新后仍然生效：新起一个页面，localStorage 里已经写着 list。
 const listDOM = new JSDOM(
   '<div id="app"></div><div id="toast"></div><dialog id="dialog"></dialog>',
@@ -2542,7 +2542,7 @@ const listDOM = new JSDOM(
     pretendToBeVisual: true,
   },
 );
-listDOM.window.localStorage.setItem("tza-view", "list");
+listDOM.window.localStorage.setItem("lodestar-view", "list");
 listDOM.window.fetch = (input, opts) => fetch(new URL(input, base), opts);
 listDOM.window.HTMLDialogElement.prototype.showModal = function () {
   this.open = true;
@@ -2594,7 +2594,7 @@ const chartBundle = await build({
   entryPoints: [path.join(root, "web/charts.js")],
   bundle: true,
   format: "iife",
-  globalName: "TZACharts",
+  globalName: "LodestarCharts",
   write: false,
 });
 w.eval(chartBundle.outputFiles[0].text);
@@ -2621,7 +2621,7 @@ single.dataset.range = "0,1200";
 single.dataset.ceiling = "100";
 single.innerHTML = '<div class="chart-body"><svg viewBox="0 0 680 120"></svg><div class="chart-axis"></div></div>';
 w.document.body.append(single);
-w.TZACharts.wireCharts(w.document.body);
+w.LodestarCharts.wireCharts(w.document.body);
 const chartBody = probe.querySelector(".chart-body");
 chartBody.dispatchEvent(new w.MouseEvent("pointermove", { clientX: 340, clientY: 40, bubbles: true }));
 assert(!probe.querySelector(".chart-hover").hidden, "hovering a chart must reveal the readout");
@@ -2667,7 +2667,7 @@ multi.innerHTML =
   '<span><i class="lc1"></i>四川 · 联通<em data-legend-value="1">60.0 ms</em></span>' +
   "</div>";
 w.document.body.append(multi);
-w.TZACharts.wireCharts(w.document.body);
+w.LodestarCharts.wireCharts(w.document.body);
 const multiBody = multi.querySelector(".chart-body");
 multiBody.dispatchEvent(new w.MouseEvent("pointermove", { clientX: 340, clientY: 40, bubbles: true }));
 assert(

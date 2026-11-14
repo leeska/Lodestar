@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 // oldObservationsSQL 是改动前的读路径：窗口内扫 jobs，按

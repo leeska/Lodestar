@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { remainingValueLabel } from "../web/format.js";
-const require = createRequire(path.join(process.env.TZA_UI_DEPS || "/tmp/tza-ui-deps", "package.json"));
+const require = createRequire(path.join(process.env.LODESTAR_UI_DEPS || "/tmp/lodestar-ui-deps", "package.json"));
 const { JSDOM } = require("jsdom"), { build } = require("esbuild");
 const root = fileURLToPath(new URL("../", import.meta.url));
 const source = await readFile(path.join(root,"web/app.js"),"utf8");

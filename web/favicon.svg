@@ -1,7 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="TZA CC">
-  <title>TZA CC</title>
-  <!-- 与页头一致的 tza 字标；透明底，细浅色轮廓保证深浅标签栏都可辨认。 -->
-  <text x="30" y="46" text-anchor="middle" textLength="58" lengthAdjust="spacingAndGlyphs"
-        font-family="Arial, Helvetica, sans-serif" font-size="44" font-weight="900" letter-spacing="-4"
-        fill="#52525b" stroke="#fafafa" stroke-width="1" paint-order="stroke fill">t<tspan fill="#82828b">z</tspan>a</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Lodestar">
+  <title>Lodestar</title>
+  <!-- 与页头一致的四角星（指路星）；圆角方块底，深浅标签栏都可辨认。 -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#0071e3"/>
+  <path d="M32 8 37.6 26.4 56 32 37.6 37.6 32 56 26.4 37.6 8 32 26.4 26.4Z" fill="#fff"/>
 </svg>

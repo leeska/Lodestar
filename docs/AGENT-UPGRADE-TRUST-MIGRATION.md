@@ -34,7 +34,7 @@ d7138a63f6f0f74a48e1857e78041795a269b7cb2fdb01a32bde835c5d878d8d
 | 迁移渠道 | 已独立核实的 SSH/控制台或其他可信交付方式 |
 | 验证 | 新钥合法升级成功、旧钥拒绝、普通探测与插件状态正常 |
 
-典型节点公钥为 `/etc/tza-probe/upgrade-key.pub`；还需检查自定义 Agent 配置、
+典型节点公钥为 `/etc/lodestar/upgrade-key.pub`；还需检查自定义 Agent 配置、
 Server 数据目录的 `agents/`、构建时嵌入的公钥、CI 和离线签名副本。
 清单不保存 token 或私钥内容。
 

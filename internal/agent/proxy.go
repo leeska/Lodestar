@@ -19,14 +19,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
+	"github.com/leeska/Lodestar/internal/channel"
 )
 
 // ProxyHost runs proxy kernels on this machine for the Server: it installs
 // the binaries the Server sends, checks and writes their configuration and
-// keeps one systemd service per kernel (tza-proxy-<kernel>). The service runs
-// as the system user tza-proxy with only the right to bind low ports; the
-// configuration holds the users' credentials, so it is root:tza-proxy 0640.
+// keeps one systemd service per kernel (lodestar-proxy-<kernel>). The service runs
+// as the system user lodestar-proxy with only the right to bind low ports; the
+// configuration holds the users' credentials, so it is root:lodestar-proxy 0640.
 // (No DynamicUser / LoadCredential: those need systemd 247+, and Ubuntu
 // 20.04 still ships 245.)
 type ProxyHost struct {
@@ -56,13 +56,13 @@ func NewProxyHost() *ProxyHost {
 func (h *ProxyHost) path(parts ...string) string {
 	return filepath.Join(append([]string{"/" + strings.TrimPrefix(h.Root, "/")}, parts...)...)
 }
-func (h *ProxyHost) kernelDir() string { return h.path("usr/local/lib/tza-probe/kernels") }
+func (h *ProxyHost) kernelDir() string { return h.path("usr/local/lib/lodestar/kernels") }
 
-// configDir is outside /etc/tza-probe on purpose: that directory is 0700
-// (it holds the agent token), so tza-proxy could never reach a file in it.
-func (h *ProxyHost) configDir() string { return h.path("etc/tza-proxy") }
+// configDir is outside /etc/lodestar on purpose: that directory is 0700
+// (it holds the agent token), so lodestar-proxy could never reach a file in it.
+func (h *ProxyHost) configDir() string { return h.path("etc/lodestar-proxy") }
 func (h *ProxyHost) unitPath(k string) string {
-	return h.path("etc/systemd/system", "tza-proxy-"+k+".service")
+	return h.path("etc/systemd/system", "lodestar-proxy-"+k+".service")
 }
 func (h *ProxyHost) configPath(k string) string { return filepath.Join(h.configDir(), k+".json") }
 func (h *ProxyHost) statePath() string          { return filepath.Join(h.configDir(), "state.json") }
@@ -223,7 +223,7 @@ func (h *ProxyHost) status(ctx context.Context, _ json.RawMessage, conn net.Conn
 	systemd := h.Systemd()
 	for k, s := range state {
 		if s.ConfigSHA256 != "" && systemd {
-			out, err := h.Run(ctx, "systemctl", "is-active", "tza-proxy-"+k)
+			out, err := h.Run(ctx, "systemctl", "is-active", "lodestar-proxy-"+k)
 			s.Active = err == nil && strings.TrimSpace(string(out)) == "active"
 			if !s.Active {
 				s.Error = "服务未在运行：" + strings.TrimSpace(string(out))
@@ -302,7 +302,7 @@ func runArgs(kernel, config string) string {
 }
 
 // ProxyUser runs the kernels.
-const ProxyUser = "tza-proxy"
+const ProxyUser = "lodestar-proxy"
 
 func unit(kernel, binary, config string) string {
 	env := ""
@@ -311,9 +311,9 @@ func unit(kernel, binary, config string) string {
 		// port forward's download would never be counted.
 		env = "Environment=XRAY_BUF_SPLICE=disable\n"
 	}
-	return fmt.Sprintf(`# Managed by tza-agent: the Server's 代理 module writes this file.
+	return fmt.Sprintf(`# Managed by lodestar-agent: the Server's 代理 module writes this file.
 [Unit]
-Description=TZA ControlCenter proxy (%[1]s)
+Description=Lodestar proxy (%[1]s)
 After=network-online.target
 Wants=network-online.target
 
@@ -396,7 +396,7 @@ func (h *ProxyHost) apply(ctx context.Context, raw json.RawMessage, conn net.Con
 	if err := writeFileAtomic(h.unitPath(p.Kernel), []byte(unit(p.Kernel, binary, h.configPath(p.Kernel))), 0644); err != nil {
 		return reply(conn, err, nil)
 	}
-	for _, args := range [][]string{{"daemon-reload"}, {"enable", "tza-proxy-" + p.Kernel}, {"restart", "tza-proxy-" + p.Kernel}} {
+	for _, args := range [][]string{{"daemon-reload"}, {"enable", "lodestar-proxy-" + p.Kernel}, {"restart", "lodestar-proxy-" + p.Kernel}} {
 		if out, err := h.Run(ctx, "systemctl", args...); err != nil {
 			return reply(conn, fmt.Errorf("systemctl %s 失败", args[0]), out)
 		}
@@ -411,14 +411,14 @@ func (h *ProxyHost) apply(ctx context.Context, raw json.RawMessage, conn net.Con
 	case <-ctx.Done():
 	case <-time.After(2 * time.Second):
 	}
-	if out, err := h.Run(ctx, "systemctl", "is-active", "tza-proxy-"+p.Kernel); err != nil {
-		logs, _ := h.Run(ctx, "journalctl", "-u", "tza-proxy-"+p.Kernel, "-n", "20", "--no-pager", "-o", "cat")
+	if out, err := h.Run(ctx, "systemctl", "is-active", "lodestar-proxy-"+p.Kernel); err != nil {
+		logs, _ := h.Run(ctx, "journalctl", "-u", "lodestar-proxy-"+p.Kernel, "-n", "20", "--no-pager", "-o", "cat")
 		return reply(conn, errors.New("服务启动后没有保持运行："+strings.TrimSpace(string(out))), logs)
 	}
 	return reply(conn, nil, nil)
 }
 
-// ensureUser creates the tza-proxy system user when missing and returns its
+// ensureUser creates the lodestar-proxy system user when missing and returns its
 // group id. The configuration directory stays root-only except for the
 // group's right to enter it.
 func (h *ProxyHost) ensureUser(ctx context.Context) (int, error) {
@@ -453,7 +453,7 @@ func (h *ProxyHost) remove(ctx context.Context, raw json.RawMessage, conn net.Co
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.Systemd() {
-		h.Run(ctx, "systemctl", "disable", "--now", "tza-proxy-"+p.Kernel)
+		h.Run(ctx, "systemctl", "disable", "--now", "lodestar-proxy-"+p.Kernel)
 	}
 	os.Remove(h.unitPath(p.Kernel))
 	os.Remove(h.configPath(p.Kernel))

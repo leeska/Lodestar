@@ -1,5 +1,5 @@
 // 后台「网站」：节点上的 nginx 站点（反向代理、静态网站、跳转）。面板只管自己写的
-// conf.d/tza-site-*.conf，改完先 nginx -t 再重载，不通过自动恢复；节点上已有的其他站点只读显示。
+// conf.d/lodestar-site-*.conf，改完先 nginx -t 再重载，不通过自动恢复；节点上已有的其他站点只读显示。
 // HTTPS 可直接选「证书」页的证书：主控自动把证书下发到这台节点，到位后站点才生效。
 import { api, send, esc, toast, modal, guard } from "./api.js";
 import { content, field, check, confirmAction, moreMenu, wireMoreMenus, render, state } from "./admin-state.js";
@@ -55,7 +55,7 @@ function siteForm(existing, data, certList) {
   <div data-kind="static">${field("网站目录（节点上的绝对路径）", "root", s.root || "", "text", 'placeholder="/var/www/example"')}<p class="hint">目录要提前放好文件，nginx 用户要能读。</p></div>
   <div data-kind="redirect"><div class="form-grid">${field("跳转到", "redirect_to", s.redirect_to || "", "url", 'placeholder="https://new.example.com"')}<label>状态码<select name="redirect_code">${[301, 302, 307, 308].map((c) => `<option value="${c}" ${c === s.redirect_code ? "selected" : ""}>${c}${c === 301 ? "（永久）" : c === 302 ? "（临时）" : c === 308 ? "（永久，保留方法）" : "（临时，保留方法）"}</option>`).join("")}</select></label></div>${check("保留路径和参数（/a?b=1 → 目标/a?b=1）", "keep_path", s.keep_path)}</div></section>
   <section class="form-section"><h3>HTTPS</h3><div class="option-tiles" role="radiogroup">${radio("tls", "none", "不用", s.tls)}${radio("tls", "cert", "用「证书」页的证书", s.tls)}${radio("tls", "files", "节点上已有的证书文件", s.tls)}</div>
-  <div data-tls="cert"><label>证书<select name="cert_id"><option value="">选择证书</option>${certOptions}</select></label><p class="hint">保存后主控会把这张证书下发到这台节点（/etc/tza-certs/&lt;域名&gt;/，续期后自动重载 nginx），证书到位后站点才启用。证书要包含站点的全部域名。${certList.length ? "" : "还没有证书，先到「证书」页申请。"}</p></div>
+  <div data-tls="cert"><label>证书<select name="cert_id"><option value="">选择证书</option>${certOptions}</select></label><p class="hint">保存后主控会把这张证书下发到这台节点（/etc/lodestar-certs/&lt;域名&gt;/，续期后自动重载 nginx），证书到位后站点才启用。证书要包含站点的全部域名。${certList.length ? "" : "还没有证书，先到「证书」页申请。"}</p></div>
   <div data-tls="files"><div class="form-grid">${field("证书文件（含中间证书）", "cert_path", s.cert_path || "", "text", 'placeholder="/etc/nginx/ssl/example.crt"')}${field("私钥文件", "key_path", s.key_path || "", "text", 'placeholder="/etc/nginx/ssl/example.key"')}</div></div>
   <div data-tls-any>${check("HTTP 自动跳到 HTTPS", "force_https", s.force_https)}</div></section>
   <section class="form-section"><h3>其他</h3>${check("经过 Cloudflare 代理（从 CF-Connecting-IP 取访客真实 IP）", "cloudflare_real_ip", s.cloudflare_real_ip)}${field("上传大小上限（MB，0 为 nginx 默认 1 MB）", "max_body_mb", s.max_body_mb || 0, "number", 'min="0" max="10240"')}</section>

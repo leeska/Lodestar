@@ -15,12 +15,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/certs"
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
-	"github.com/leeska/TZA-ControlCenter/internal/httpjson"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/module"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
+	"github.com/leeska/Lodestar/internal/certs"
+	"github.com/leeska/Lodestar/internal/channel"
+	"github.com/leeska/Lodestar/internal/httpjson"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/module"
+	"github.com/leeska/Lodestar/internal/storage"
 )
 
 // Opener opens a management channel stream (channel.Hub).

@@ -9,16 +9,16 @@
 ## 结构
 
 ```text
-Server（排期、判定、存档）── 私有 Unix socket ── tza-browser（Chromium，无网络）
+Server（排期、判定、存档）── 私有 Unix socket ── lodestar-browser（Chromium，无网络）
    │                                                    │ 每条连接都绑定任务租约
    └── 已鉴权的反向隧道 ── 节点 Agent ── 只允许 Google / Meta / 出口回显的 HTTPS ──► 目标站点
 ```
 
-- **浏览器** 是 `tza-server browser-worker`，与 Server 同一个二进制、同一次发布。Chromium 是固定版本的
-  Chrome for Testing headless-shell（linux64 / linux-arm64，下载后校验 SHA-256），装在 `/opt/tza-browser`。
-- 浏览器服务 `tza-browser` 以独立用户运行，systemd `PrivateNetwork=yes`：只有回环网卡，没有任何直连出口。
-  它对外的唯一通道是 Server 的私有 socket（`/run/tza-browser/control.sock`，只有 Server 与浏览器两个服务账户所在的
-  `tza-browser-control` 组能连），Server 再经节点 Agent 主动建立的隧道转发。隧道断了任务就失败，没有回退路径。
+- **浏览器** 是 `lodestar browser-worker`，与 Server 同一个二进制、同一次发布。Chromium 是固定版本的
+  Chrome for Testing headless-shell（linux64 / linux-arm64，下载后校验 SHA-256），装在 `/opt/lodestar-browser`。
+- 浏览器服务 `lodestar-browser` 以独立用户运行，systemd `PrivateNetwork=yes`：只有回环网卡，没有任何直连出口。
+  它对外的唯一通道是 Server 的私有 socket（`/run/lodestar-browser/control.sock`，只有 Server 与浏览器两个服务账户所在的
+  `lodestar-browser-control` 组能连），Server 再经节点 Agent 主动建立的隧道转发。隧道断了任务就失败，没有回退路径。
 - **Agent** 只在本机许可文件开通后才转发：在 Agent 端解析 DNS 并要求全部结果是公网地址、固定实际连接的地址、
   锁定地址族、只连 443，单次任务限 120 秒与 20 MiB，许可文件一改立即生效。
 - **判定在 Server**：浏览器只上报读到的原始信号，Server 核对沙箱、网络隔离、前后出口 IP、页面来源与流量后
@@ -27,19 +27,19 @@ Server（排期、判定、存档）── 私有 Unix socket ── tza-browser
 ## 安装（Server 主机）
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/leeska/TZA-ControlCenter/main/deploy/install.sh | sudo sh -s -- --with-browser
+curl -fsSL https://raw.githubusercontent.com/leeska/Lodestar/main/deploy/install.sh | sudo sh -s -- --with-browser
 ```
 
 脚本在正常安装 / 升级 Server 之外：
 
-1. 建用户 `tza-browser` 与组 `tza-browser-control`；
-2. `tza-server browser-install` 下载并校验 Chromium，列出缺少的系统库与字体，用 apt 装上
+1. 建用户 `lodestar-browser` 与组 `lodestar-browser-control`；
+2. `lodestar browser-install` 下载并校验 Chromium，列出缺少的系统库与字体，用 apt 装上
    （其他发行版会列出缺什么、请你装好后重跑）；
 3. Chromium 的沙箱需要非特权用户命名空间：Ubuntu 23.10 起由 AppArmor 限制，脚本写入只放行这一个可执行文件的
-   `/etc/apparmor.d/tza-browser-chromium`；内核整体关闭 userns 时脚本停下并说明，不替你改内核参数；
+   `/etc/apparmor.d/lodestar-browser-chromium`；内核整体关闭 userns 时脚本停下并说明，不替你改内核参数；
 4. 在与正式服务相同的隔离里运行 `browser-worker --self-test`：必须只有回环网卡、非 root、有字体、
    每个渲染进程都有 seccomp 过滤且在独立的 PID 命名空间里，通过后才启用；
-5. 安装 `tza-browser.service`，给 Server 加上 `--browser-socket /run/tza-browser/control.sock`。
+5. 安装 `lodestar-browser.service`，给 Server 加上 `--browser-socket /run/lodestar-browser/control.sock`。
 
 装过一次后，再执行安装脚本（不带 `--with-browser`）也会保留并一起升级浏览器。资源：约 300 MB 内存、
 200 MB 磁盘；服务单元限 `MemoryMax=700M`，可用 drop-in 调整。Docker 部署暂不支持浏览器。
@@ -54,7 +54,7 @@ curl -fsSL https://raw.githubusercontent.com/leeska/TZA-ControlCenter/main/deplo
 curl -fsSL https://probe.example.com/install.sh | sh -s -- --endpoint https://probe.example.com --ipguard
 ```
 
-只更新 Agent 并写入 `/etc/tza-probe/ipguard-egress.json`（0600），不改其他配置。不写 IP 时经
+只更新 Agent 并写入 `/etc/lodestar/ipguard-egress.json`（0600），不改其他配置。不写 IP 时经
 `api.ipify.org` / `api6.ipify.org` 查本机公网出口；NAT 主机（本机源地址与公网出口不同）自动写好 `source_ips`。
 也可以直接指定：`--ipguard 203.0.113.7,2001:db8::7`。关闭：`--ipguard-off`。
 
@@ -86,7 +86,7 @@ curl -fsSL https://probe.example.com/install.sh | sh -s -- --endpoint https://pr
 | 现象 | 检查 |
 |---|---|
 | 页面提示「先安装检测浏览器」 | Server 没带 `--browser-socket` 启动：用 `--with-browser` 重跑安装脚本 |
-| 「检测浏览器未连接」 | `systemctl status tza-browser`、`journalctl -u tza-browser -n 50` |
+| 「检测浏览器未连接」 | `systemctl status lodestar-browser`、`journalctl -u lodestar-browser -n 50` |
 | 自检 `sandbox: false` / `chromium did not start: No usable sandbox` | 用户命名空间被禁用：见上文第 3 步 |
 | 自检 `fonts: false` | 装 `fontconfig fonts-dejavu-core`；没有字体时 Chromium 遇到网页字体会卡住 |
 | 自检 `network_isolated: false` | 浏览器没在 `PrivateNetwork=yes` 下运行（只允许 down 且无地址的内核隧道设备） |

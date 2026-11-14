@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/ipguard"
+	"github.com/leeska/Lodestar/internal/ipguard"
 )
 
 // reconcileEvery is how often the derived policies are brought in line with

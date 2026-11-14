@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/pkgtest"
-	"github.com/leeska/TZA-ControlCenter/pkg/tzapkg"
+	"github.com/leeska/Lodestar/internal/pkgtest"
+	"github.com/leeska/Lodestar/pkg/lspkg"
 )
 
 func TestInstallListRemove(t *testing.T) {
@@ -17,14 +17,14 @@ func TestInstallListRemove(t *testing.T) {
 		t.Fatalf("empty store: %v", list)
 	}
 	p, err := s.Install(pkgtest.PluginZip(t, "ntfy", ""))
-	if err != nil || p.ID != "ntfy" || p.Kind != tzapkg.KindNotify || p.Source != "" {
+	if err != nil || p.ID != "ntfy" || p.Kind != lspkg.KindNotify || p.Source != "" {
 		t.Fatalf("install: %+v %v", p, err)
 	}
 	if _, err := s.Install(pkgtest.PluginZip(t, "public-dns", "")); err != nil {
 		t.Fatal(err)
 	}
 	list := s.List()
-	if len(list) != 2 || list[0].ID != "ntfy" || list[1].Kind != tzapkg.KindTargets || len(list[1].Targets) == 0 {
+	if len(list) != 2 || list[0].ID != "ntfy" || list[1].Kind != lspkg.KindTargets || len(list[1].Targets) == 0 {
 		t.Fatalf("list: %+v", list)
 	}
 	// What gets stored is the plugin.json itself, and it parses back with its templates.

@@ -10,14 +10,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/brand"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
-	"github.com/leeska/TZA-ControlCenter/web"
+	"github.com/leeska/Lodestar/internal/brand"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/storage"
+	"github.com/leeska/Lodestar/web"
 )
 
 // 站点名称与 logo：后台存进去、读回来、在首屏脚本里交给浏览器（/theme-default.js 的
-// window.__tzaBrand），logo 由 /site-logo 提供；清掉就回到内置品牌。坏值与匿名请求一律拒。
+// window.__lodestarBrand），logo 由 /site-logo 提供；清掉就回到内置品牌。坏值与匿名请求一律拒。
 func TestSiteBrand(t *testing.T) {
 	s, err := storage.Open(filepath.Join(t.TempDir(), "brand.db"))
 	if err != nil {
@@ -61,7 +61,7 @@ func TestSiteBrand(t *testing.T) {
 		t.Helper()
 		_, _, body := request("GET", "/theme-default.js", "", "", nil)
 		for _, line := range strings.Split(string(body), "\n") {
-			if v, ok := strings.CutPrefix(line, "window.__tzaBrand="); ok {
+			if v, ok := strings.CutPrefix(line, "window.__lodestarBrand="); ok {
 				var b siteBrand
 				if err := json.Unmarshal([]byte(strings.TrimSuffix(v, ";")), &b); err != nil {
 					t.Fatalf("首屏品牌不是 JSON: %q", line)
@@ -79,7 +79,7 @@ func TestSiteBrand(t *testing.T) {
 		return code
 	}
 
-	// 没配过：两项都空，首屏也是空（前端显示内置的 TZA CC）。
+	// 没配过：两项都空，首屏也是空（前端显示内置的 Lodestar）。
 	if p := panel(); p.SiteName != "" || p.SiteLogo != "" {
 		t.Fatalf("未配置: %+v", p)
 	}

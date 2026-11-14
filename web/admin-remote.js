@@ -14,7 +14,7 @@ export async function remotePage(nodesReady) {
   }).join("");
   content().innerHTML = `<section data-part="page-heading" class="page-heading"><div><div class="eyebrow">REMOTE</div><h1>远程管理<span>${connected.length}</span></h1><p>经管理通道在节点上执行命令、打开终端。每次操作都记入审计日志。</p></div></section>
   <section data-part="panel" class="panel"><div class="table-scroll"><table class="stack"><thead><tr><th>节点</th><th>管理通道</th><th>操作</th></tr></thead><tbody>${rows || '<tr><td colspan="3" class="empty-cell">还没有节点。</td></tr>'}</tbody></table></div>
-  <p class="hint remote-hint">节点要开启管理能力：在节点上重新执行接入命令并加 <code>--manage</code>（会换成不带沙箱的服务单元，Agent 以 root 运行）。在节点的 <code>/etc/tza-probe/manage.json</code> 里写 <code>"disabled_capabilities": ["shell"]</code> 并重启 Agent，可以在本机关掉命令与终端。</p></section>`;
+  <p class="hint remote-hint">节点要开启管理能力：在节点上重新执行接入命令并加 <code>--manage</code>（会换成不带沙箱的服务单元，Agent 以 root 运行）。在节点的 <code>/etc/lodestar/manage.json</code> 里写 <code>"disabled_capabilities": ["shell"]</code> 并重启 Agent，可以在本机关掉命令与终端。</p></section>`;
   const name = (id) => list.find((n) => n.id === id)?.name || id;
   content().querySelectorAll("[data-exec]").forEach((b) => (b.onclick = () => execDialog(b.dataset.exec, name(b.dataset.exec))));
   content().querySelectorAll("[data-terminal]").forEach((b) => (b.onclick = guard(() => openTerminal(b.dataset.terminal, name(b.dataset.terminal)))));

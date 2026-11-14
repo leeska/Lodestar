@@ -7,7 +7,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 // tool is one entry of tools/list. inputSchema is a JSON Schema object; the

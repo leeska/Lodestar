@@ -7,11 +7,11 @@ import { disabledSources } from "./skins.js";
 // 挑中的项写成卡壳上的 data-deco="<包>/<项>"、data-deco-pack="<包>"，图片与数值写成 --deco-<名字>；
 // 面板不认识这些名字的含义，怎么画由主题的样式表决定。
 //
-// 清单来自 /theme-default.js 的 window.__tzaThemes（后台装 / 删之后 skins.js 的 registerThemes 会换掉它），
+// 清单来自 /theme-default.js 的 window.__lodestarThemes（后台装 / 删之后 skins.js 的 registerThemes 会换掉它），
 // 所以每次现读，不缓存。
 
 const lower = (v) => String(v || "").trim().toLowerCase();
-const themes = () => window.__tzaThemes || [];
+const themes = () => window.__lodestarThemes || [];
 
 // 一套主题的装饰来源：依附它的附加包（按 id 排，清单本来就是这个顺序）在前，主题自己在后。
 function sources(skin) {

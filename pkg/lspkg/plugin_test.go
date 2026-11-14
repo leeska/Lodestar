@@ -1,4 +1,4 @@
-package tzapkg
+package lspkg
 
 import (
 	"archive/zip"
@@ -59,7 +59,7 @@ func TestNotifyRender(t *testing.T) {
 		t.Fatalf("settings normalisation: %v", settings)
 	}
 	now := time.Unix(1700000000, 0)
-	req, err := p.RenderNotify(settings, map[string]string{"title": "TZA ControlCenter · 告警触发", "message": "CPU 使用率超过阈值很久了"}, now)
+	req, err := p.RenderNotify(settings, map[string]string{"title": "Lodestar · 告警触发", "message": "CPU 使用率超过阈值很久了"}, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestNotifyRender(t *testing.T) {
 	if body["sign"] != wantSign || req.Headers.Get("X-Sign") != wantSign || body["prio"] != float64(4) || body["fixed"] != float64(7) {
 		t.Fatalf("body %s", req.Body)
 	}
-	if text := body["content"].(map[string]any)["text"]; text != "TZA ControlCenter · 告警触发\nCPU 使用率超过…" {
+	if text := body["content"].(map[string]any)["text"]; text != "Lodestar · 告警触发\nCPU 使用率超过…" {
 		t.Fatalf("text %q", text)
 	}
 
@@ -313,7 +313,7 @@ func frontendZip(t *testing.T, files map[string]string) []byte {
 
 func TestSettingsUIArchiveContract(t *testing.T) {
 	manifest := `{"id":"dialog","name":"Dialog","chrome":{"light":"#ffffff","dark":"#111111"},"swatch":["#ffffff","#eeeeee","#123456"],"styles":["theme.css"],"settings_ui":{"entry":"settings/index.html","api_version":1}}`
-	files := map[string]string{"theme.json": manifest, "theme.css": "body{}", "settings/index.html": `<script src="/theme-settings-sdk.js"></script><script src="main.js"></script>`, "settings/main.js": "TZASettings.ready.then(console.log)"}
+	files := map[string]string{"theme.json": manifest, "theme.css": "body{}", "settings/index.html": `<script src="/theme-settings-sdk.js"></script><script src="main.js"></script>`, "settings/main.js": "LodestarSettings.ready.then(console.log)"}
 	if info, err := Inspect(frontendZip(t, files)); err != nil || len(info.Permissions) != 1 {
 		t.Fatalf("settings archive/review: %+v %v", info, err)
 	}

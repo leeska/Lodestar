@@ -47,8 +47,8 @@ my-theme/
 `main.js`：
 
 ```js
-const context = await TZA.ready;
-const nodes = await TZA.api('/nodes');
+const context = await Lodestar.ready;
+const nodes = await Lodestar.api('/nodes');
 const main = document.querySelector('#my-dashboard');
 for (const node of nodes) {
   const row = document.createElement('p');
@@ -69,20 +69,20 @@ go run ./tools/themepack -out dist/themes examples/themes/observatory
 
 ## SDK v1
 
-SDK 是 `/theme-sdk.js` 提供的经典脚本，暴露 `window.TZA`；可在任意框架入口之前加载。TypeScript 声明见 [frontend-api.d.ts](frontend-api.d.ts)。
+SDK 是 `/theme-sdk.js` 提供的经典脚本，暴露 `window.Lodestar`；可在任意框架入口之前加载。TypeScript 声明见 [frontend-api.d.ts](frontend-api.d.ts)。
 
 | API | 行为 |
 | --- | --- |
-| `TZA.ready` | Promise，连接宿主后返回公开上下文。 |
-| `TZA.context` | 最近一次上下文。 |
-| `TZA.api(path)` | GET 公开 API，路径如 `/nodes`，不带 `/api/v1` 前缀；返回解析后的 JSON。失败时 Promise reject。 |
-| `TZA.onContext(fn)` | 立即回调已有上下文，之后在路由或明暗变化时回调；返回取消订阅函数。 |
-| `TZA.navigate(path)` | 更新主页面地址及浏览器历史，并推送新上下文，主题自行渲染路由。支持查询参数与 hash。 |
-| `TZA.setSkin(id)` | 使用已安装的另一外观；跨渲染模式时重载，旧文档和计时器随之销毁。 |
-| `TZA.setMode('light' / 'dark' / 'auto')` | 保存访客明暗偏好；系统变化时也更新上下文和文档的 `data-theme`。 |
-| `TZA.openAdmin()` | 前往核心后台入口。 |
-| `TZA.storage.get(key)` / `.set(key,value)` | 异步读写此主题独立命名空间中的 JSON 偏好；`null` 删除。键最多 64 位字母数字、`_ . -`，单值最多 32 KB。 |
-| `TZA.reportError(error)` | 显示宿主的恢复入口。脚本异常、未处理的 Promise 错误会自动报告。 |
+| `Lodestar.ready` | Promise，连接宿主后返回公开上下文。 |
+| `Lodestar.context` | 最近一次上下文。 |
+| `Lodestar.api(path)` | GET 公开 API，路径如 `/nodes`，不带 `/api/v1` 前缀；返回解析后的 JSON。失败时 Promise reject。 |
+| `Lodestar.onContext(fn)` | 立即回调已有上下文，之后在路由或明暗变化时回调；返回取消订阅函数。 |
+| `Lodestar.navigate(path)` | 更新主页面地址及浏览器历史，并推送新上下文，主题自行渲染路由。支持查询参数与 hash。 |
+| `Lodestar.setSkin(id)` | 使用已安装的另一外观；跨渲染模式时重载，旧文档和计时器随之销毁。 |
+| `Lodestar.setMode('light' / 'dark' / 'auto')` | 保存访客明暗偏好；系统变化时也更新上下文和文档的 `data-theme`。 |
+| `Lodestar.openAdmin()` | 前往核心后台入口。 |
+| `Lodestar.storage.get(key)` / `.set(key,value)` | 异步读写此主题独立命名空间中的 JSON 偏好；`null` 删除。键最多 64 位字母数字、`_ . -`，单值最多 32 KB。 |
+| `Lodestar.reportError(error)` | 显示宿主的恢复入口。脚本异常、未处理的 Promise 错误会自动报告。 |
 
 上下文：
 
@@ -111,11 +111,11 @@ SDK 是 `/theme-sdk.js` 提供的经典脚本，暴露 `window.TZA`；可在任�
 
 ## 路由和生命周期
 
-独立文档内的 `location` 属于主题静态资源。使用 `TZA.context.route` 作为业务路由；例如 React 使用 memory router 并与 `onContext` / `navigate` 同步，或直接使用 hash 路由。不要把资源路径误当作主页面路由。
+独立文档内的 `location` 属于主题静态资源。使用 `Lodestar.context.route` 作为业务路由；例如 React 使用 memory router 并与 `onContext` / `navigate` 同步，或直接使用 hash 路由。不要把资源路径误当作主页面路由。
 
 主页面支持深链接刷新与浏览器前进后退。`/admin`、`/api`、`/themes`、`/dl`、`/mcp` 和健康接口由核心保留；主题不覆盖这些服务入口。正常路径中的所有内容由主题自行渲染。离开主题时使用 `pagehide` 停止自己创建的轮询或订阅。
 
-入口加载失败、SDK 无法连接或脚本运行失败时，宿主提供「使用默认前台」和后台管理入口。即使主题损坏，访问 `/?tza-theme=shadcn` 也能恢复默认前台；`/admin?tza-theme=shadcn` 始终能管理主题。`?tza-theme=<已安装 id>` 也可用于预览。
+入口加载失败、SDK 无法连接或脚本运行失败时，宿主提供「使用默认前台」和后台管理入口。即使主题损坏，访问 `/?lodestar-theme=shadcn` 也能恢复默认前台；`/admin?lodestar-theme=shadcn` 始终能管理主题。`?lodestar-theme=<已安装 id>` 也可用于预览。
 
 ## 执行边界
 
@@ -132,10 +132,10 @@ SDK 是 `/theme-sdk.js` 提供的经典脚本，暴露 `window.TZA`；可在任�
 真实浏览器检查使用一次性本地 Server，覆盖已登录后台时的公开数据边界、DOM / storage 隔离、静态资源加载、深链接刷新/后退、后台不加载主题、主题切换和错误恢复：
 
 ```sh
-# playwright 安装在单独的依赖目录，TZA_BROWSER_DEPS 指向其 package.json 所在目录。
-TZA_BROWSER_DEPS=/tmp/tza-browser-deps \
-TZA_TEST_URL=http://127.0.0.1:25995 \
-TZA_TEST_ADMIN_FILE=/tmp/frontend-data/admin-token \
-TZA_TEST_CREDENTIALS_FILE=/tmp/frontend-credentials \
+# playwright 安装在单独的依赖目录，LODESTAR_BROWSER_DEPS 指向其 package.json 所在目录。
+LODESTAR_BROWSER_DEPS=/tmp/lodestar-browser-deps \
+LODESTAR_TEST_URL=http://127.0.0.1:25995 \
+LODESTAR_TEST_ADMIN_FILE=/tmp/frontend-data/admin-token \
+LODESTAR_TEST_CREDENTIALS_FILE=/tmp/frontend-credentials \
 bun scripts/frontend-browser-test.mjs
 ```

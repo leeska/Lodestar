@@ -1,4 +1,4 @@
-package tzapkg
+package lspkg
 
 import (
 	"encoding/base64"

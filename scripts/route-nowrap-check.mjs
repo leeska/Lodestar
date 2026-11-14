@@ -12,7 +12,7 @@
 //
 // 用法：
 //   node scripts/route-nowrap-check.mjs                              # 默认量本机 http://127.0.0.1:25774/
-//   TZA_CHECK_URL=https://probe.example.com/ node scripts/route-nowrap-check.mjs
+//   LODESTAR_CHECK_URL=https://probe.example.com/ node scripts/route-nowrap-check.mjs
 //   环境变量：WIDTH（默认 390，最窄的常用手机宽度）、PUPPETEER_CORE、
 //            CHROME_PATH（默认 /usr/bin/chromium）
 //   · 页面上没有回程格（例如回归用的合成库里那台机器没有探测任务）→ 打印 SKIP 并以 0 退出。
@@ -27,12 +27,12 @@ import { existsSync } from "node:fs";
 const CORE = process.env.PUPPETEER_CORE ||
   "/tmp/pptr/node_modules/puppeteer-core/lib/puppeteer/puppeteer-core.js";
 const CHROME = process.env.CHROME_PATH || "/usr/bin/chromium";
-const URL_ = process.env.TZA_CHECK_URL || "http://127.0.0.1:25774/";
+const URL_ = process.env.LODESTAR_CHECK_URL || "http://127.0.0.1:25774/";
 const WIDTH = Number(process.env.WIDTH || 390);
 // 皮肤 / 明暗 / 视图都从环境变量来：回程格是三种皮肤里最紧的一格，任何一套都要过这一关。
-const SKIN = process.env.TZA_SKIN || "glass";
-const THEME = process.env.TZA_THEME || "light";
-const VIEW = process.env.TZA_VIEW || "card";
+const SKIN = process.env.LODESTAR_SKIN || "glass";
+const THEME = process.env.LODESTAR_THEME || "light";
+const VIEW = process.env.LODESTAR_VIEW || "card";
 
 if (!existsSync(CORE) || !existsSync(CHROME)) {
   console.log(`SKIP: 没有 puppeteer-core（${CORE}）或 chromium（${CHROME}）——布局守卫只在有真浏览器的机器上跑`);
@@ -49,9 +49,9 @@ const browser = await puppeteer.launch({
 const page = await browser.newPage();
 await page.goto(URL_, { waitUntil: "networkidle2" });
 await page.evaluate((t, k, v) => {
-  localStorage.setItem("tza-theme", t);
-  localStorage.setItem("tza-skin", k);
-  localStorage.setItem("tza-view", v);
+  localStorage.setItem("lodestar-theme", t);
+  localStorage.setItem("lodestar-skin", k);
+  localStorage.setItem("lodestar-view", v);
 }, THEME, SKIN, VIEW);
 await page.reload({ waitUntil: "networkidle2" });
 await page.waitForSelector(".node-card", { timeout: 30000 });

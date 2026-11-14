@@ -33,6 +33,6 @@ export interface FrontendAPI {
   reportError(error: unknown): void;
 }
 declare global {
-  const TZA: FrontendAPI;
-  interface Window {readonly TZA: FrontendAPI}
+  const Lodestar: FrontendAPI;
+  interface Window {readonly Lodestar: FrontendAPI}
 }

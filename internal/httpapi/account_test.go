@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/account"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
-	"github.com/leeska/TZA-ControlCenter/web"
+	"github.com/leeska/Lodestar/internal/account"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/storage"
+	"github.com/leeska/Lodestar/web"
 )
 
 // The panel account logs in by username and password, can be changed with the
@@ -43,7 +43,7 @@ func TestAccountLoginAndChange(t *testing.T) {
 		handler.ServeHTTP(w, r)
 		var got *http.Cookie
 		for _, c := range w.Result().Cookies() {
-			if c.Name == "tza_session" {
+			if c.Name == "lodestar_session" {
 				got = c
 			}
 		}
@@ -258,7 +258,7 @@ func TestDelayedLoginCannotSurvivePasswordReset(t *testing.T) {
 		if cookie.Name == deviceCookie {
 			t.Fatal("stale login issued a device credential for the reset account")
 		}
-		if cookie.Name == "tza_session" {
+		if cookie.Name == "lodestar_session" {
 			r.AddCookie(cookie)
 		}
 	}

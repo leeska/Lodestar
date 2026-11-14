@@ -15,11 +15,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/ipguard"
+	"github.com/leeska/Lodestar/internal/ipguard"
 )
 
 func TestEgressTunnelLive(t *testing.T) {
-	path := os.Getenv("TZA_EGRESS_LIVE_POLICY")
+	path := os.Getenv("LODESTAR_EGRESS_LIVE_POLICY")
 	if path == "" {
 		t.Skip("requires approved host egress policy")
 	}

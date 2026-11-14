@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
-	"github.com/leeska/TZA-ControlCenter/web"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/storage"
+	"github.com/leeska/Lodestar/web"
 )
 
 func TestMCPKeyLifecycleAndIsolation(t *testing.T) {
@@ -59,7 +59,7 @@ func TestMCPKeyLifecycleAndIsolation(t *testing.T) {
 		if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
 			t.Fatal(err)
 		}
-		if w.Code != 200 || !strings.HasPrefix(out.APIKey, "tza_mcp_") || w.Header().Get("Cache-Control") != "no-store" {
+		if w.Code != 200 || !strings.HasPrefix(out.APIKey, "lodestar_mcp_") || w.Header().Get("Cache-Control") != "no-store" {
 			t.Fatal(w.Code, w.Body.String())
 		}
 		return out.APIKey

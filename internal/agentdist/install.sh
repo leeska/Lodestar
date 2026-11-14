@@ -1,5 +1,5 @@
 #!/bin/sh
-# TZA ControlCenter Agent 一键安装 / 升级脚本。由 Server 的 /install.sh 提供，后台“接入”弹窗会给出完整命令：
+# Lodestar Agent 一键安装 / 升级脚本。由 Server 的 /install.sh 提供，后台“接入”弹窗会给出完整命令：
 #
 #   curl -fsSL https://probe.example.com/install.sh | sh -s -- --endpoint https://probe.example.com --token <节点密钥>
 #
@@ -14,20 +14,20 @@
 #   --ipguard [IP,IP]        开通地区偏移检测出口：允许 Server 的隔离浏览器经本机访问 Google / Meta。
 #                            不写 IP 时自动查本机的公网出口（IPv4 / IPv6），NAT 主机自动写好本机源地址
 #   --ipguard-off            关闭地区偏移检测出口
-#   --manage                 开启远程管理（后台「远程管理」里的命令与终端）：写 /etc/tza-probe/manage.json，
+#   --manage                 开启远程管理（后台「远程管理」里的命令与终端）：写 /etc/lodestar/manage.json，
 #                            并换成不带沙箱的服务单元（Agent 以 root 完整权限运行）。之后重跑本脚本会保留
 #   --manage-off             关闭远程管理，恢复带沙箱的服务单元
 #   --uninstall              停止服务并删除程序、配置与服务单元（systemd / OpenRC 均可）
 #
-# 不带 --token 再次执行时保留现有 /etc/tza-probe/agent.json，只更新二进制并重启，即升级。
-# Server 配了升级公钥时，脚本把它钉在 /etc/tza-probe/upgrade-key.pub：此后 Agent 只接受
+# 不带 --token 再次执行时保留现有 /etc/lodestar/agent.json，只更新二进制并重启，即升级。
+# Server 配了升级公钥时，脚本把它钉在 /etc/lodestar/upgrade-key.pub：此后 Agent 只接受
 # 用对应私钥签过名、且比自己新的版本，后台「节点管理」就能一键升级，不必再登录机器。
 # 私钥不在 Server 上，Server 被人接管也推不了自己的程序；换公钥要在节点上重跑一次本脚本。
-# 密钥也可通过环境变量 TZA_TOKEN 传入，避免出现在命令行。
+# 密钥也可通过环境变量 LODESTAR_TOKEN 传入，避免出现在命令行。
 set -eu
 
-ENDPOINT="${TZA_ENDPOINT:-}"
-TOKEN="${TZA_TOKEN:-}"
+ENDPOINT="${LODESTAR_ENDPOINT:-}"
+TOKEN="${LODESTAR_TOKEN:-}"
 INTERFACES=""
 NEXTTRACE=""
 GEO_PROVIDER=""
@@ -36,13 +36,13 @@ ALLOW_HTTP=""
 UNINSTALL=""
 IPGUARD=""
 MANAGE=""
-CONFIG=/etc/tza-probe/agent.json
-MANAGE_FILE=/etc/tza-probe/manage.json
-KEYFILE=/etc/tza-probe/upgrade-key.pub
-BIN=/usr/local/bin/tza-agent
-UNIT=/etc/systemd/system/tza-agent.service
-INITD=/etc/init.d/tza-agent
-PLUGIN_DROPIN=/etc/systemd/system/tza-agent.service.d/50-plugins.conf
+CONFIG=/etc/lodestar/agent.json
+MANAGE_FILE=/etc/lodestar/manage.json
+KEYFILE=/etc/lodestar/upgrade-key.pub
+BIN=/usr/local/bin/lodestar-agent
+UNIT=/etc/systemd/system/lodestar-agent.service
+INITD=/etc/init.d/lodestar-agent
+PLUGIN_DROPIN=/etc/systemd/system/lodestar-agent.service.d/50-plugins.conf
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -110,7 +110,7 @@ if [ "$(id -u)" -ne 0 ]; then
     get="wget -qO- '$ENDPOINT/install.sh'"
   fi
   echo "非 root，改用 sudo 重新执行 ..." >&2
-  exec sudo env TZA_TOKEN="$TOKEN" TZA_ENDPOINT="$ENDPOINT" sh -c "$get | sh -s --$quoted"
+  exec sudo env LODESTAR_TOKEN="$TOKEN" LODESTAR_ENDPOINT="$ENDPOINT" sh -c "$get | sh -s --$quoted"
 fi
 # 初始化系统：systemd 优先，其次 OpenRC（Alpine 等）。两条路都要能用，否则后台“接入”
 # 给出的一行命令在非 systemd 主机上直接失败，那些节点只能靠手工替换二进制升级。
@@ -123,22 +123,22 @@ else
   fail "需要 systemd 或 OpenRC（rc-service / rc-update）的 Linux"
 fi
 
-service_stop() { if [ "$INIT" = systemd ]; then systemctl stop tza-agent 2>/dev/null || true; else rc-service tza-agent stop >/dev/null 2>&1 || true; fi; }
-service_active() { if [ "$INIT" = systemd ]; then systemctl is-active --quiet tza-agent; else rc-service tza-agent status >/dev/null 2>&1; fi; }
-service_logs() { if [ "$INIT" = systemd ]; then journalctl -u tza-agent -n 20 --no-pager; else tail -n 20 /var/log/tza-agent.log; fi; }
+service_stop() { if [ "$INIT" = systemd ]; then systemctl stop lodestar-agent 2>/dev/null || true; else rc-service lodestar-agent stop >/dev/null 2>&1 || true; fi; }
+service_active() { if [ "$INIT" = systemd ]; then systemctl is-active --quiet lodestar-agent; else rc-service lodestar-agent status >/dev/null 2>&1; fi; }
+service_logs() { if [ "$INIT" = systemd ]; then journalctl -u lodestar-agent -n 20 --no-pager; else tail -n 20 /var/log/lodestar-agent.log; fi; }
 
 if [ -n "$UNINSTALL" ]; then
   if [ "$INIT" = systemd ]; then
-    systemctl disable --now tza-agent 2>/dev/null || true
+    systemctl disable --now lodestar-agent 2>/dev/null || true
   else
-    rc-service tza-agent stop >/dev/null 2>&1 || true
-    rc-update del tza-agent default >/dev/null 2>&1 || true
+    rc-service lodestar-agent stop >/dev/null 2>&1 || true
+    rc-update del lodestar-agent default >/dev/null 2>&1 || true
   fi
   rm -f "$UNIT" "$INITD" "$BIN" "$BIN.previous"
   rm -f "$PLUGIN_DROPIN"
-  rm -rf /etc/tza-probe /var/lib/tza-agent
+  rm -rf /etc/lodestar /var/lib/lodestar-agent
   [ "$INIT" = systemd ] && systemctl daemon-reload
-  echo "已卸载 TZA ControlCenter Agent"
+  echo "已卸载 Lodestar Agent"
   exit 0
 fi
 
@@ -147,6 +147,13 @@ case "$(uname -m)" in
   aarch64|arm64) ARCH=arm64 ;;
   *) fail "不支持的架构 $(uname -m)，请手动编译 Agent" ;;
 esac
+
+# 改名前（TZA）装的 Agent：配置在 /etc/tza-probe。下载新版本后先用它把旧安装搬到新名字下。
+LEGACY=""
+if [ -f /etc/tza-probe/agent.json ] && [ ! -e /etc/lodestar ]; then
+  LEGACY=true
+  [ -n "$TOKEN" ] || CONFIG=/etc/tza-probe/agent.json
+fi
 
 UPGRADE=""
 if [ -n "$TOKEN" ]; then
@@ -181,24 +188,24 @@ fi
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
-NAME="tza-agent-linux-$ARCH"
+NAME="lodestar-agent-linux-$ARCH"
 echo "下载 $ENDPOINT/dl/$NAME ..."
-fetch "$ENDPOINT/dl/$NAME" "$TMP/tza-agent" || fail "下载失败：请确认 Server 地址可达，且该 Server 提供了 $ARCH 架构的 Agent"
+fetch "$ENDPOINT/dl/$NAME" "$TMP/lodestar-agent" || fail "下载失败：请确认 Server 地址可达，且该 Server 提供了 $ARCH 架构的 Agent"
 fetch "$ENDPOINT/dl/$NAME.sha256" "$TMP/sum" || fail "无法获取校验和"
 # 校验和与程序来自同一台 Server：它能发现下载截断或中途损坏，但证明不了 Server
 # 本身可信。对 Server 的信任来自 HTTPS 与你自己核对过的地址。
 EXPECTED=$(cut -d' ' -f1 "$TMP/sum")
 if command -v sha256sum >/dev/null 2>&1; then
-  ACTUAL=$(sha256sum "$TMP/tza-agent" | cut -d' ' -f1)
+  ACTUAL=$(sha256sum "$TMP/lodestar-agent" | cut -d' ' -f1)
 elif command -v shasum >/dev/null 2>&1; then
-  ACTUAL=$(shasum -a 256 "$TMP/tza-agent" | cut -d' ' -f1)
+  ACTUAL=$(shasum -a 256 "$TMP/lodestar-agent" | cut -d' ' -f1)
 else
   # 下面以 root 安装下载来的二进制，宁可拒绝安装也不能跳过校验。
   fail "系统没有 sha256sum 或 shasum，无法校验完整性；请安装任一工具后重试"
 fi
 [ "$ACTUAL" = "$EXPECTED" ] || fail "校验和不匹配，下载不完整，请重试"
-chmod 0755 "$TMP/tza-agent"
-"$TMP/tza-agent" --version >/dev/null 2>&1 || fail "下载的程序无法运行"
+chmod 0755 "$TMP/lodestar-agent"
+"$TMP/lodestar-agent" --version >/dev/null 2>&1 || fail "下载的程序无法运行"
 # 升级公钥：与程序一样来自这台 Server（执行本脚本就是信任它的时刻）。没有配置时照常安装，
 # 只是不能一键升级；已经钉过的公钥保留。
 PINNED=""
@@ -212,12 +219,18 @@ if fetch "$ENDPOINT/dl/upgrade-key.pub" "$TMP/key" 2>/dev/null; then
   done < "$TMP/key"
 fi
 
+if [ -n "$LEGACY" ]; then
+  echo "发现改名前的 TZA Agent，迁移到 Lodestar（服务、配置、代理、网站、证书目录都换成新名字）..."
+  "$TMP/lodestar-agent" --config /etc/tza-probe/agent.json --migrate-legacy || fail "迁移没有完成，旧 Agent 已恢复运行；请把上面的输出发给管理员"
+  CONFIG=/etc/lodestar/agent.json
+fi
+
 # 先停旧服务再替换，避免向运行中的文件写入；一键升级下载了一半的旧版本一并清掉
 service_stop
-rm -f /var/lib/tza-agent/tza-agent.new /var/lib/tza-agent/tza-agent.new.sha256 /var/lib/tza-agent/tza-agent.new.sig /var/lib/tza-agent/tza-agent.new.part
+rm -f /var/lib/lodestar-agent/lodestar-agent.new /var/lib/lodestar-agent/lodestar-agent.new.sha256 /var/lib/lodestar-agent/lodestar-agent.new.sig /var/lib/lodestar-agent/lodestar-agent.new.part
 [ -f "$BIN" ] && cp -p "$BIN" "$BIN.previous"
-install -m 0755 "$TMP/tza-agent" "$BIN"
-install -d -m 0700 /etc/tza-probe
+install -m 0755 "$TMP/lodestar-agent" "$BIN"
+install -d -m 0700 /etc/lodestar
 if [ -n "$PINNED" ]; then
   install -m 0600 "$TMP/key" "$KEYFILE"
   echo "已记下 Server 的升级公钥：$KEYFILE"
@@ -239,7 +252,7 @@ if [ -z "$UPGRADE" ]; then
   case "$NEXTTRACE" in *[\"\\]*) fail "NextTrace 路径不能包含引号或反斜杠" ;; esac
   case "$GEO_PROVIDER" in *[\"\\]*) fail "数据源名称不能包含引号或反斜杠" ;; esac
   case "$TRACE_METHOD" in ""|icmp|tcp|udp) ;; *) fail "探测方式只能是 icmp、tcp 或 udp" ;; esac
-  install -d -m 0700 /etc/tza-probe
+  install -d -m 0700 /etc/lodestar
   umask 077
   # 用 printf 逐字段写出，密钥与路径不经过 shell 二次展开
   printf '{\n  "endpoint": "%s",\n  "token": "%s",\n  "interfaces": [%s],\n  "mount": "/",\n  "nexttrace": "%s",\n  "geo_provider": "%s",\n  "trace_method": "%s",\n  "allow_http": %s\n}\n' \
@@ -247,7 +260,7 @@ if [ -z "$UPGRADE" ]; then
   chmod 0600 "$CONFIG"
 fi
 
-EGRESS=/etc/tza-probe/ipguard-egress.json
+EGRESS=/etc/lodestar/ipguard-egress.json
 
 # 公网出口：经固定的回显服务查（与 Server 浏览器核对出口用的是同一家）。
 public_ip() {
@@ -296,7 +309,7 @@ write_egress() {
     done
     IFS=$OLDIFS
   fi
-  install -d -m 0700 /etc/tza-probe
+  install -d -m 0700 /etc/lodestar
   umask 077
   printf '{\n  "enabled": true,\n  "allowed_ips": [%s],\n  "services": ["google", "meta"],\n  "source_ips": {%s}\n}\n' "$allowed" "$sources" > "$EGRESS"
   chmod 0600 "$EGRESS"
@@ -307,7 +320,7 @@ write_egress
 # 远程管理：显式开关优先；都没写时沿用这台机器现在的状态（重跑升级不会悄悄关掉它）。
 case "$MANAGE" in
   on)
-    install -d -m 0700 /etc/tza-probe
+    install -d -m 0700 /etc/lodestar
     if [ ! -f "$MANAGE_FILE" ]; then
       umask 077
       printf '{\n  "enabled": true,\n  "disabled_capabilities": []\n}\n' > "$MANAGE_FILE"
@@ -324,19 +337,19 @@ MANAGED=""
 
 if [ "$INIT" = systemd ]; then
   install -d -m 0755 "$(dirname "$UNIT")"
-  cat > "$UNIT" <<'TZA_AGENT_SERVICE'
+  cat > "$UNIT" <<'LODESTAR_AGENT_SERVICE'
 [Unit]
-Description=TZA ControlCenter Agent
+Description=Lodestar Agent
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 # 一键升级：Agent 把新版本下载到 StateDirectory（沙箱里唯一可写的地方）后以状态 3 退出，
-# 下次启动前由带 + 前缀（不受沙箱限制）的 ExecStartPre 按 /etc/tza-probe/upgrade-key.pub
+# 下次启动前由带 + 前缀（不受沙箱限制）的 ExecStartPre 按 /etc/lodestar/upgrade-key.pub
 # 再验一遍签名后换上；没有待装版本时什么也不做。
-ExecStartPre=-+/usr/local/bin/tza-agent --config /etc/tza-probe/agent.json --apply-update
-ExecStart=/usr/local/bin/tza-agent --config /etc/tza-probe/agent.json --self-update
-StateDirectory=tza-agent
+ExecStartPre=-+/usr/local/bin/lodestar-agent --config /etc/lodestar/agent.json --apply-update
+ExecStart=/usr/local/bin/lodestar-agent --config /etc/lodestar/agent.json --self-update
+StateDirectory=lodestar-agent
 StateDirectoryMode=0700
 Restart=on-failure
 RestartSec=5
@@ -351,42 +364,42 @@ ProtectHome=true
 
 [Install]
 WantedBy=multi-user.target
-TZA_AGENT_SERVICE
+LODESTAR_AGENT_SERVICE
   if [ -n "$MANAGED" ]; then
     # 远程管理要能装软件、改配置、管服务：去掉沙箱与能力限制，终端里新建文件用常规的 022。
     sed -i -e '/^NoNewPrivileges=/d' -e '/^CapabilityBoundingSet=/d' -e '/^AmbientCapabilities=/d' \
       -e '/^ProtectSystem=/d' -e '/^ProtectHome=/d' -e 's/^UMask=0077$/UMask=0022/' "$UNIT"
-    sed -i '/^\[Service\]$/a # 已开启远程管理（/etc/tza-probe/manage.json）：不带沙箱运行。--manage-off 恢复沙箱。' "$UNIT"
+    sed -i '/^\[Service\]$/a # 已开启远程管理（/etc/lodestar/manage.json）：不带沙箱运行。--manage-off 恢复沙箱。' "$UNIT"
   fi
   chmod 0644 "$UNIT"
   systemctl daemon-reload
-  systemctl enable tza-agent >/dev/null 2>&1
-  systemctl restart tza-agent
+  systemctl enable lodestar-agent >/dev/null 2>&1
+  systemctl restart lodestar-agent
 else
   # OpenRC 用 supervise-daemon 托管，等价于 systemd 的 Restart=on-failure；
-  # 二进制统一放 /usr/local/bin，旧布局（/opt/tza-probe/tza-agent）留档后让位。
-  cat > "$INITD" <<'TZA_AGENT_INIT'
+  # 二进制统一放 /usr/local/bin，旧布局（/opt/lodestar/lodestar-agent）留档后让位。
+  cat > "$INITD" <<'LODESTAR_AGENT_INIT'
 #!/sbin/openrc-run
-name="TZA ControlCenter Agent"
-command="/usr/local/bin/tza-agent"
-command_args="--config /etc/tza-probe/agent.json --self-update"
+name="Lodestar Agent"
+command="/usr/local/bin/lodestar-agent"
+command_args="--config /etc/lodestar/agent.json --self-update"
 supervisor="supervise-daemon"
 respawn_delay=5
 respawn_max=0
 respawn_period=60
-pidfile="/run/tza-agent.pid"
-output_log="/var/log/tza-agent.log"
-error_log="/var/log/tza-agent.log"
+pidfile="/run/lodestar-agent.pid"
+output_log="/var/log/lodestar-agent.log"
+error_log="/var/log/lodestar-agent.log"
 depend() { need net; after firewall; }
 # 一键升级：没有沙箱时 Agent 自己就能换上新版本；这里补上「下载后、换之前被停掉」的情形。
-start_pre() { /usr/local/bin/tza-agent --config /etc/tza-probe/agent.json --apply-update || true; }
-TZA_AGENT_INIT
+start_pre() { /usr/local/bin/lodestar-agent --config /etc/lodestar/agent.json --apply-update || true; }
+LODESTAR_AGENT_INIT
   chmod 0755 "$INITD"
-  rc-update add tza-agent default >/dev/null 2>&1 || true
+  rc-update add lodestar-agent default >/dev/null 2>&1 || true
   if [ -f /opt/tza-probe/tza-agent ]; then
     mv /opt/tza-probe/tza-agent "/opt/tza-probe/tza-agent.previous-$(date +%Y%m%d%H%M)" 2>/dev/null || true
   fi
-  rc-service tza-agent restart >/dev/null 2>&1 || rc-service tza-agent start >/dev/null 2>&1
+  rc-service lodestar-agent restart >/dev/null 2>&1 || rc-service lodestar-agent start >/dev/null 2>&1
 fi
 sleep 2
 if service_active; then

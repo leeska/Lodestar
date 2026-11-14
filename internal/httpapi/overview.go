@@ -8,8 +8,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/module"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/module"
 )
 
 // overview is the admin home: core cards (nodes, billing, tasks, alerts)

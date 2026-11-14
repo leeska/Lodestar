@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/httpjson"
-	"github.com/leeska/TZA-ControlCenter/internal/module"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
+	"github.com/leeska/Lodestar/internal/httpjson"
+	"github.com/leeska/Lodestar/internal/module"
+	"github.com/leeska/Lodestar/internal/storage"
 )
 
 // Module serves 使用者. Store is nil until the database is open (only

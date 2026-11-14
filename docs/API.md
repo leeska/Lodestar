@@ -4,7 +4,7 @@
 
 密码校验前限制实际尝试速度：匿名请求共享 30 次突发额度，每 2 秒补充一次；持有效设备 Cookie 的请求使用独立的 10 次额度，每 6 秒补充一次。额度耗尽后在密码校验前直接返回 429，并通过 `Retry-After` 告知下一次额度恢复的等待秒数；正确密码同样遵守额度，成功和失败的校验都消耗额度。额度自动补充，不永久锁定账号；改密后旧设备 Cookie 失效。浏览器会话绑定登录时验证的密码版本；终端重置密码使所有旧会话失效，网页改密仅保留本次会话。
 
-前台（访客）接口：`/nodes`、`/nodes/live`、`/nodes/{id}/history`、`/nodes/{id}/network-history`、`/nodes/{id}/observations`、`/observations`、`/latency-samples`、`/unlock-catalog`。后台开了「整个前台需要登录」时，未登录的请求一律 401 `{"error":"此面板需要登录后查看","login":true}`；关掉的区块里，`/nodes/{id}/network-history` 与 `/latency-samples` 属于 `network`、`/unlock-catalog` 属于 `unlock`，访客请求 404，观测接口滤掉对应类型。管理员不受这些开关影响。开关在 `/theme-default.js` 里以 `window.__tzaPublic={hidden, login}` 交给前台。
+前台（访客）接口：`/nodes`、`/nodes/live`、`/nodes/{id}/history`、`/nodes/{id}/network-history`、`/nodes/{id}/observations`、`/observations`、`/latency-samples`、`/unlock-catalog`。后台开了「整个前台需要登录」时，未登录的请求一律 401 `{"error":"此面板需要登录后查看","login":true}`；关掉的区块里，`/nodes/{id}/network-history` 与 `/latency-samples` 属于 `network`、`/unlock-catalog` 属于 `unlock`，访客请求 404，观测接口滤掉对应类型。管理员不受这些开关影响。开关在 `/theme-default.js` 里以 `window.__lodestarPublic={hidden, login}` 交给前台。
 
 | 方法与路径（均以 /api/v1 开头） | 用途 |
 | --- | --- |
@@ -30,10 +30,10 @@
 | GET /admin/events?before=&limit=&node_id=&kind=&active= | 告警与发送结果，按 id 倒序分页：`limit` 默认 100、上限 500，`before` 传上一页最后一条的 id 续读，`node_id` / `kind` 筛选；`active=1` 只列正在告警的项目，每项取最近一次事件（MCP `recent_events` 的 `active: true` 同义） |
 | GET、PUT、PATCH /admin/notification | 通知出口：查询渠道状态（不回凭据）、设置 Telegram / Webhook / 关闭；PUT 整份提交，PATCH 只改传了的项 |
 | POST /admin/notification/test | 向已配置的渠道发送测试通知 |
-| GET /admin/backup | 下载整个数据库的一致快照（SQLite 文件，`VACUUM INTO` 生成，不用停服）；文件名 `tza-backup-YYYYMMDD-HHMMSS.db` |
-| GET、PUT /admin/account | 后台账号：GET 回 `{"username":…,"configured":true}`；PUT 提交 `{"current_password":…,"username":…,"password":…}` 修改用户名与密码（用户名 1–32 个非空白字符，密码 8–128 个字符；当前密码错误 400），成功后除本次以外的浏览器会话全部失效。忘记密码在服务器执行 `tza-server reset-password` |
+| GET /admin/backup | 下载整个数据库的一致快照（SQLite 文件，`VACUUM INTO` 生成，不用停服）；文件名 `lodestar-backup-YYYYMMDD-HHMMSS.db` |
+| GET、PUT /admin/account | 后台账号：GET 回 `{"username":…,"configured":true}`；PUT 提交 `{"current_password":…,"username":…,"password":…}` 修改用户名与密码（用户名 1–32 个非空白字符，密码 8–128 个字符；当前密码错误 400），成功后除本次以外的浏览器会话全部失效。忘记密码在服务器执行 `lodestar reset-password` |
 | GET、POST、DELETE /admin/mcp-key | MCP API Key：GET 只回 `configured` 与已启用时的 `created_at`；POST 生成或重新生成，回一次性 `api_key`；DELETE 撤销。数据库只保存摘要，旧 Key 在重新生成或撤销后立即失效 |
-| GET、PUT /admin/panel | 面板显示项（PUT 只改传了的项）：站点名称 `site_name`（标签页标题与品牌区的名字，最多 32 字，空串恢复默认的 TZA ControlCenter）、只读的 logo 地址 `site_logo`（未上传为空）、默认明暗 `default_theme`、皮肤 `default_skin`、延迟色带时间窗（`latency_window_minutes`，1–10080 分钟：色带固定画最近 10 次探测，这一项是它们的年龄上限，早于它的不画；界面给 1 小时 / 6 小时 / 24 小时 / 3 天 / 7 天 档位，7 天即探测结果保留上限）、计费汇总单位 `price_unit`（公开面板顶部「剩余价值汇总 / 每月成本」统一折算成的货币，取值与节点货币选项同表，默认 CNY）、前台关掉的区块 `public_hidden`（`network` 延迟与回程、`unlock` 解锁检测、`billing` 价格与到期；关掉后访客接口不再返回这部分数据，见下方公开接口说明）、整个前台是否需要登录 `public_login` |
+| GET、PUT /admin/panel | 面板显示项（PUT 只改传了的项）：站点名称 `site_name`（标签页标题与品牌区的名字，最多 32 字，空串恢复默认的 Lodestar）、只读的 logo 地址 `site_logo`（未上传为空）、默认明暗 `default_theme`、皮肤 `default_skin`、延迟色带时间窗（`latency_window_minutes`，1–10080 分钟：色带固定画最近 10 次探测，这一项是它们的年龄上限，早于它的不画；界面给 1 小时 / 6 小时 / 24 小时 / 3 天 / 7 天 档位，7 天即探测结果保留上限）、计费汇总单位 `price_unit`（公开面板顶部「剩余价值汇总 / 每月成本」统一折算成的货币，取值与节点货币选项同表，默认 CNY）、前台关掉的区块 `public_hidden`（`network` 延迟与回程、`unlock` 解锁检测、`billing` 价格与到期；关掉后访客接口不再返回这部分数据，见下方公开接口说明）、整个前台是否需要登录 `public_login` |
 | PUT、DELETE /admin/panel/logo | 站点 logo：PUT 的请求体就是图片本身（不走 JSON），类型按内容判断，只收 PNG / JPEG / GIF / WebP / ICO / SVG，最大 512 KB，回 `{"site_logo":"/site-logo?v=…"}`；SVG 含脚本、事件属性、外链引用或 DOCTYPE 时 400，超大 413。DELETE 移除，回到内置字标。文件存在数据目录的 `branding/`，不在数据库备份里 |
 | GET、POST /admin/themes、DELETE /admin/themes/{id} | 主题包清单（内置 + 已安装）、上传 zip、删除，见 [THEMES.md](THEMES.md#接口) |
 | PUT /admin/themes/{id}/settings | 改主题设置（主题在 theme.json 里声明的菜单，附加包开关也在其中），请求体只写要改的项，回 `{options}`，见 [THEMES.md](THEMES.md#主题设置) |
@@ -61,12 +61,12 @@
 | GET /admin/nodes/{id}/address | 节点 Agent 最近一次连接用的公网 IP `{ip}`（填写连接地址用）；还没收到公网连接时 409 |
 | GET /admin/docker；GET /admin/docker/nodes/{node} | Docker。前者列出节点 `{id, name, connected, capable}`（`capable` 是 Agent 报了 `docker` 能力）。后者是一台节点的概况：`version`、`containers`、`images` 是 Docker Engine 自己的 JSON（`/version`、`/containers/json?all=1`、`/images/json`），`compose` 是 `{projects: [{name, dir, files, managed, containers, running}], compose}`（`compose` 是 compose 插件版本，没有插件时为空），`error` 是读取时遇到的错误。节点没连管理通道或没有 Docker 能力时 409 |
 | POST /admin/docker/nodes/{node}/containers/{id}/{start\|stop\|restart}；DELETE /admin/docker/nodes/{node}/containers/{id}；DELETE /admin/docker/nodes/{node}/images/{id}[?force=1] | 容器启停、强制删除容器、按 ID 删镜像。Docker 的错误原样带回状态码和 `error`；已经是目标状态（304）算成功。都写审计日志 |
-| GET、PUT /admin/docker/nodes/{node}/compose/{project} | 读或保存项目的 compose 文件 `{path, content}` / `{content}`（最多 256 KB）。项目名 `[a-z0-9][a-z0-9_-]*`；不存在的项目新建在节点的 `/opt/tza-compose/<项目名>/compose.yaml`。保存前节点运行 `docker compose config --quiet`，不通过回 400 `{error, output}` |
+| GET、PUT /admin/docker/nodes/{node}/compose/{project} | 读或保存项目的 compose 文件 `{path, content}` / `{content}`（最多 256 KB）。项目名 `[a-z0-9][a-z0-9_-]*`；不存在的项目新建在节点的 `/opt/lodestar-compose/<项目名>/compose.yaml`。保存前节点运行 `docker compose config --quiet`，不通过回 400 `{error, output}` |
 | GET /admin/docker/stream（WebSocket） | `node` 加 `kind=logs`（`container`、`tail`、`follow=1`、`timestamps=1`）、`pull`（`image`）、`compose`（`project`、`action` 为 up / down / pull / restart / delete；delete 先 down，面板建的项目再删目录，`volumes=1` 同时删数据卷）或 `exec`（`container`、`cols`、`rows`，交互）。浏览器发 `{"i": 键入}`、`{"resize": {cols, rows}}`；收二进制帧的输出和最后一条文本帧 `{exit, error}`。要求同源 Origin，开启和结束都写审计日志 |
-| GET /admin/certs；POST /admin/certs；PUT、DELETE /admin/certs/{id} | 证书。GET 回 `certs`（`{id, domains, dns_id, targets, serial, issuer, not_before, not_after, status, error, next_attempt, issuing}`，不带证书和私钥）、`dns`（Cloudflare 账号，令牌只回 `token_hint`）和 `staging`。提交 `{domains, dns_id, targets: [{node_id, dir, reload}]}`：域名第一个是证书名，`*.` 开头是通配符，最多 20 个；`dir` 留空为 `/etc/tza-certs/<域名>`；`status` 为 pending、valid 或 error。改了域名会重签。删除不动节点上的文件 |
+| GET /admin/certs；POST /admin/certs；PUT、DELETE /admin/certs/{id} | 证书。GET 回 `certs`（`{id, domains, dns_id, targets, serial, issuer, not_before, not_after, status, error, next_attempt, issuing}`，不带证书和私钥）、`dns`（Cloudflare 账号，令牌只回 `token_hint`）和 `staging`。提交 `{domains, dns_id, targets: [{node_id, dir, reload}]}`：域名第一个是证书名，`*.` 开头是通配符，最多 20 个；`dir` 留空为 `/etc/lodestar-certs/<域名>`；`status` 为 pending、valid 或 error。改了域名会重签。删除不动节点上的文件 |
 | POST /admin/certs/{id}/renew；POST /admin/certs/{id}/deploy；GET /admin/certs/{id}/download?part=fullchain\|key | 立即续期（清掉失败退避）、重新下发到所有目标、下载证书链或私钥（PEM，私钥下载写审计日志） |
 | POST /admin/certs/dns；PUT、DELETE /admin/certs/dns/{id}；PUT /admin/certs/settings | Cloudflare DNS 账号 `{name, token}`（保存前向 Cloudflare 校验令牌；编辑时 `token` 留空不改；还有证书在用时删除回 409）。`settings` 为 `{staging}`：用 Let's Encrypt 测试环境 |
-| GET、PUT /admin/backups；POST /admin/backups/run | 加密备份。GET 回 `{enabled, hour, keep, targets: [{node_id, dir}], has_passphrase, running, runs}`（`runs` 是最近 30 次：`{id, trigger, started_at, finished_at, status, name, size, db_size, sha256, error, targets: [{node_id, dir, error, kept}]}`，`status` 为 running、ok、partial、failed）。PUT 提交 `{enabled, hour（UTC 0–23）, keep（1–100）, targets, passphrase}`：`passphrase` 至少 12 个字符，留空不改；`dir` 留空为 `/var/backups/tza-probe`；开启每日备份要先有口令和节点。`run` 在后台开始一次备份，回 202；已在进行时 409。（`GET /admin/backup` 仍是直接下载一份未加密的数据库快照） |
+| GET、PUT /admin/backups；POST /admin/backups/run | 加密备份。GET 回 `{enabled, hour, keep, targets: [{node_id, dir}], has_passphrase, running, runs}`（`runs` 是最近 30 次：`{id, trigger, started_at, finished_at, status, name, size, db_size, sha256, error, targets: [{node_id, dir, error, kept}]}`，`status` 为 running、ok、partial、failed）。PUT 提交 `{enabled, hour（UTC 0–23）, keep（1–100）, targets, passphrase}`：`passphrase` 至少 12 个字符，留空不改；`dir` 留空为 `/var/backups/lodestar`；开启每日备份要先有口令和节点。`run` 在后台开始一次备份，回 202；已在进行时 409。（`GET /admin/backup` 仍是直接下载一份未加密的数据库快照） |
 | POST /admin/proxy/templates；PUT、DELETE /admin/proxy/templates/{id}；PUT /admin/proxy/settings | 规则模板 `{name, rules}`：`rules` 每行一条 Clash 写法的规则（DOMAIN、DOMAIN-SUFFIX、DOMAIN-KEYWORD、IP-CIDR、GEOSITE、GEOIP，出口 代理 / DIRECT / REJECT，最后 MATCH），保存时校验。内置模板 `rule`（国内直连）和 `global`（全局代理）不能改。`settings` 为 `{default_template}`。GET /admin/proxy 回 `templates`（含内置）与 `default_template` |
 | POST /admin/proxy/sources；PUT、DELETE /admin/proxy/sources/{id}；POST /admin/proxy/sources/{id}/refresh | 外部订阅 `{name, url, enabled, prefix, user_ids}`。保存时（启用且还没拉过）立即拉取，之后每 6 小时一次，`refresh` 立即拉。GET /admin/proxy 的 `sources` 带 `node_count`、`skipped`（不支持的协议）、`types`、`sample`（前 8 个节点名）、`fetched_at`、`error`，不带节点凭据 |
 | GET /admin/sites；POST /admin/sites；PUT、DELETE /admin/sites/{id}；POST /admin/sites/sync；GET /admin/sites/nodes/{node} | 网站。GET 回 `sites`、`views`（站点 id → `{state, note}`，`state` 为 ok、waiting、error、disabled）、`nodes`（节点 id → nginx `{installed, version, active, error, output, others}`，`others` 是节点上不是面板建的站点）和 `capable`（开了网站能力的节点）。站点 `{name, node_id, enabled, domains, kind, upstream, websocket, root, redirect_to, redirect_code, keep_path, tls, cert_id, cert_path, key_path, force_https, cloudflare_real_ip, max_body_mb}`：`kind` 为 proxy、static、redirect；`tls` 为 none、cert（证书模块的证书，要覆盖全部域名，保存时自动给证书加这台节点的下发目标）、files（节点上的证书文件）。同一节点上启用的站点不能有相同域名。`sync` 立即同步；`nodes/{node}` 现场读一台节点的 nginx 状态 |
@@ -76,7 +76,7 @@
 | GET /admin/totp、POST /admin/totp/setup、POST /admin/totp/enable、POST /admin/totp/disable | 两步验证：GET 回 `{"enabled":…}`；setup 生成新密钥回 `{secret, uri}`（10 分钟内有效）；enable `{"code":…}` 用它算出的验证码确认后生效；disable `{"code":…}` 用当前验证码关闭。开启后 `POST /login` 还要 `code`：密码正确但缺验证码或验证码错误时 401 `{"error":…,"totp":true}`，同一个验证码只能用一次 |
 | GET /agent/channel | 管理通道（协议 v2）：Agent 用节点令牌建立的 WebSocket，请求头 `X-Channel-Capabilities` 列出它提供的能力（如 `shell`），其上用 yamux 多路复用，由 Server 按需开流，见 [ARCHITECTURE.md](ARCHITECTURE.md#管理通道) |
 
-不在 /api/v1 下的两个品牌相关地址：`GET /site-logo` 公开提供已上传的 logo（没有时 404；带 `nosniff` 和自己的 `default-src 'none'; sandbox` CSP，直接打开 SVG 也跑不了脚本）；`GET /theme-default.js` 是首屏脚本，除默认外观外另写 `window.__tzaBrand={"name":…,"logo":…}`，`theme-boot.js` 据此在首屏前换掉标签页标题与 favicon。
+不在 /api/v1 下的两个品牌相关地址：`GET /site-logo` 公开提供已上传的 logo（没有时 404；带 `nosniff` 和自己的 `default-src 'none'; sandbox` CSP，直接打开 SVG 也跑不了脚本）；`GET /theme-default.js` 是首屏脚本，除默认外观外另写 `window.__lodestarBrand={"name":…,"logo":…}`，`theme-boot.js` 据此在首屏前换掉标签页标题与 favicon。
 
 准确字段由 `internal/model` 中的 JSON 标签定义。未登录请求拿到的节点不含提醒规则（`alerts` 为空）。解锁结论只随 `/nodes` 的 `unlock` 字段下发。
 
@@ -184,7 +184,7 @@ Server 把任务展开为单项探测（checks × targets，目标自带 `checks
 
 ## 独立主题前台 API
 
-主题包可声明 `frontend: {"entry":"index.html","api_version":1}`，通过隔离文档中的 `window.TZA` 使用现有 `/api/v1/` 公开读接口。
+主题包可声明 `frontend: {"entry":"index.html","api_version":1}`，通过隔离文档中的 `window.Lodestar` 使用现有 `/api/v1/` 公开读接口。
 桥接明确省略宿主后台会话；公开节点、历史、探测结果与解锁目录都遵循匿名可见范围。
 完整协议、类型与示例见 [FRONTENDS.md](FRONTENDS.md) 和 [frontend-api.d.ts](frontend-api.d.ts)。
 

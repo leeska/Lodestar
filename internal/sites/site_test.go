@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/certs"
+	"github.com/leeska/Lodestar/internal/certs"
 )
 
 func TestValidate(t *testing.T) {
@@ -62,7 +62,7 @@ func TestConfig(t *testing.T) {
 	}
 	c := certs.Cert{Domains: []string{"*.example.com", "example.com"}}
 	st := Site{TLS: TLSCert}
-	if crt, key := st.Paths(&c); crt != "/etc/tza-certs/_.example.com/fullchain.pem" || key != "/etc/tza-certs/_.example.com/privkey.pem" {
+	if crt, key := st.Paths(&c); crt != "/etc/lodestar-certs/_.example.com/fullchain.pem" || key != "/etc/lodestar-certs/_.example.com/privkey.pem" {
 		t.Fatal(crt, key)
 	}
 	if !certCovers(c.Domains, []string{"app.example.com", "example.com"}) || certCovers(c.Domains, []string{"a.b.example.com"}) {

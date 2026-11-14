@@ -21,11 +21,11 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
-	"github.com/leeska/TZA-ControlCenter/internal/httpjson"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/module"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
+	"github.com/leeska/Lodestar/internal/channel"
+	"github.com/leeska/Lodestar/internal/httpjson"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/module"
+	"github.com/leeska/Lodestar/internal/storage"
 )
 
 func Migrations() []storage.Migration {
@@ -43,7 +43,7 @@ func Migrations() []storage.Migration {
 }
 
 // DefaultDir is where a node keeps backups unless told otherwise.
-const DefaultDir = "/var/backups/tza-probe"
+const DefaultDir = "/var/backups/lodestar"
 
 // Target is a node directory that receives every backup.
 type Target struct {
@@ -211,7 +211,7 @@ func (m *Module) Backup(ctx context.Context, trigger string) (Run, error) {
 	now := m.now()
 	var id [6]byte
 	rand.Read(id[:])
-	r := Run{ID: hex.EncodeToString(id[:]), Trigger: trigger, Started: now.Unix(), Status: RunRunning, Targets: []TargetResult{}, Name: "tza-probe-" + now.UTC().Format("20060102-150405") + Extension}
+	r := Run{ID: hex.EncodeToString(id[:]), Trigger: trigger, Started: now.Unix(), Status: RunRunning, Targets: []TargetResult{}, Name: "lodestar-" + now.UTC().Format("20060102-150405") + Extension}
 	m.mu.Lock()
 	m.running = r.ID
 	m.mu.Unlock()

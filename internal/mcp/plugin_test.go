@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/pkgtest"
-	"github.com/leeska/TZA-ControlCenter/internal/plugin"
-	"github.com/leeska/TZA-ControlCenter/internal/theme"
+	"github.com/leeska/Lodestar/internal/pkgtest"
+	"github.com/leeska/Lodestar/internal/plugin"
+	"github.com/leeska/Lodestar/internal/theme"
 )
 
 // MCP 覆盖面板的插件操作：列出已装插件、把通知插件设成渠道（密钥不回显）、

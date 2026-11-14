@@ -1,5 +1,5 @@
 /* ==========================================================================
-   TZA ControlCenter · 现代极简（shadcn/ui）皮肤
+   Lodestar · 现代极简（shadcn/ui）皮肤
 
    内置的默认皮肤，样式表只在 <html data-skin="shadcn"> 时生效（选择器一律带 data-skin 前缀，
    默认的液态玻璃皮肤一个字节都不受影响）。视觉语言取自 shadcn/ui 的 Neutral 主题
@@ -205,23 +205,13 @@ html[data-skin="shadcn"] .overview-tile:hover {
   box-shadow: var(--shadcn-shadow-sm);
 }
 
-/* 品牌方块：玻璃版是蓝紫渐变药丸，极简版是一枚「主色实底」的方章。
-   字色必须落在 .brand-mark 自己身上 —— 标记里是 `t<span>z</span>a`，只写 .brand-mark span
-   的话 t / a 两个字会继承 styles.css 的 #fff，在深色（近白底）下直接看不见。
-   字距不碰：styles.css 给的是 -2px，换成 -0.02em 会把方块撑宽约 5px，390px 头部里
-   右侧那颗「管理控制台」跟着往外挪（实测 header 内 nav 右缘 362.5 → 367.2px）。 */
+/* 品牌方块：玻璃版是蓝紫渐变方块，极简版是一枚「主色实底」的方章；四角星用 currentColor，
+   字色落在 .brand-mark 上。 */
 html[data-skin="shadcn"] .brand-mark {
   background: var(--shadcn-primary);
   border: 1px solid var(--shadcn-primary);
   box-shadow: none;
   color: var(--shadcn-primary-fg);
-}
-
-/* 「z」在玻璃皮肤里是一点品牌彩；中性面里退成同色系的暗调（用不透明白，
-   两套主题自动对称：浅色是白字的 60%，深色是黑字的 60%）。 */
-html[data-skin="shadcn"] .brand-mark span {
-  color: inherit;
-  opacity: 0.6;
 }
 
 /* 状态点的发光环与脉冲（玻璃皮肤的 radar-pulse）在中性面上是噪声，去掉。 */

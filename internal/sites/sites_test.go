@@ -12,15 +12,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/agent"
-	"github.com/leeska/TZA-ControlCenter/internal/certs"
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
-	"github.com/leeska/TZA-ControlCenter/internal/httpapi"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/module"
-	"github.com/leeska/TZA-ControlCenter/internal/remote"
-	"github.com/leeska/TZA-ControlCenter/internal/sites"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
+	"github.com/leeska/Lodestar/internal/agent"
+	"github.com/leeska/Lodestar/internal/certs"
+	"github.com/leeska/Lodestar/internal/channel"
+	"github.com/leeska/Lodestar/internal/httpapi"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/module"
+	"github.com/leeska/Lodestar/internal/remote"
+	"github.com/leeska/Lodestar/internal/sites"
+	"github.com/leeska/Lodestar/internal/storage"
 )
 
 // 网站：经管理通道把站点写进节点的 nginx；同节点同域名冲突要拒绝；选了证书的站点自动给证书
@@ -91,7 +91,7 @@ func TestSitesOverChannel(t *testing.T) {
 		t.Fatal("同节点同域名要拒绝", code)
 	}
 	call("POST", "/admin/sites/sync", nil, nil)
-	written, err := os.ReadFile(filepath.Join(conf, "tza-site-"+app.ID+".conf"))
+	written, err := os.ReadFile(filepath.Join(conf, "lodestar-site-"+app.ID+".conf"))
 	if err != nil || !strings.Contains(string(written), "proxy_pass http://127.0.0.1:3000;") {
 		t.Fatalf("站点要写进 nginx：%v %s", err, written)
 	}
@@ -110,7 +110,7 @@ func TestSitesOverChannel(t *testing.T) {
 		t.Fatal(code)
 	}
 	got, _ := certStore.Cert(ctx, cert.ID)
-	if len(got.Targets) != 1 || got.Targets[0].NodeID != node || got.Targets[0].Dir != "/etc/tza-certs/_.example.com" || !strings.Contains(got.Targets[0].Reload, "reload nginx") {
+	if len(got.Targets) != 1 || got.Targets[0].NodeID != node || got.Targets[0].Dir != "/etc/lodestar-certs/_.example.com" || !strings.Contains(got.Targets[0].Reload, "reload nginx") {
 		t.Fatalf("要自动加证书下发目标：%+v", got.Targets)
 	}
 	call("POST", "/admin/sites/sync", nil, nil)
@@ -121,7 +121,7 @@ func TestSitesOverChannel(t *testing.T) {
 	if list.Views[secure.ID].State != sites.StateWaiting || list.Views[app.ID].State != sites.StateOK {
 		t.Fatalf("证书没到位时等待：%+v", list.Views)
 	}
-	if _, err := os.Stat(filepath.Join(conf, "tza-site-"+secure.ID+".conf")); err == nil {
+	if _, err := os.Stat(filepath.Join(conf, "lodestar-site-"+secure.ID+".conf")); err == nil {
 		t.Fatal("证书没到位时不能写进 nginx")
 	}
 	// 证书签好并下发到这台节点后，站点写进去，用的是下发目录里的文件。
@@ -130,8 +130,8 @@ func TestSitesOverChannel(t *testing.T) {
 		c.Targets[0].Deployed = "01"
 	})
 	call("POST", "/admin/sites/sync", nil, nil)
-	written, err = os.ReadFile(filepath.Join(conf, "tza-site-"+secure.ID+".conf"))
-	if err != nil || !strings.Contains(string(written), "ssl_certificate /etc/tza-certs/_.example.com/fullchain.pem;") || !strings.Contains(string(written), "http2 on;") {
+	written, err = os.ReadFile(filepath.Join(conf, "lodestar-site-"+secure.ID+".conf"))
+	if err != nil || !strings.Contains(string(written), "ssl_certificate /etc/lodestar-certs/_.example.com/fullchain.pem;") || !strings.Contains(string(written), "http2 on;") {
 		t.Fatalf("证书到位后写入：%v %s", err, written)
 	}
 

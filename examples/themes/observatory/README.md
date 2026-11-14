@@ -7,7 +7,7 @@
 go run ./tools/themepack -out dist/themes examples/themes/observatory
 ```
 
-上传生成的 zip 后，在前台选「观测台」，或由后台设置为默认外观。直接打开 `/?tza-theme=observatory` 可以预览。
-前台损坏时 `/?tza-theme=shadcn` 恢复；管理入口一直是 `/admin`。
+上传生成的 zip 后，在前台选「观测台」，或由后台设置为默认外观。直接打开 `/?lodestar-theme=observatory` 可以预览。
+前台损坏时 `/?lodestar-theme=shadcn` 恢复；管理入口一直是 `/admin`。
 
 接口和打包约定见 [独立前台开发指南](../../../docs/FRONTENDS.md)。README 不进入安装包。

@@ -6,8 +6,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
-	"github.com/leeska/TZA-ControlCenter/internal/module"
+	"github.com/leeska/Lodestar/internal/channel"
+	"github.com/leeska/Lodestar/internal/module"
 )
 
 // Overview counts the nodes whose management channel is up and how many of

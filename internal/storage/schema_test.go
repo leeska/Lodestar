@@ -91,7 +91,7 @@ func TestCheckDataDir(t *testing.T) {
 		t.Fatalf("empty directory: %v", err)
 	}
 	current := t.TempDir()
-	s, err := Open(filepath.Join(current, "tza-probe.db"))
+	s, err := Open(filepath.Join(current, "lodestar.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,18 +105,18 @@ func TestCheckDataDir(t *testing.T) {
 		t.Fatal("tza-v2.db accepted")
 	}
 	old := t.TempDir()
-	db, err := sql.Open("sqlite", "file:"+filepath.Join(old, "tza-probe.db"))
+	db, err := sql.Open("sqlite", "file:"+filepath.Join(old, "lodestar.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	db.Exec("CREATE TABLE nodes(id TEXT)")
 	db.Exec("PRAGMA user_version=17")
 	db.Close()
-	before, _ := os.ReadFile(filepath.Join(old, "tza-probe.db"))
+	before, _ := os.ReadFile(filepath.Join(old, "lodestar.db"))
 	if err := CheckDataDir(old, CoreMigrations()); err == nil || !strings.Contains(err.Error(), "schema 17") {
 		t.Fatalf("schema 17: %v", err)
 	}
-	after, _ := os.ReadFile(filepath.Join(old, "tza-probe.db"))
+	after, _ := os.ReadFile(filepath.Join(old, "lodestar.db"))
 	if !bytes.Equal(before, after) {
 		t.Fatal("the check changed the old database")
 	}

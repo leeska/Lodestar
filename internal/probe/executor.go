@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/unlock"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/unlock"
 )
 
 // Executor runs one built-in or registered probe kind under a bounded context.

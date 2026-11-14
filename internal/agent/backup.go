@@ -13,7 +13,7 @@ import (
 	"regexp"
 	"sort"
 
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
+	"github.com/leeska/Lodestar/internal/channel"
 )
 
 // BackupHandlers serves the backup capability: store the Server's encrypted
@@ -22,7 +22,7 @@ func BackupHandlers() map[string]channel.Handler {
 	return map[string]channel.Handler{channel.KindBackupWrite: writeBackup}
 }
 
-var backupName = regexp.MustCompile(`^tza-probe-[0-9]{8}-[0-9]{6}\.tzabk$`)
+var backupName = regexp.MustCompile(`^(lodestar|tza-probe)-[0-9]{8}-[0-9]{6}\.(lsbk|tzabk)$`)
 
 func writeBackup(_ context.Context, raw json.RawMessage, conn net.Conn) error {
 	var p channel.BackupWriteParams

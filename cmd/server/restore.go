@@ -5,38 +5,39 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/leeska/Lodestar/internal/model"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
 
-	"github.com/leeska/TZA-ControlCenter/internal/backup"
+	"github.com/leeska/Lodestar/internal/backup"
 )
 
 // restoreCommand decrypts a backup and unpacks it into a new data directory:
 //
-//	tza-server backup-restore --in tza-probe-20261114-030000.tzabk --data /var/lib/tza-probe-restored
+//	lodestar backup-restore --in lodestar-20261114-030000.lsbk --data /var/lib/lodestar-restored
 //
-// The passphrase comes from TZA_BACKUP_PASSPHRASE or is asked on the
+// The passphrase comes from LODESTAR_BACKUP_PASSPHRASE or is asked on the
 // terminal. The directory must not exist or be empty; point the service at
 // it (or move it into place) once it is there, then chown it to the service
 // user.
 func restoreCommand(args []string) error {
-	fs := flag.NewFlagSet("tza-server backup-restore", flag.ContinueOnError)
-	in := fs.String("in", "", "backup file (.tzabk)")
+	fs := flag.NewFlagSet("lodestar backup-restore", flag.ContinueOnError)
+	in := fs.String("in", "", "backup file (.lsbk)")
 	dir := fs.String("data", "", "new data directory to restore into (must not exist or be empty)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if *in == "" || *dir == "" {
-		return errors.New("用法：tza-server backup-restore --in 备份文件 --data 新数据目录")
+		return errors.New("用法：lodestar backup-restore --in 备份文件 --data 新数据目录")
 	}
 	f, err := os.Open(*in)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	pass := os.Getenv("TZA_BACKUP_PASSPHRASE")
+	pass := model.Env("BACKUP_PASSPHRASE")
 	if pass == "" {
 		if pass, err = askPassphrase(); err != nil {
 			return err
@@ -53,7 +54,7 @@ func restoreCommand(args []string) error {
 	if _, err := io.Copy(io.Discard, r); err != nil {
 		return err
 	}
-	fmt.Printf("已恢复到 %s。\n下一步：chown -R tza-probe:tza-probe %s，再让 tza-server 用这个目录（--data）启动。\n", *dir, *dir)
+	fmt.Printf("已恢复到 %s。\n下一步：chown -R lodestar:lodestar %s，再让 lodestar 用这个目录（--data）启动。\n", *dir, *dir)
 	return nil
 }
 
@@ -61,7 +62,7 @@ func restoreCommand(args []string) error {
 func askPassphrase() (string, error) {
 	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
 	if err != nil {
-		return "", errors.New("没有终端可以输入口令：设置环境变量 TZA_BACKUP_PASSPHRASE")
+		return "", errors.New("没有终端可以输入口令：设置环境变量 LODESTAR_BACKUP_PASSPHRASE")
 	}
 	defer tty.Close()
 	fmt.Fprint(tty, "备份口令：")

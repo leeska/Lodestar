@@ -15,11 +15,12 @@ import (
 	"path/filepath"
 	"slices"
 	"syscall"
+	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/agent"
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/probe"
+	"github.com/leeska/Lodestar/internal/agent"
+	"github.com/leeska/Lodestar/internal/channel"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/probe"
 )
 
 type config struct {
@@ -78,7 +79,7 @@ func loadManage(path string) (manageConfig, error) {
 func managementCapabilities() map[string]map[string]channel.Handler {
 	return map[string]map[string]channel.Handler{
 		channel.CapabilityShell: agent.ShellHandlers(),
-		// 代理：主控下发内核与配置，本机用 systemd 托管 tza-proxy-<内核> 服务。
+		// 代理：主控下发内核与配置，本机用 systemd 托管 lodestar-proxy-<内核> 服务。
 		channel.CapabilityProxy: agent.NewProxyHost().Handlers(),
 		// Docker：本机 Docker Engine API（白名单）、日志、拉镜像、Compose 项目与容器终端。
 		channel.CapabilityDocker: agent.NewDockerHost().Handlers(),
@@ -108,35 +109,76 @@ func run() error {
 	version := flag.Bool("version", false, "print version")
 	selfUpdate := flag.Bool("self-update", false, "accept upgrades offered by the Server (needs a service manager that restarts the Agent)")
 	applyUpdate := flag.Bool("apply-update", false, "install an upgrade staged by --self-update, then exit (run before start, with write access to the binary)")
+	migrateLegacy := flag.Bool("migrate-legacy", false, "move an installation made before the rename to Lodestar (tza-agent, /etc/tza-probe) to the new names, then exit (root)")
 	flag.Parse()
+	exe, exeErr := os.Executable()
+	// 改名前的单元里 ExecStartPre 可能没带 --config：按二进制所在的旧路径认出旧布局。
+	legacy := agent.IsLegacyConfig(*path) || exe == "/usr/local/bin/tza-agent"
+	if legacy && *path == "agent.json" {
+		*path = filepath.Join(agent.LegacyConfigDir, "agent.json")
+	}
 	// 升级公钥由安装脚本放在配置文件旁边；没有它就不接受任何升级。
 	keyPath := filepath.Join(filepath.Dir(*path), agent.KeyFile)
 	if *version {
 		slog.Info(model.Version)
 		return nil
 	}
+	if *migrateLegacy {
+		if exeErr != nil {
+			return exeErr
+		}
+		l := agent.NewLegacy(exe, slog.Default())
+		if !l.Needed() {
+			slog.Info("nothing left under the old names")
+			return nil
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
+		return l.Migrate(ctx)
+	}
 	if *applyUpdate {
 		// 由 systemd 的 ExecStartPre=-+ 或 OpenRC 的 start_pre 调用：没有待装的版本就什么也不做，
 		// 换失败只记一笔，不挡住旧版本照常启动。
-		exe, err := os.Executable()
+		err := exeErr
 		keys, keyErr := agent.LoadKeys(keyPath)
 		if err == nil {
 			err = keyErr
 		}
+		stateDir := agent.StateDir()
 		if err == nil {
 			var applied bool
-			if applied, err = agent.ApplyStaged(agent.DefaultStateDir, exe, keys); applied {
+			if applied, err = agent.ApplyStaged(stateDir, exe, keys); applied {
 				slog.Info("staged agent upgrade installed")
 			}
 		}
 		if err != nil {
 			slog.Warn("staged agent upgrade not installed", "error", err)
 		}
+		// 沙箱里的新 Agent 请求过改名迁移：这里有 root 且不在沙箱里，起一个独立的临时服务去做。
+		if legacy && exeErr == nil {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+			if err := agent.StartRequestedMigration(ctx, stateDir, exe, *path); err != nil {
+				slog.Warn("rename migration not started", "error", err)
+			}
+		}
 		return nil
 	}
 	cfg, err := loadConfig(*path)
 	if err != nil {
 		return err
+	}
+	if legacy && exeErr == nil {
+		if _, err := os.Stat("/run/systemd/system"); err == nil {
+			// systemd：沙箱里做不了，留记号后重启，交给不带沙箱的 ExecStartPre。
+			if agent.RequestMigration(agent.StateDir()) {
+				slog.Info("installation predates the rename to Lodestar; restarting to migrate it")
+				return errRestart
+			}
+			slog.Warn("still running under the old names: the rename migration did not finish, see journalctl -u lodestar-agent-migrate")
+		} else if err := agent.StartDetachedMigration(agent.StateDir(), exe, *path); err != nil {
+			slog.Warn("rename migration not started", "error", err)
+		}
 	}
 	transport, err := agent.NewTransport(cfg.Endpoint, cfg.Token, cfg.AllowHTTP)
 	if err != nil {
@@ -198,7 +240,7 @@ func run() error {
 			app.Restart = func() { restart = true; cancel() }
 		}
 	}
-	slog.Info("TZA ControlCenter Agent started", "version", model.Version, "self_update", *selfUpdate)
+	slog.Info("Lodestar Agent started", "version", model.Version, "self_update", *selfUpdate)
 	app.Run(ctx)
 	if restart {
 		return errRestart

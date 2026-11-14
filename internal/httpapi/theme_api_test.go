@@ -12,10 +12,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
-	"github.com/leeska/TZA-ControlCenter/internal/theme"
-	"github.com/leeska/TZA-ControlCenter/web"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/storage"
+	"github.com/leeska/Lodestar/internal/theme"
+	"github.com/leeska/Lodestar/web"
 )
 
 // 主题包走完整条路：后台上传 → 首屏脚本列出它（带样式表地址）→ 静态文件可取 →
@@ -69,7 +69,7 @@ func TestThemePackageLifecycle(t *testing.T) {
 
 	// 首屏脚本：清单里有它，样式表地址带版本号。
 	_, boot := request("GET", "/theme-default.js", "", "", nil)
-	if !strings.Contains(boot, "window.__tzaThemes=") || !strings.Contains(boot, `"id":"matcha"`) || !strings.Contains(boot, `/themes/matcha/theme.css?v=`) {
+	if !strings.Contains(boot, "window.__lodestarThemes=") || !strings.Contains(boot, `"id":"matcha"`) || !strings.Contains(boot, `/themes/matcha/theme.css?v=`) {
 		t.Fatalf("首屏脚本没列出主题包: %s", boot)
 	}
 	if !strings.Contains(boot, `"id":"shadcn"`) || strings.Contains(boot, `"id":"glass"`) || !strings.Contains(boot, `"builtin":true`) {

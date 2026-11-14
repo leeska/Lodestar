@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/agentdist"
-	"github.com/leeska/TZA-ControlCenter/internal/agentsig"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/agentdist"
+	"github.com/leeska/Lodestar/internal/agentsig"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 // 一键升级 Agent：后台把节点排进队列，Agent 下一次上报（约 5 秒一次）时在回复里拿到新版本的
@@ -61,7 +61,7 @@ func (q *upgradeQueue) expire(now time.Time) {
 		case it.State == upgradeQueued && now.Unix()-it.RequestedAt > int64(upgradeQueueTTL/time.Second):
 			delete(q.items, id)
 		case it.State == upgradeSent && now.Unix()-it.SentAt > int64(upgradeSentTTL/time.Second):
-			it.State, it.Error = upgradeFailed, "已下发升级，但 Agent 一直没以新版本上报；请查看那台机器的 Agent 日志（journalctl -u tza-agent）"
+			it.State, it.Error = upgradeFailed, "已下发升级，但 Agent 一直没以新版本上报；请查看那台机器的 Agent 日志（journalctl -u lodestar-agent）"
 		}
 	}
 }
@@ -75,7 +75,7 @@ func (a *API) offer(m model.Metrics) (sig agentsig.Signature, state, reason stri
 	sig, err := a.Agents.Signature(m.Arch)
 	switch {
 	case errors.Is(err, agentdist.ErrUnsigned):
-		return sig, upgradeUnsigned, "服务端的 " + m.Arch + " 安装包没有可用签名（" + err.Error() + "）；用 tza-server agent-sign 签好再放进 agents 目录"
+		return sig, upgradeUnsigned, "服务端的 " + m.Arch + " 安装包没有可用签名（" + err.Error() + "）；用 lodestar agent-sign 签好再放进 agents 目录"
 	case err != nil:
 		return sig, upgradeUnavailable, "服务端没有 " + m.Arch + " 架构的 Agent 安装包"
 	case !agentsig.Newer(sig.Version, m.Version):

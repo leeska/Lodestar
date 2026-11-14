@@ -11,13 +11,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/pkg/tzapkg"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/pkg/lspkg"
 )
 
 // Plugins finds an installed notify plugin by id (internal/plugin.Store).
 type Plugins interface {
-	Plugin(id string) (tzapkg.Plugin, error)
+	Plugin(id string) (lspkg.Plugin, error)
 }
 
 // pluginLimit bounds event.text, in UTF-16 code units: far below the 64 KB
@@ -36,7 +36,7 @@ func EventVars(e model.Event) map[string]string {
 	case e.Active:
 		status, priority, urgent, active = "告警触发", "4", "1", "true"
 	}
-	title := []string{"TZA CC", status}
+	title := []string{"Lodestar", status}
 	if e.Kind != "test" {
 		title = append(title, kindName(e.Kind))
 	}
@@ -80,7 +80,7 @@ func (s Transport) sendPlugin(ctx context.Context, c Config, e model.Event) erro
 	if err != nil {
 		return fmt.Errorf("通知插件 %s 不可用（%v），请在「告警与通知 → 配置出口」重新选择渠道", c.Plugin, err)
 	}
-	if p.Kind != tzapkg.KindNotify {
+	if p.Kind != lspkg.KindNotify {
 		return fmt.Errorf("插件 %s 不是通知插件，请重新选择通知渠道", c.Plugin)
 	}
 	settings, err := p.CheckSettings(c.PluginSettings)
@@ -103,7 +103,7 @@ func (s Transport) sendPlugin(ctx context.Context, c Config, e model.Event) erro
 	}
 	hr.Header = req.Headers
 	if hr.Header.Get("User-Agent") == "" {
-		hr.Header.Set("User-Agent", "TZA-ControlCenter/"+model.Version)
+		hr.Header.Set("User-Agent", "Lodestar/"+model.Version)
 	}
 	client := http.Client{Timeout: 5 * time.Second, Transport: s.RoundTripper, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	resp, err := client.Do(hr)

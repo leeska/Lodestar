@@ -8,9 +8,9 @@
 
 ```sh
 python3 -m pip install pillow numpy
-export TZA_IMAGE_API_BASE=https://api.example.com/v1   # 兼容 OpenAI /chat/completions、能返回图片的接口
-export TZA_IMAGE_API_KEY=sk-...                         # 只从环境变量读，不会写进任何文件
-export TZA_IMAGE_MODEL=gemini-3-pro-image               # 可省略，默认就是它（Nano Banana Pro）
+export LODESTAR_IMAGE_API_BASE=https://api.example.com/v1   # 兼容 OpenAI /chat/completions、能返回图片的接口
+export LODESTAR_IMAGE_API_KEY=sk-...                         # 只从环境变量读，不会写进任何文件
+export LODESTAR_IMAGE_MODEL=gemini-3-pro-image               # 可省略，默认就是它（Nano Banana Pro）
 ```
 
 没有接口也能用：自己用任何工具画好原图，放进 `work/raw/<角色 id>.png`（闭眼帧放 `<角色 id>-blink.png`），直接跑 `build`。

@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/theme"
-	"github.com/leeska/TZA-ControlCenter/pkg/tzapkg"
+	"github.com/leeska/Lodestar/internal/theme"
+	"github.com/leeska/Lodestar/pkg/lspkg"
 )
 
 // 仓库里的官方主题包（复古印刷 / 二次元；现代极简已编进二进制）是随发行包发布的源码：每个都要能被
@@ -26,11 +26,11 @@ func TestOfficialThemesInstall(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		m, files, err := tzapkg.Open(archive)
+		m, files, err := lspkg.Open(archive)
 		if err != nil {
 			t.Fatalf("%s: %v", dir, err)
 		}
-		if m.ID != filepath.Base(dir) || m.Type != tzapkg.TypeSkin || m.Version == "" {
+		if m.ID != filepath.Base(dir) || m.Type != lspkg.TypeSkin || m.Version == "" {
 			t.Errorf("%s: id / type / version 不对: %+v", dir, m)
 		}
 		for _, style := range m.Styles {

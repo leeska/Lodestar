@@ -18,12 +18,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/agentdist"
-	"github.com/leeska/TZA-ControlCenter/internal/agentsig"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
-	"github.com/leeska/TZA-ControlCenter/pkg/tzapkg"
-	"github.com/leeska/TZA-ControlCenter/web"
+	"github.com/leeska/Lodestar/internal/agentdist"
+	"github.com/leeska/Lodestar/internal/agentsig"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/storage"
+	"github.com/leeska/Lodestar/pkg/lspkg"
+	"github.com/leeska/Lodestar/web"
 )
 
 type fleetEnv struct {
@@ -245,7 +245,7 @@ func TestAgentUpgradeQueue(t *testing.T) {
 		os.WriteFile(filepath.Join(dir, agentdist.Name("amd64")+".sig"), raw, 0o644)
 		return sig
 	}
-	os.WriteFile(filepath.Join(dir, agentdist.KeyFile), []byte(tzapkg.FormatPublicKey("ops", pub)+"\n"), 0o644)
+	os.WriteFile(filepath.Join(dir, agentdist.KeyFile), []byte(lspkg.FormatPublicKey("ops", pub)+"\n"), 0o644)
 	if code, data := e.request("GET", "/dl/"+agentdist.KeyFile, "", nil); code != 200 || !bytes.HasPrefix(data, []byte("ops:")) {
 		t.Fatalf("upgrade key: %d %s", code, data)
 	}
@@ -268,7 +268,7 @@ func TestAgentUpgradeQueue(t *testing.T) {
 		t.Fatalf("signed release: %d %v", code, queued.Results)
 	}
 	code, reply := report(modernKey, metrics("0.9.0", true))
-	if code != 200 || reply.Upgrade == nil || reply.Upgrade.Path != "/dl/tza-agent-linux-amd64" || reply.Upgrade.SHA256 != sig.SHA256 ||
+	if code != 200 || reply.Upgrade == nil || reply.Upgrade.Path != "/dl/lodestar-agent-linux-amd64" || reply.Upgrade.SHA256 != sig.SHA256 ||
 		reply.Upgrade.Version != "1.1.0" || reply.Upgrade.Arch != "amd64" || reply.Upgrade.KeyID != "ops" || reply.Upgrade.Sig != sig.Sig {
 		t.Fatalf("queued node must get the signed upgrade: %d %+v", code, reply.Upgrade)
 	}

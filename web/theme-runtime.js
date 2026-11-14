@@ -3,7 +3,7 @@
 import { setSkin, SKINS, skinOption } from "./skins.js";
 import { preference, setPreference } from "./theme.js";
 
-const PROTOCOL = "tza-frontend";
+const PROTOCOL = "lodestar-frontend";
 const PUBLIC = /^\/(nodes(?:\/live|\/[a-zA-Z0-9_-]{1,64}\/(?:history|network-history|observations))?|observations|latency-samples|unlock-catalog)$/;
 const RESERVED = /^\/(?:admin|api|themes|dl|mcp|healthz)(?:\/|$)/;
 
@@ -32,8 +32,8 @@ export function startFrontend(skin) {
   const context = () => ({
     api_version: 1,
     theme: { ...skin, options: Object.fromEntries((skin.settings || []).map((st) => [st.id, skinOption(skin.id, st.id)])) },
-    themes: window.__tzaThemes || SKINS,
-    brand: window.__tzaBrand || {},
+    themes: window.__lodestarThemes || SKINS,
+    brand: window.__lodestarBrand || {},
     mode: document.documentElement.dataset.theme,
     preference: preference(),
     route: location.pathname + location.search + location.hash,
@@ -62,10 +62,10 @@ export function startFrontend(skin) {
     message.textContent = String(error?.message || error).slice(0, 300);
     const recover = document.createElement("a");
     recover.className = "button";
-    recover.href = "/?tza-theme=shadcn";
+    recover.href = "/?lodestar-theme=shadcn";
     recover.textContent = "使用默认前台";
     const admin = document.createElement("a");
-    admin.href = "/admin?tza-theme=shadcn";
+    admin.href = "/admin?lodestar-theme=shadcn";
     admin.textContent = "管理主题";
     section.append(title, message, recover, " ", admin);
     host.replaceChildren(section);
@@ -100,7 +100,7 @@ export function startFrontend(skin) {
         if (typeof args.path !== "string" || !args.path.startsWith("/") || args.path.length > 2048) throw new Error("路由无效");
         const url = new URL(args.path, location.origin);
         if (url.origin !== location.origin || RESERVED.test(url.pathname)) throw new Error("不能导航到系统路径");
-        url.searchParams.delete("tza-theme");
+        url.searchParams.delete("lodestar-theme");
         history.pushState(null, "", url.pathname + url.search + url.hash);
         broadcast();
         return null;
@@ -109,7 +109,7 @@ export function startFrontend(skin) {
       case "storage.get":
       case "storage.set": {
         if (typeof args.key !== "string" || !/^[a-zA-Z0-9_.-]{1,64}$/.test(args.key)) throw new Error("存储键无效");
-        const key = `tza-frontend:${skin.id}:${args.key}`;
+        const key = `lodestar-frontend:${skin.id}:${args.key}`;
         if (method === "storage.get") return JSON.parse(localStorage.getItem(key) || "null");
         if (args.value == null) localStorage.removeItem(key);
         else {

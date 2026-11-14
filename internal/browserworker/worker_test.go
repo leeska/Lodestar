@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/ipguard"
+	"github.com/leeska/Lodestar/internal/ipguard"
 )
 
 func TestIsolatedAcceptsFallbackTunnelDevices(t *testing.T) {

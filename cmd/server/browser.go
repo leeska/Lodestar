@@ -12,23 +12,23 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/leeska/TZA-ControlCenter/internal/browserworker"
+	"github.com/leeska/Lodestar/internal/browserworker"
 )
 
 // browserWorkerCommand runs the isolated browser for the region drift check.
-// It is started by its own systemd unit (deploy/tza-browser.service) as the
-// tza-browser user with PrivateNetwork=yes; see docs/IP-GUARD-INTEGRATION.md.
+// It is started by its own systemd unit (deploy/lodestar-browser.service) as the
+// lodestar-browser user with PrivateNetwork=yes; see docs/IP-GUARD-INTEGRATION.md.
 func browserWorkerCommand(args []string) error {
 	fs := flag.NewFlagSet("browser-worker", flag.ContinueOnError)
-	socket := fs.String("socket", "/run/tza-browser/control.sock", "the Server's private worker socket (--browser-socket)")
-	state := fs.String("state", "/var/lib/tza-browser", "private state directory (results awaiting delivery, experiment profiles)")
-	chromium := fs.String("chromium", "", "Chromium headless-shell executable (default: the pinned build under /opt/tza-browser)")
+	socket := fs.String("socket", "/run/lodestar-browser/control.sock", "the Server's private worker socket (--browser-socket)")
+	state := fs.String("state", "/var/lib/lodestar-browser", "private state directory (results awaiting delivery, experiment profiles)")
+	chromium := fs.String("chromium", "", "Chromium headless-shell executable (default: the pinned build under /opt/lodestar-browser)")
 	selfTest := fs.Bool("self-test", false, "check isolation and the Chromium sandbox, print a JSON report and exit")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if *chromium == "" {
-		*chromium = browserworker.ChromiumPath("/opt/tza-browser", runtime.GOARCH)
+		*chromium = browserworker.ChromiumPath("/opt/lodestar-browser", runtime.GOARCH)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -51,7 +51,7 @@ func browserWorkerCommand(args []string) error {
 // line on stdout so the installer can map it to packages.
 func browserInstallCommand(args []string) error {
 	fs := flag.NewFlagSet("browser-install", flag.ContinueOnError)
-	dir := fs.String("dir", "/opt/tza-browser", "install directory")
+	dir := fs.String("dir", "/opt/lodestar-browser", "install directory")
 	archive := fs.String("archive", "", "use this already downloaded chrome-headless-shell zip instead of downloading")
 	check := fs.Bool("check-libs", false, "only list missing shared libraries of the installed build")
 	if err := fs.Parse(args); err != nil {

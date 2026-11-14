@@ -1,7 +1,7 @@
-// 前台区块开关与「需要登录」：由 /theme-default.js 写在 window.__tzaPublic（见 httpapi/public.go）。
+// 前台区块开关与「需要登录」：由 /theme-default.js 写在 window.__lodestarPublic（见 httpapi/public.go）。
 // 访客拿到的数据服务端已经过滤；管理员登录后打开前台拿到的是全量数据，这里按同一规则去掉，
 // 让管理员看到的版面与访客一致。
-const config = (typeof window !== "undefined" && window.__tzaPublic) || {};
+const config = (typeof window !== "undefined" && window.__lodestarPublic) || {};
 
 export const sectionHidden = (id) => Array.isArray(config.hidden) && config.hidden.includes(id);
 export const loginRequired = () => config.login === true;

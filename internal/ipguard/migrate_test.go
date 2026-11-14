@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
+	"github.com/leeska/Lodestar/internal/storage"
 )
 
 // A v2.0.0 data directory: main database at schema 30 plus ipguard.db with
@@ -27,7 +27,7 @@ INSERT INTO jobs VALUES('j1','n1','google','baseline','{"revision":3}','complete
 	}
 	old.Close()
 	list := append(storage.CoreMigrations(), Migrations()...)
-	store, err := storage.OpenWith(filepath.Join(dir, "tza-probe.db"), list)
+	store, err := storage.OpenWith(filepath.Join(dir, "lodestar.db"), list)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ INSERT INTO jobs VALUES('j1','n1','google','baseline','{"revision":3}','complete
 }
 
 func TestMigrationWithoutLegacyFile(t *testing.T) {
-	store, err := storage.OpenWith(filepath.Join(t.TempDir(), "tza-probe.db"), append(storage.CoreMigrations(), Migrations()...))
+	store, err := storage.OpenWith(filepath.Join(t.TempDir(), "lodestar.db"), append(storage.CoreMigrations(), Migrations()...))
 	if err != nil {
 		t.Fatal(err)
 	}

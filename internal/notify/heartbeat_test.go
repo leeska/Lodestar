@@ -1,7 +1,7 @@
 package notify
 
 import (
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 	"strings"
 	"testing"
 	"time"

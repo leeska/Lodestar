@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/agentsig"
+	"github.com/leeska/Lodestar/internal/agentsig"
 )
 
 //go:embed bin install.sh
@@ -42,7 +42,7 @@ type Dist struct {
 	sums    map[string]string // immutable embedded binaries only
 }
 
-func Name(arch string) string { return "tza-agent-linux-" + arch }
+func Name(arch string) string { return "lodestar-agent-linux-" + arch }
 
 func valid(arch string) bool {
 	for _, a := range Archs {
@@ -228,7 +228,11 @@ func Script() []byte {
 func ParseDownload(name string) (arch string, sum bool, ok bool) {
 	sum = strings.HasSuffix(name, ".sha256")
 	name = strings.TrimSuffix(name, ".sha256")
-	arch = strings.TrimPrefix(name, "tza-agent-linux-")
+	arch = strings.TrimPrefix(name, "lodestar-agent-linux-")
+	if arch == name {
+		// Install commands copied before the rename still ask for tza-agent-*.
+		arch = strings.TrimPrefix(name, "tza-agent-linux-")
+	}
 	if arch == name || !valid(arch) {
 		return "", false, false
 	}

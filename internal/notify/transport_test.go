@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)

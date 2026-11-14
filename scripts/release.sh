@@ -21,7 +21,7 @@ set -euo pipefail
 
 TAG=${1:?用法: bash scripts/release.sh <tag> <dist 目录> [目标 sha]}
 DIST=${2:?缺少 dist 目录}
-REPO=${REPO:-leeska/TZA-ControlCenter}
+REPO=${REPO:-leeska/Lodestar}
 TOKEN=${GITHUB_TOKEN:-}
 if [ -z "$TOKEN" ] && command -v gh >/dev/null; then TOKEN=$(gh auth token 2>/dev/null || true); fi
 [ -n "$TOKEN" ] || { echo "!! 需要 GITHUB_TOKEN（或先 gh auth login）" >&2; exit 1; }
@@ -54,7 +54,7 @@ echo "== 校验产物"
 ( cd "$DIST" && sha256_check SHA256SUMS )
 ASSETS=()
 # 每个安装包后面紧跟它的 .sha256：切换时成对换，不让新包配旧校验和（install.sh 会校验失败）。
-for f in "$DIST"/tza-probe-linux-*.tar.gz; do ASSETS+=("$f" "$f.sha256"); done
+for f in "$DIST"/lodestar-linux-*.tar.gz; do ASSETS+=("$f" "$f.sha256"); done
 printf '   %s\n' "${ASSETS[@]##*/}"
 
 echo "== tag $TAG -> ${SHA:0:7}"

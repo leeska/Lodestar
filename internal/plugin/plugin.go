@@ -1,6 +1,6 @@
 // Package plugin keeps the installed declarative plugins: notification
 // channels and probe target sets, each a single plugin.json interpreted by
-// pkg/tzapkg (no code). Installed plugins live in <data>/plugins/<id>/plugin.json.
+// pkg/lspkg (no code). Installed plugins live in <data>/plugins/<id>/plugin.json.
 // Nothing here is served over HTTP. See
 // docs/PLUGINS.md.
 package plugin
@@ -15,7 +15,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/leeska/TZA-ControlCenter/pkg/tzapkg"
+	"github.com/leeska/Lodestar/pkg/lspkg"
 )
 
 // ErrNotFound means no plugin is installed under the id; it matches
@@ -35,7 +35,7 @@ type Store struct {
 }
 
 // List returns the installed plugins that still parse, by id.
-func (s *Store) List() []tzapkg.Plugin {
+func (s *Store) List() []lspkg.Plugin {
 	if s == nil || s.Dir == "" {
 		return nil
 	}
@@ -45,9 +45,9 @@ func (s *Store) List() []tzapkg.Plugin {
 	if err != nil {
 		return nil
 	}
-	out := []tzapkg.Plugin{}
+	out := []lspkg.Plugin{}
 	for _, e := range entries {
-		if !e.IsDir() || !tzapkg.ValidID(e.Name()) {
+		if !e.IsDir() || !lspkg.ValidID(e.Name()) {
 			continue
 		}
 		if p, err := s.read(e.Name()); err == nil {
@@ -60,9 +60,9 @@ func (s *Store) List() []tzapkg.Plugin {
 
 // Plugin loads one installed plugin. A missing one is ErrNotFound; one whose
 // plugin.json no longer passes validation is an error that says so.
-func (s *Store) Plugin(id string) (tzapkg.Plugin, error) {
-	if s == nil || s.Dir == "" || !tzapkg.ValidID(id) {
-		return tzapkg.Plugin{}, ErrNotFound
+func (s *Store) Plugin(id string) (lspkg.Plugin, error) {
+	if s == nil || s.Dir == "" || !lspkg.ValidID(id) {
+		return lspkg.Plugin{}, ErrNotFound
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -70,64 +70,64 @@ func (s *Store) Plugin(id string) (tzapkg.Plugin, error) {
 }
 
 // read parses an installed plugin; callers hold the lock.
-func (s *Store) read(id string) (tzapkg.Plugin, error) {
+func (s *Store) read(id string) (lspkg.Plugin, error) {
 	raw, err := os.ReadFile(filepath.Join(s.Dir, id, "plugin.json"))
 	if errors.Is(err, os.ErrNotExist) {
-		return tzapkg.Plugin{}, ErrNotFound
+		return lspkg.Plugin{}, ErrNotFound
 	}
 	if err != nil {
-		return tzapkg.Plugin{}, err
+		return lspkg.Plugin{}, err
 	}
-	p, err := tzapkg.ParsePlugin(raw)
+	p, err := lspkg.ParsePlugin(raw)
 	if err != nil {
-		return tzapkg.Plugin{}, fmt.Errorf("插件 %s 的 plugin.json 无效：%w", id, err)
+		return lspkg.Plugin{}, fmt.Errorf("插件 %s 的 plugin.json 无效：%w", id, err)
 	}
 	if p.ID != id {
-		return tzapkg.Plugin{}, fmt.Errorf("插件 %s 的 plugin.json 写的 id 是 %s", id, p.ID)
+		return lspkg.Plugin{}, fmt.Errorf("插件 %s 的 plugin.json 写的 id 是 %s", id, p.ID)
 	}
 	return p, nil
 }
 
 // Install validates and installs an uploaded plugin, replacing one with the
 // same id. Nothing is written unless the archive passes.
-func (s *Store) Install(archive []byte) (tzapkg.Plugin, error) {
+func (s *Store) Install(archive []byte) (lspkg.Plugin, error) {
 	if s == nil || s.Dir == "" {
-		return tzapkg.Plugin{}, errors.New("这个 Server 没有配置插件目录")
+		return lspkg.Plugin{}, errors.New("这个 Server 没有配置插件目录")
 	}
-	p, err := tzapkg.OpenPlugin(archive)
+	p, err := lspkg.OpenPlugin(archive)
 	if err != nil {
-		return tzapkg.Plugin{}, err
+		return lspkg.Plugin{}, err
 	}
 	raw, err := pluginJSON(archive)
 	if err != nil {
-		return tzapkg.Plugin{}, err
+		return lspkg.Plugin{}, err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := os.MkdirAll(s.Dir, 0o755); err != nil {
-		return tzapkg.Plugin{}, err
+		return lspkg.Plugin{}, err
 	}
 	tmp, err := os.MkdirTemp(s.Dir, ".upload-")
 	if err != nil {
-		return tzapkg.Plugin{}, err
+		return lspkg.Plugin{}, err
 	}
 	defer os.RemoveAll(tmp)
 	if err := os.WriteFile(filepath.Join(tmp, "plugin.json"), raw, 0o644); err != nil {
-		return tzapkg.Plugin{}, err
+		return lspkg.Plugin{}, err
 	}
 	final := filepath.Join(s.Dir, p.ID)
 	old := ""
 	if _, err := os.Stat(final); err == nil {
 		old = filepath.Join(s.Dir, ".old-"+p.ID+"-"+random())
 		if err := os.Rename(final, old); err != nil {
-			return tzapkg.Plugin{}, err
+			return lspkg.Plugin{}, err
 		}
 	}
 	if err := os.Rename(tmp, final); err != nil {
 		if old != "" {
 			os.Rename(old, final)
 		}
-		return tzapkg.Plugin{}, err
+		return lspkg.Plugin{}, err
 	}
 	if old != "" {
 		os.RemoveAll(old)
@@ -137,7 +137,7 @@ func (s *Store) Install(archive []byte) (tzapkg.Plugin, error) {
 
 // pluginJSON pulls the (already validated) plugin.json out of the archive.
 func pluginJSON(archive []byte) ([]byte, error) {
-	files, err := tzapkg.Files(archive)
+	files, err := lspkg.Files(archive)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func pluginJSON(archive []byte) ([]byte, error) {
 // Remove deletes an installed plugin. Whether it may go (a notification
 // channel in use) is the caller's rule, see service.RemovePlugin.
 func (s *Store) Remove(id string) error {
-	if s == nil || s.Dir == "" || !tzapkg.ValidID(id) {
+	if s == nil || s.Dir == "" || !lspkg.ValidID(id) {
 		return ErrNotFound
 	}
 	s.mu.Lock()

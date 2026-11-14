@@ -1,6 +1,6 @@
 // Package account is the administrator's username and password for the panel
 // login. It lives in a 0600 file in the data directory, next to admin-token,
-// rather than in the database: the terminal reset (tza-server reset-password)
+// rather than in the database: the terminal reset (lodestar reset-password)
 // must work without opening the database, and the running server rereads the
 // file on every login so a reset takes effect without a restart.
 package account
@@ -62,7 +62,7 @@ func Load(dir string) (Account, error) {
 	}
 	var a Account
 	if err := json.Unmarshal(data, &a); err != nil || a.Username == "" || a.Hash == "" || a.Iterations <= 0 {
-		return Account{}, fmt.Errorf("%s 内容无效，可用 tza-server reset-password 重建", path(dir))
+		return Account{}, fmt.Errorf("%s 内容无效，可用 lodestar reset-password 重建", path(dir))
 	}
 	return a, nil
 }

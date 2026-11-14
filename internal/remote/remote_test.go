@@ -12,17 +12,17 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/leeska/TZA-ControlCenter/internal/agent"
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
-	"github.com/leeska/TZA-ControlCenter/internal/httpapi"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/module"
-	"github.com/leeska/TZA-ControlCenter/internal/remote"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
+	"github.com/leeska/Lodestar/internal/agent"
+	"github.com/leeska/Lodestar/internal/channel"
+	"github.com/leeska/Lodestar/internal/httpapi"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/module"
+	"github.com/leeska/Lodestar/internal/remote"
+	"github.com/leeska/Lodestar/internal/storage"
 )
 
 func TestShellOverChannel(t *testing.T) {
-	store, err := storage.Open(filepath.Join(t.TempDir(), "tza-probe.db"))
+	store, err := storage.Open(filepath.Join(t.TempDir(), "lodestar.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

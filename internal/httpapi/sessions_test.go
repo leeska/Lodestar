@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/account"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
-	"github.com/leeska/TZA-ControlCenter/web"
+	"github.com/leeska/Lodestar/internal/account"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/storage"
+	"github.com/leeska/Lodestar/web"
 )
 
 // 部署重启主控后后台不用重新登录：会话存在数据目录里（只存令牌的哈希，0600），新进程读回；
@@ -42,7 +42,7 @@ func TestSessionsSurviveRestart(t *testing.T) {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, r)
 		for _, c := range w.Result().Cookies() {
-			if c.Name == "tza_session" {
+			if c.Name == "lodestar_session" {
 				return w, c
 			}
 		}

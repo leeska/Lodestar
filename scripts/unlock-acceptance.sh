@@ -5,7 +5,7 @@
 # 并确认一台没跑过检测的机器**不带** unlock 字段（前端据此不渲染占位）。
 # 用法：bash scripts/unlock-acceptance.sh   （需要 /usr/local/go/bin 的 go）
 set -euo pipefail
-WORK=/tmp/tza-unlock-accept
+WORK=/tmp/lodestar-unlock-accept
 PORT=25911
 BASE=http://127.0.0.1:$PORT
 export PATH=$PATH:/usr/local/go/bin
@@ -14,10 +14,10 @@ pid=$(ss -ltnp 2>/dev/null | grep ":$PORT " | grep -o 'pid=[0-9]*' | cut -d= -f2
 [ -n "${pid:-}" ] && kill "$pid" && sleep 1
 rm -rf "$WORK"; mkdir -p "$WORK/data"
 cd "$(dirname "$0")/.."
-go build -o "$WORK/tza-server" ./cmd/server
-TZA_ADMIN_TOKEN=$(python3 -c 'import secrets;print(secrets.token_hex(24))')
-export TZA_ADMIN_TOKEN
-"$WORK/tza-server" --listen 127.0.0.1:$PORT --data "$WORK/data" > "$WORK/server.log" 2>&1 &
+go build -o "$WORK/lodestar" ./cmd/server
+LODESTAR_ADMIN_TOKEN=$(python3 -c 'import secrets;print(secrets.token_hex(24))')
+export LODESTAR_ADMIN_TOKEN
+"$WORK/lodestar" --listen 127.0.0.1:$PORT --data "$WORK/data" > "$WORK/server.log" 2>&1 &
 SERVER=$!
 trap 'kill $SERVER 2>/dev/null || true' EXIT
 for _ in $(seq 1 60); do curl -sf "$BASE/healthz" >/dev/null 2>&1 && break; sleep 0.25; done
@@ -27,7 +27,7 @@ BASE=$BASE python3 - <<'PY'
 import json, os, time, urllib.error, urllib.request
 
 BASE = os.environ["BASE"]
-TOKEN = os.environ["TZA_ADMIN_TOKEN"]
+TOKEN = os.environ["LODESTAR_ADMIN_TOKEN"]
 
 def call(method, path, body=None, token=TOKEN):
     data = json.dumps(body).encode() if body is not None else None

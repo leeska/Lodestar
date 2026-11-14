@@ -23,14 +23,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/agent"
-	"github.com/leeska/TZA-ControlCenter/internal/certs"
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
-	"github.com/leeska/TZA-ControlCenter/internal/httpapi"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/module"
-	"github.com/leeska/TZA-ControlCenter/internal/remote"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
+	"github.com/leeska/Lodestar/internal/agent"
+	"github.com/leeska/Lodestar/internal/certs"
+	"github.com/leeska/Lodestar/internal/channel"
+	"github.com/leeska/Lodestar/internal/httpapi"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/module"
+	"github.com/leeska/Lodestar/internal/remote"
+	"github.com/leeska/Lodestar/internal/storage"
 )
 
 func TestNormalizeDomains(t *testing.T) {
@@ -43,7 +43,7 @@ func TestNormalizeDomains(t *testing.T) {
 			t.Errorf("%v 要拒绝", bad)
 		}
 	}
-	if certs.DefaultDir("*.example.com") != "/etc/tza-certs/_.example.com" {
+	if certs.DefaultDir("*.example.com") != "/etc/lodestar-certs/_.example.com" {
 		t.Fatal(certs.DefaultDir("*.example.com"))
 	}
 }
@@ -162,7 +162,7 @@ func TestCertsOverChannel(t *testing.T) {
 	defer cancel()
 	remoteMod, certsMod := &remote.Module{}, &certs.Module{}
 	mods := []module.Module{remoteMod, certsMod}
-	store, err := storage.OpenWith(filepath.Join(t.TempDir(), "tza-probe.db"), module.Migrations(mods))
+	store, err := storage.OpenWith(filepath.Join(t.TempDir(), "lodestar.db"), module.Migrations(mods))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +223,7 @@ func TestCertsOverChannel(t *testing.T) {
 	if code := call("POST", "/admin/certs", map[string]any{"domains": []string{"example.com", "*.example.com"}, "dns_id": dns.ID, "targets": []map[string]string{
 		{"node_id": node, "dir": dir, "reload": "echo reloaded >> reload.log"},
 		{"node_id": other},
-	}}, &c); code != 201 || c.Status != certs.StatusPending || c.Targets[1].Dir != "/etc/tza-certs/example.com" {
+	}}, &c); code != 201 || c.Status != certs.StatusPending || c.Targets[1].Dir != "/etc/lodestar-certs/example.com" {
 		t.Fatalf("%d %+v", code, c)
 	}
 	if code := call("POST", "/admin/certs", map[string]any{"domains": []string{"a.example"}, "dns_id": "nope"}, nil); code != 400 {

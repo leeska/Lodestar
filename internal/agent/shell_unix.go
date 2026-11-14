@@ -11,7 +11,7 @@ import (
 	"syscall"
 
 	"github.com/creack/pty"
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
+	"github.com/leeska/Lodestar/internal/channel"
 )
 
 func setProcessGroup(cmd *exec.Cmd) {

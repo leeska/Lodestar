@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/backup"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
+	"github.com/leeska/Lodestar/internal/backup"
+	"github.com/leeska/Lodestar/internal/storage"
 )
 
 // backup-restore 用口令解开备份并解到新目录；口令错、目录非空都拒绝。
@@ -19,7 +19,7 @@ func TestRestoreCommand(t *testing.T) {
 	}
 	os.WriteFile(filepath.Join(src, "admin-token"), []byte("secret"), 0600)
 	key, _ := backup.DeriveKey("restore passphrase", backup.Params{LogN: 10, R: 8, P: 1})
-	file := filepath.Join(t.TempDir(), "tza-probe-20261114-030000.tzabk")
+	file := filepath.Join(t.TempDir(), "lodestar-20261114-030000.lsbk")
 	f, _ := os.Create(file)
 	w, _ := backup.NewWriter(f, key)
 	if _, err := backup.Snapshot(context.Background(), store.DB(), src, w); err != nil {
@@ -30,14 +30,14 @@ func TestRestoreCommand(t *testing.T) {
 	store.Close()
 
 	dst := filepath.Join(t.TempDir(), "restored")
-	t.Setenv("TZA_BACKUP_PASSPHRASE", "not the passphrase")
+	t.Setenv("LODESTAR_BACKUP_PASSPHRASE", "not the passphrase")
 	if err := restoreCommand([]string{"--in", file, "--data", dst}); err == nil {
 		t.Fatal("口令错要失败")
 	}
 	if _, err := os.Stat(dst); err == nil {
 		t.Fatal("口令错时不能留下目录")
 	}
-	t.Setenv("TZA_BACKUP_PASSPHRASE", "restore passphrase")
+	t.Setenv("LODESTAR_BACKUP_PASSPHRASE", "restore passphrase")
 	if err := restoreCommand([]string{"--in", file, "--data", dst}); err != nil {
 		t.Fatal(err)
 	}

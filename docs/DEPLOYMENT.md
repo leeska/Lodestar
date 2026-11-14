@@ -4,6 +4,32 @@
 > [架构说明](ARCHITECTURE.md#数据库迁移)）。更早的库（schema 30 以前）仍不升级，需要按
 > [全新部署](FRESH-DEPLOYMENT.md) 换新的数据目录。
 
+## 从 TZA 改名为 Lodestar（v3.0.0）
+
+v3.0.0 起项目改名为 Lodestar，程序、服务、用户和目录都换成了新名字：
+
+| 改名前 | 现在 |
+| --- | --- |
+| `tza-server`、`tza-server.service` | `lodestar`、`lodestar.service` |
+| `tza-browser.service`、用户 `tza-browser`、`/opt/tza-browser`、`/var/lib/tza-browser` | `lodestar-browser`（同样的位置换名字） |
+| `/var/lib/tza-probe`、`tza-probe.db`、用户 `tza-probe` | `/var/lib/lodestar`、`lodestar.db`、用户 `lodestar` |
+| `tza-agent`、`/etc/tza-probe`、`/var/lib/tza-agent` | `lodestar-agent`、`/etc/lodestar`、`/var/lib/lodestar-agent` |
+| `tza-proxy-<内核>`、`/etc/tza-proxy`、`/usr/local/lib/tza-probe` | `lodestar-proxy-<内核>`、`/etc/lodestar-proxy`、`/usr/local/lib/lodestar` |
+| `tza-site-*.conf`、`/etc/tza-certs`、`/opt/tza-compose`、`/var/backups/tza-probe` | `lodestar-site-*.conf`、`/etc/lodestar-certs`、`/opt/lodestar-compose`、`/var/backups/lodestar` |
+| 环境变量 `TZA_*` | `LODESTAR_*`（旧名字仍然认） |
+| 备份文件 `.tzabk` | `.lsbk`（旧备份照样能恢复） |
+
+**主控**：用新的发布包执行 `install.sh --package`（或 `--release`）。脚本发现 `/var/lib/tza-probe` 时自动迁移：
+先用新版本核对旧库，停服务，把整个旧数据目录打包到 `/root/lodestar-premigrate-<时间>.tar.zst`（0600），
+再改用户、目录、服务和二进制的名字，然后照常启动。站点里写的 `if=$tza_loggable` 仍然有效。
+回滚：停掉 `lodestar`，把那个包解压回 `/var/lib`，装回旧版本。
+
+**节点**：主控升级后，在后台给节点点「升级 Agent」。新版本 Agent 发现自己还是旧名字时，会用一个独立的临时服务
+`lodestar-agent-migrate` 把服务、配置和状态，以及代理内核、nginx 站点、证书、Compose、备份目录都换成新名字，
+证书、Compose 和备份的旧路径留一个指向新位置的链接。过程中代理会断开几秒。迁移失败时旧 Agent 会重新启动，
+节点照常工作，原因看 `journalctl -u lodestar-agent-migrate`。重新执行后台的接入命令也会做同样的迁移。
+旧 Agent 接新主控照常上报，可以一台一台升级；但网站同步要等节点升级后才会恢复（新主控按新文件名下发）。
+
 ## 0. 一键安装（推荐）
 
 Linux 主机（amd64 / arm64），一条命令装成 systemd 服务。按来源分两种方式，二选一：
@@ -16,45 +42,45 @@ Linux 主机（amd64 / arm64），一条命令装成 systemd 服务。按来源�
 **从 Release 安装最新发布：**
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/leeska/TZA-ControlCenter/main/deploy/install.sh | sudo sh
+curl -fsSL https://raw.githubusercontent.com/leeska/Lodestar/main/deploy/install.sh | sudo sh
 ```
 
 **从 Release 安装指定版本**（把 `v1.0.0` 换成要装的版本）：
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/leeska/TZA-ControlCenter/main/deploy/install.sh | sudo sh -s -- --release v1.0.0
+curl -fsSL https://raw.githubusercontent.com/leeska/Lodestar/main/deploy/install.sh | sudo sh -s -- --release v1.0.0
 ```
 
-**用本机已有的发布包安装**（`scripts/pipeline.sh build` 产出的 `tza-probe-linux-<架构>.tar.gz`，适合离线、未发布的版本或迁移到新主机；旁边有同名 `.sha256` 时先校验）：
+**用本机已有的发布包安装**（`scripts/pipeline.sh build` 产出的 `lodestar-linux-<架构>.tar.gz`，适合离线、未发布的版本或迁移到新主机；旁边有同名 `.sha256` 时先校验）：
 
 ```sh
-sudo sh install.sh --package /root/tza-probe-linux-amd64.tar.gz --with-browser
+sudo sh install.sh --package /root/lodestar-linux-amd64.tar.gz --with-browser
 ```
 
 **从源码构建 `main` 分支：**
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/leeska/TZA-ControlCenter/main/deploy/install.sh | sudo sh -s -- --source
+curl -fsSL https://raw.githubusercontent.com/leeska/Lodestar/main/deploy/install.sh | sudo sh -s -- --source
 ```
 
 **从源码构建指定分支或 tag**（把 `dev` 换成要构建的分支或 tag）：
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/leeska/TZA-ControlCenter/main/deploy/install.sh | sudo sh -s -- --ref dev
+curl -fsSL https://raw.githubusercontent.com/leeska/Lodestar/main/deploy/install.sh | sudo sh -s -- --ref dev
 ```
 
 - Release 方式不写版本时装最新发布（`/releases/latest`），下载后按 `.sha256` 校验；`--version vX.Y.Z` 与 `--release vX.Y.Z` 等价。
-- 安装 `/usr/local/bin/tza-server`，旧二进制保留为 `tza-server.previous`，重复执行即升级。
-- 创建 `tza-probe` 系统账户与 `/var/lib/tza-probe`（0700），数据目录不会被覆盖。
-- 安装 `deploy/tza-server.service` 并 `systemctl enable --now`，等待 `/healthz` 通过后打印管理地址与密钥位置。
+- 安装 `/usr/local/bin/lodestar`，旧二进制保留为 `lodestar.previous`，重复执行即升级。
+- 创建 `lodestar` 系统账户与 `/var/lib/lodestar`（0700），数据目录不会被覆盖。
+- 安装 `deploy/lodestar.service` 并 `systemctl enable --now`，等待 `/healthz` 通过后打印管理地址与密钥位置。
 - 源码构建时顺带编译 amd64 / arm64 两个 Agent 放进 `<数据目录>/agents/`，后台的一键安装命令开箱可用（Server 分发 Agent 时优先用数据目录里这份，升级 Agent 不必重编 Server）。在服务器上编出来的 Agent 没有签名，不能一键升级；要用一键升级见下文「一键升级」。
 - 两种方式可以互相切换，重跑对应命令即可。源码构建放进 `<数据目录>/agents/` 的 Agent 带 `.source-build` 标记，改用 Release 安装时会被清掉，换回发布包内嵌的 Agent；没有标记的（手工放的）保留并给出提示。
-- 其他参数：`--listen ADDR`（默认 `127.0.0.1:25774`）、`--data DIR`（默认 `/var/lib/tza-probe`）、`--no-systemd`（只装二进制与数据目录）。无 systemd 的环境下脚本会跳过服务注册并打印手动启动命令。
+- 其他参数：`--listen ADDR`（默认 `127.0.0.1:25774`）、`--data DIR`（默认 `/var/lib/lodestar`）、`--no-systemd`（只装二进制与数据目录）。无 systemd 的环境下脚本会跳过服务注册并打印手动启动命令。
 
 Docker 部署用 `deploy/docker-compose.yml`（数据放命名卷）：
 
 ```sh
-git clone --depth 1 https://github.com/leeska/TZA-ControlCenter && cd TZA-ControlCenter
+git clone --depth 1 https://github.com/leeska/Lodestar && cd Lodestar
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
@@ -71,32 +97,32 @@ docker compose -f deploy/docker-compose.yml up -d --build
 在目标 Linux 主机编译：
 
 ```sh
-go build -trimpath -o bin/tza-server ./cmd/server
-go build -trimpath -o bin/tza-agent ./cmd/agent
+go build -trimpath -o bin/lodestar ./cmd/server
+go build -trimpath -o bin/lodestar-agent ./cmd/agent
 ```
 
 如果在 macOS 等机器上为 Linux 编译，显式选择目标架构（x86_64 为 amd64，aarch64 为 arm64）：
 
 ```sh
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o bin/linux-amd64/tza-server ./cmd/server
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o bin/linux-amd64/tza-agent ./cmd/agent
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o bin/linux-amd64/lodestar ./cmd/server
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o bin/linux-amd64/lodestar-agent ./cmd/agent
 ```
 
 ARM 主机将两条命令的 `GOARCH` 和输出目录改为 arm64。将产物复制到目标主机；以下安装步骤假设二进制位于目标主机的 `bin/`。
 
-要让 Server 提供一键安装，先把两种架构的 Agent 放到 `internal/agentdist/bin/` 再编译 Server（见该目录的 README）；`scripts/pipeline.sh build` 的发行包和 Docker 镜像已包含。版本号通过 `-ldflags "-X github.com/leeska/TZA-ControlCenter/internal/model.Version=v1.0.0"` 注入，不注入时为当前源码声明的开发版本（目前 `2.12.1-dev`）。发布 GitHub Release 用 `scripts/release.sh`（见 README）。
+要让 Server 提供一键安装，先把两种架构的 Agent 放到 `internal/agentdist/bin/` 再编译 Server（见该目录的 README）；`scripts/pipeline.sh build` 的发行包和 Docker 镜像已包含。版本号通过 `-ldflags "-X github.com/leeska/Lodestar/internal/model.Version=v1.0.0"` 注入，不注入时为当前源码声明的开发版本（目前 `3.0.0-dev`）。发布 GitHub Release 用 `scripts/release.sh`（见 README）。
 
 ## 2. 安装 Server
 
 首次安装：
 
 ```sh
-sudo install -m 0755 bin/tza-server /usr/local/bin/tza-server
-id tza-probe >/dev/null 2>&1 || sudo useradd --system --user-group --home /var/lib/tza-probe --shell /usr/sbin/nologin tza-probe
-sudo install -d -m 0700 -o tza-probe -g tza-probe /var/lib/tza-probe
-sudo install -m 0644 deploy/tza-server.service /etc/systemd/system/
+sudo install -m 0755 bin/lodestar /usr/local/bin/lodestar
+id lodestar >/dev/null 2>&1 || sudo useradd --system --user-group --home /var/lib/lodestar --shell /usr/sbin/nologin lodestar
+sudo install -d -m 0700 -o lodestar -g lodestar /var/lib/lodestar
+sudo install -m 0644 deploy/lodestar.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now tza-server
+sudo systemctl enable --now lodestar
 ```
 
 服务监听 `127.0.0.1:25774`。跨主机接入时，在前面配置 Caddy / nginx 的 HTTPS 反代，保留 Host 和 Origin，不缓存 `/api/`。Caddy 示例：
@@ -107,7 +133,7 @@ probe.example.com {
 }
 ```
 
-用 nginx 时参考 [`deploy/nginx-site.conf`](../deploy/nginx-site.conf)。每个 Agent 每隔几秒就上报一次，全部写进访问日志一天会有上百 MB。安装脚本检测到本机有 nginx 时，会写入 `/etc/nginx/conf.d/tza-probe-log.conf`，内容同 [`deploy/nginx-tza-probe-log.conf`](../deploy/nginx-tza-probe-log.conf)。它只定义变量 `$tza_loggable`：`/api/v1/agent/*` 返回 2xx、3xx 或 499 时取 0，其他请求取 1。站点的 server 块里写 `access_log /var/log/nginx/access.log combined if=$tza_loggable;` 才会生效，面板访问和 Agent 的报错照常记录。安装脚本不改任何站点配置；写入后 `nginx -t` 不通过会自动撤回。不需要时加 `--no-nginx`。
+用 nginx 时参考 [`deploy/nginx-site.conf`](../deploy/nginx-site.conf)。每个 Agent 每隔几秒就上报一次，全部写进访问日志一天会有上百 MB。安装脚本检测到本机有 nginx 时，会写入 `/etc/nginx/conf.d/lodestar-log.conf`，内容同 [`deploy/nginx-lodestar-log.conf`](../deploy/nginx-lodestar-log.conf)。它只定义变量 `$lodestar_loggable`：`/api/v1/agent/*` 返回 2xx、3xx 或 499 时取 0，其他请求取 1。站点的 server 块里写 `access_log /var/log/nginx/access.log combined if=$lodestar_loggable;` 才会生效，面板访问和 Agent 的报错照常记录。安装脚本不改任何站点配置；写入后 `nginx -t` 不通过会自动撤回。不需要时加 `--no-nginx`。
 
 安装脚本结束时打印后台用户名、密码（密码只在首次安装时显示一次）。访问 `https://probe.example.com/admin` 用用户名密码登录。MCP API Key 在“面板设置”中生成、重新生成或撤销，客户端配置和连接排错见 [MCP 接入指南](MCP.md)。用户名与密码在“面板设置 → 后台账号”修改。新增节点后，后台提供配置和安装脚本。
 
@@ -123,21 +149,21 @@ Agent 的 endpoint 必须是它能访问的 Server 地址。远程 Agent 不能�
 curl -fsSL https://probe.example.com/install.sh | sh -s -- --endpoint https://probe.example.com --token <节点密钥>
 ```
 
-脚本从 **这台 Server** 的 `/dl/tza-agent-linux-<arch>` 下载与主机架构匹配的 Agent（x86_64 / arm64），校验 SHA-256，写入 `/etc/tza-probe/agent.json`（0600）和 systemd 单元并启动。可选参数：`--interfaces eth0,eth1` 指定统计网卡，`--trace-method icmp|tcp|udp` 指定内置回程的探测方式（默认 `icmp`），`--geo-provider NAME` 指定内置回程的 ASN 数据源（默认 `IPAPI.com`），`--nexttrace /path` 改用外部 NextTrace 二进制（默认用内置实现），`--uninstall` 卸载。不带 `--token` 再执行一次即为升级 Agent，会保留现有配置并备份旧二进制为 `tza-agent.previous`。脚本本身不含密钥，密钥只作为命令参数出现；不希望它进入 shell 历史时可改用 `TZA_TOKEN=<密钥>` 环境变量。
+脚本从 **这台 Server** 的 `/dl/lodestar-agent-linux-<arch>` 下载与主机架构匹配的 Agent（x86_64 / arm64），校验 SHA-256，写入 `/etc/lodestar/agent.json`（0600）和 systemd 单元并启动。可选参数：`--interfaces eth0,eth1` 指定统计网卡，`--trace-method icmp|tcp|udp` 指定内置回程的探测方式（默认 `icmp`），`--geo-provider NAME` 指定内置回程的 ASN 数据源（默认 `IPAPI.com`），`--nexttrace /path` 改用外部 NextTrace 二进制（默认用内置实现），`--uninstall` 卸载。不带 `--token` 再执行一次即为升级 Agent，会保留现有配置并备份旧二进制为 `lodestar-agent.previous`。脚本本身不含密钥，密钥只作为命令参数出现；不希望它进入 shell 历史时可改用 `LODESTAR_TOKEN=<密钥>` 环境变量。
 
-Server 提供的 Agent 来自两处，前者优先：数据目录下的 `agents/tza-agent-linux-<arch>`（运维手动放置，升级 Agent 不必重编 Server），以及构建时嵌入在 Server 内的副本（发行包已包含；自行编译见 `internal/agentdist/bin/README.md`）。两处都没有时 Server 启动日志会提示，安装脚本则报“该 Server 未提供此架构的 Agent”。
+Server 提供的 Agent 来自两处，前者优先：数据目录下的 `agents/lodestar-agent-linux-<arch>`（运维手动放置，升级 Agent 不必重编 Server），以及构建时嵌入在 Server 内的副本（发行包已包含；自行编译见 `internal/agentdist/bin/README.md`）。两处都没有时 Server 启动日志会提示，安装脚本则报“该 Server 未提供此架构的 Agent”。
 
 ### 手动安装
 
 将后台下载的 `agent.json` 放在当前目录，修改必要配置后执行：
 
 ```sh
-sudo install -m 0755 bin/tza-agent /usr/local/bin/tza-agent
-sudo install -d -m 0700 /etc/tza-probe
-sudo install -m 0600 agent.json /etc/tza-probe/agent.json
-sudo install -m 0644 deploy/tza-agent.service /etc/systemd/system/
+sudo install -m 0755 bin/lodestar-agent /usr/local/bin/lodestar-agent
+sudo install -d -m 0700 /etc/lodestar
+sudo install -m 0600 agent.json /etc/lodestar/agent.json
+sudo install -m 0644 deploy/lodestar-agent.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now tza-agent
+sudo systemctl enable --now lodestar-agent
 ```
 
 `interfaces` 为空时统计非 loopback 网卡；有容器、桥接或隧道时建议明确指定公网网卡，避免重复计数。三网回程由内置 NTrace-core 在 Agent 进程内完成，不需要额外安装；仅在需要改用外部二进制时才填写 `nexttrace` 绝对路径。服务示例以 root 启动，并收窄 capability 集合；仅基础监控和 TCP 可改成普通账户且不授予 `CAP_NET_RAW`。
@@ -154,7 +180,7 @@ sudo systemctl enable --now tza-agent
 curl -fsSL https://probe.example.com/install.sh | sh -s -- --endpoint https://probe.example.com --manage
 ```
 
-- **开启时做了什么**：脚本写入 `/etc/tza-probe/manage.json`，并把服务单元换成不带沙箱的版本，去掉 `ProtectSystem`、能力限制和 `NoNewPrivileges`，`UMask` 改成 022。Agent 以 root 完整权限运行，并保持一条到 Server 的管理通道（`/api/v1/agent/channel`，WebSocket）。之后重跑安装脚本升级，这个设置会保留。
+- **开启时做了什么**：脚本写入 `/etc/lodestar/manage.json`，并把服务单元换成不带沙箱的版本，去掉 `ProtectSystem`、能力限制和 `NoNewPrivileges`，`UMask` 改成 022。Agent 以 root 完整权限运行，并保持一条到 Server 的管理通道（`/api/v1/agent/channel`，WebSocket）。之后重跑安装脚本升级，这个设置会保留。
 - **关闭**：`--manage-off` 关闭远程管理并恢复沙箱。
 - **本机单独关掉某项能力**：在 `manage.json` 的 `"disabled_capabilities"` 里写 `"shell"`，再重启 Agent，就能只关掉命令与终端，不管 Server 怎么要求。
 - **反代**：nginx 需要转发 WebSocket，也就是 `Upgrade` 和 `Connection "upgrade"` 两个头（见 `deploy/nginx-site.conf`）。保活由通道自己负责。
@@ -162,7 +188,7 @@ curl -fsSL https://probe.example.com/install.sh | sh -s -- --endpoint https://pr
 
 ## 两步验证与审计日志
 
-- **两步验证**：在「面板设置 → 账号与安全」开启。用 Google Authenticator、1Password 等基于时间的身份验证器添加密钥，再输入一次验证码确认，确认后才生效。之后登录时先填密码，再填 6 位验证码。手机丢了的话，在服务器执行 `sudo tza-server reset-password --data /var/lib/tza-probe --disable-totp` 关闭两步验证，密码不会改。
+- **两步验证**：在「面板设置 → 账号与安全」开启。用 Google Authenticator、1Password 等基于时间的身份验证器添加密钥，再输入一次验证码确认，确认后才生效。之后登录时先填密码，再填 6 位验证码。手机丢了的话，在服务器执行 `sudo lodestar reset-password --data /var/lib/lodestar --disable-totp` 关闭两步验证，密码不会改。
 - **审计日志**：在后台「审计日志」里查看，记录的内容有：
   - 后台的每次写操作：路由和结果，不含请求体
   - 登录与登录失败
@@ -186,10 +212,10 @@ curl -fsSL https://probe.example.com/install.sh | sh -s -- --endpoint https://pr
 
 后台「代理」在节点上开入站，分给「使用者」用。
 
-- **前提**：节点要用 `--manage` 接入（开启管理通道，Agent 以 root 运行），且用 systemd。想在某台节点上禁用代理，在它的 `/etc/tza-probe/manage.json` 的 `disabled_capabilities` 里写 `"proxy"` 后重启 Agent。
+- **前提**：节点要用 `--manage` 接入（开启管理通道，Agent 以 root 运行），且用 systemd。想在某台节点上禁用代理，在它的 `/etc/lodestar/manage.json` 的 `disabled_capabilities` 里写 `"proxy"` 后重启 Agent。
 - **协议**：VLESS Reality（直连，不需要域名和证书）和 Shadowsocks 2022（中转、落地）。内核可选 xray 或 sing-box，版本固定，主控下载并校验后经管理通道发给节点，节点不用访问 GitHub。
 - **添加入站**：选节点、协议、内核、端口，填客户端连接的地址（域名或节点 IP）。Reality 要填一个目标网站（与节点同地区、支持 TLS 1.3 的境外网站，别用 microsoft、apple 这类大家都在用的站）。使用者不勾就是全部。
-- **生效**：保存后主控立即同步：首次会把内核传到节点（几十 MB，一两分钟），节点先用内核检查配置，通过后启动 `tza-proxy-xray` 或 `tza-proxy-sing-box` 服务。状态一列显示运行中或出错原因。
+- **生效**：保存后主控立即同步：首次会把内核传到节点（几十 MB，一两分钟），节点先用内核检查配置，通过后启动 `lodestar-proxy-xray` 或 `lodestar-proxy-sing-box` 服务。状态一列显示运行中或出错原因。
 - **链接**：每个入站的「链接」给出每位使用者的导入链接。停用、过期或流量用完的使用者会在下一次同步（最多一分钟）时从节点配置里去掉。
 - **流量**：xray 入站按使用者统计上下行，每分钟计入本期用量，额度用完的人一分钟内被停掉。官方 sing-box 不提供按人统计，sing-box 入站的流量不计入额度，要限额的人请用 xray 入站。
 - **订阅**：使用者页和用量页都有订阅链接，一个地址按客户端自动给 Clash/mihomo、sing-box 或通用 base64 格式，也有分格式的地址和一键导入。内置规则是国内直连、其余走代理，订阅地址加上 `mode=global` 参数（如 `…/sub/<token>?mode=global`）改成全部代理。客户端会显示已用流量和到期时间。
@@ -212,10 +238,10 @@ curl -fsSL https://probe.example.com/install.sh | sh -s -- --endpoint https://pr
 
 后台「Docker」管理节点上的容器、镜像和 Compose 项目。
 
-- **前提**：节点装了 Docker（Compose 项目还要 `docker compose` 插件），并用 `--manage` 接入。想在某台节点上关掉，在 `/etc/tza-probe/manage.json` 的 `disabled_capabilities` 里写 `"docker"` 后重启 Agent。
+- **前提**：节点装了 Docker（Compose 项目还要 `docker compose` 插件），并用 `--manage` 接入。想在某台节点上关掉，在 `/etc/lodestar/manage.json` 的 `disabled_capabilities` 里写 `"docker"` 后重启 Agent。
 - **容器**：列表显示镜像、状态和映射端口；可以看日志（实时跟踪）、进入容器终端（有 bash 用 bash，否则 sh），启动、停止、重启和强制删除。
 - **镜像**：列表、删除（还有容器在用时 Docker 会拒绝）、拉取（私有仓库要先在节点上 `docker login`）。
-- **Compose**：列出节点上已有的项目（从容器标签找到）和面板新建的项目（放在节点的 `/opt/tza-compose/<项目名>/`）。可以编辑 compose 文件（保存前节点会用 `docker compose config` 检查，旧文件留作 `.tza-bak`），一键部署（up -d）、拉取镜像、重启、停止并移除容器（down，数据卷保留）。「删除项目」先 down，面板建的项目再删掉节点上的目录；节点上原有的项目只移除容器、文件保留；可选同时删除数据卷。
+- **Compose**：列出节点上已有的项目（从容器标签找到）和面板新建的项目（放在节点的 `/opt/lodestar-compose/<项目名>/`）。可以编辑 compose 文件（保存前节点会用 `docker compose config` 检查，旧文件留作 `.lodestar-bak`），一键部署（up -d）、拉取镜像、重启、停止并移除容器（down，数据卷保留）。「删除项目」先 down，面板建的项目再删掉节点上的目录；节点上原有的项目只移除容器、文件保留；可选同时删除数据卷。
 - **审计**：启停、删除、拉镜像、保存 compose、Compose 操作、看日志和容器终端都写入审计日志。
 
 ## 证书
@@ -224,7 +250,7 @@ curl -fsSL https://probe.example.com/install.sh | sh -s -- --endpoint https://pr
 
 - **DNS 账号**：在 Cloudflare「我的个人资料 → API 令牌」用「编辑区域 DNS」模板建一个令牌（权限：区域 → DNS → 编辑、区域 → 区域 → 读取，区域资源选要签证书的域名），在页面下方添加。令牌保存在主控数据库里，页面只显示末四位。
 - **申请**：填域名（每行一个，通配符写 `*.example.com`），选 DNS 账号和要下发的节点。主控会在 Cloudflare 临时加 `_acme-challenge` TXT 记录，验证完删掉，通常一两分钟签好。
-- **下发**：写到节点的目录（默认 `/etc/tza-certs/<域名>/`）下的 `fullchain.pem` 和 `privkey.pem`，再在该目录执行重载命令（如 `systemctl reload nginx`）。节点要用 `--manage` 接入。nginx 配置里 `ssl_certificate` 和 `ssl_certificate_key` 指向这两个文件即可。
+- **下发**：写到节点的目录（默认 `/etc/lodestar-certs/<域名>/`）下的 `fullchain.pem` 和 `privkey.pem`，再在该目录执行重载命令（如 `systemctl reload nginx`）。节点要用 `--manage` 接入。nginx 配置里 `ssl_certificate` 和 `ssl_certificate_key` 指向这两个文件即可。
 - **续期**：有效期剩不到三分之一时（90 天的证书即剩 30 天时）自动续期，续期后自动重新下发。失败时旧证书继续可用，隔 1 到 24 小时再试，总览卡片会提示。
 - **测试环境**：页面底部可切到 Let's Encrypt 测试环境，不受签发次数限制，但证书不被浏览器信任，用来试流程。
 - **下载**：每张证书可以下载证书链和私钥，下载私钥会写审计日志。
@@ -234,14 +260,14 @@ curl -fsSL https://probe.example.com/install.sh | sh -s -- --endpoint https://pr
 
 后台「备份」每天把主控的数据用口令加密后写到你选的节点，存放的节点读不到内容。
 
-- **设置**：设一个至少 12 个字符的备份口令，选存放的节点（要用 `--manage` 接入，建议和主控不在同一机房）、目录（默认 `/var/backups/tza-probe`）、每天的时间和保留份数，勾上「每天自动备份」。也可以随时点「立即备份」。
+- **设置**：设一个至少 12 个字符的备份口令，选存放的节点（要用 `--manage` 接入，建议和主控不在同一机房）、目录（默认 `/var/backups/lodestar`）、每天的时间和保留份数，勾上「每天自动备份」。也可以随时点「立即备份」。
 - **口令**：主控只保存由口令派生的密钥，不保存口令本身。**口令丢了，备份就打不开**，请另外记好。换口令后，之前的备份仍然只能用旧口令打开。
 - **内容**：数据库在线快照（不用停服），加上账号、管理密钥、两步验证、Agent 签名相关文件、主题、插件和站点 logo。代理内核缓存不在里面，恢复后主控会重新下载。
-- **恢复**：把 `.tzabk` 文件拷到装好 tza-server 的机器上，然后：
+- **恢复**：把 `.lsbk` 文件拷到装好 lodestar 的机器上，然后：
 
 ```sh
-sudo tza-server backup-restore --in tza-probe-20261114-030000.tzabk --data /var/lib/tza-probe-restored
-sudo chown -R tza-probe:tza-probe /var/lib/tza-probe-restored
+sudo lodestar backup-restore --in lodestar-20261114-030000.lsbk --data /var/lib/lodestar-restored
+sudo chown -R lodestar:lodestar /var/lib/lodestar-restored
 ```
 
   输入口令后数据解到新目录；停掉服务，把它换成数据目录（或在服务里用 `--data` 指向它），再启动。
@@ -254,12 +280,12 @@ sudo chown -R tza-probe:tza-probe /var/lib/tza-probe-restored
 
 - **类型**：反向代理（填上游地址，如 `http://127.0.0.1:3000`，可开 WebSocket）、静态网站（填节点上的目录）、跳转（填目标地址，可保留路径）。
 - **HTTPS**：可以直接选「证书」页的证书，主控会把它下发到这台节点并在续期后重载 nginx，证书到位后站点才生效；也可以填节点上已有的证书文件路径。可选 HTTP 自动跳 HTTPS。
-- **安全**：面板只管自己写的 `/etc/nginx/conf.d/tza-site-*.conf`。每次改动先 `nginx -t` 检查，不通过就恢复原来的文件，并把 nginx 的报错显示在页面上；节点上已有的其他站点只读显示，不会被改动或删除。
+- **安全**：面板只管自己写的 `/etc/nginx/conf.d/lodestar-site-*.conf`。每次改动先 `nginx -t` 检查，不通过就恢复原来的文件，并把 nginx 的报错显示在页面上；节点上已有的其他站点只读显示，不会被改动或删除。
 - **Cloudflare**：站点经过 Cloudflare 代理时勾上「Cloudflare 真实 IP」，后端看到的才是访客的地址。
 
 ## 主题与插件
 
-Probe 不连接 TZA-CC 或其他市场：主题包、附加包与插件都在后台「主题」「插件」页上传 zip 安装，Server 不为此访问外部服务。
+Probe 不连接 Lodestar 或其他市场：主题包、附加包与插件都在后台「主题」「插件」页上传 zip 安装，Server 不为此访问外部服务。
 旧版本的 `--cc-url` / `--cc-key` 参数与 `TZA_CC_URL` / `TZA_CC_KEYS` 环境变量仍被接受但会被忽略，启动日志给出提示；可以从单元文件或 compose 中删掉。
 旧数据目录里的 `cc-instance`、`themes/.market/`、`plugins/.market/` 与 `plugin-managers/` 不再使用，可以删除。
 
@@ -269,24 +295,24 @@ Probe 不连接 TZA-CC 或其他市场：主题包、附加包与插件都在后
 
 ## 日常操作
 
-- 状态：`sudo systemctl status tza-server` / `sudo systemctl status tza-agent`。
-- 日志：`sudo journalctl -u tza-server -n 100 --no-pager` / `sudo journalctl -u tza-agent -n 100 --no-pager`。
-- 配置修改后：`sudo systemctl restart tza-agent`；服务不会自动重载配置。
+- 状态：`sudo systemctl status lodestar` / `sudo systemctl status lodestar-agent`。
+- 日志：`sudo journalctl -u lodestar -n 100 --no-pager` / `sudo journalctl -u lodestar-agent -n 100 --no-pager`。
+- 配置修改后：`sudo systemctl restart lodestar-agent`；服务不会自动重载配置。
 - 后台节点列表显示 Agent 版本、最近连接、有效指标时间和采集异常分类；在线但指标异常时，检查 Agent 的 `mount`、`interfaces` 和本机日志，修改后重启 Agent。网络任务的“执行记录”显示最近执行及失败原因。
 - 心跳功能仍要求先准备 Server 再接入 Agent。
-- 忘记后台密码：`sudo tza-server reset-password --data /var/lib/tza-probe` 生成新密码并打印（加 `--username 名字` 同时改用户名），不用停服，新密码即刻生效；旧浏览器会话随即失效，无需重启服务。账号保存在数据目录的 `admin-account`（密码只存 PBKDF2 摘要）。
+- 忘记后台密码：`sudo lodestar reset-password --data /var/lib/lodestar` 生成新密码并打印（加 `--username 名字` 同时改用户名），不用停服，新密码即刻生效；旧浏览器会话随即失效，无需重启服务。账号保存在数据目录的 `admin-account`（密码只存 PBKDF2 摘要）。
 - 管理密钥丢失时停服，重新生成 `admin-token` 并维持服务账户所有权和 0600 权限后启动。Server 重启会使浏览器会话失效。
 
 ## 升级与回滚
 
-一键安装的 Server 重新执行安装脚本即可升级：脚本替换二进制后自动 `systemctl restart tza-server`，并等到 `/healthz` 报出新版本号才结束；重启失败或 30 秒内仍是旧版本时会提示查看日志，旧二进制保留在 `tza-server.previous`。手工安装时先构建新二进制，保留旧二进制和数据备份，再替换；不要向正在运行的文件直接覆盖：
+一键安装的 Server 重新执行安装脚本即可升级：脚本替换二进制后自动 `systemctl restart lodestar`，并等到 `/healthz` 报出新版本号才结束；重启失败或 30 秒内仍是旧版本时会提示查看日志，旧二进制保留在 `lodestar.previous`。手工安装时先构建新二进制，保留旧二进制和数据备份，再替换；不要向正在运行的文件直接覆盖：
 
 ```sh
-sudo systemctl stop tza-server
-sudo cp -p /usr/local/bin/tza-server /usr/local/bin/tza-server.previous
+sudo systemctl stop lodestar
+sudo cp -p /usr/local/bin/lodestar /usr/local/bin/lodestar.previous
 # 在此执行下节的停服数据备份，再继续。
-sudo install -m 0755 bin/tza-server /usr/local/bin/tza-server
-sudo systemctl start tza-server
+sudo install -m 0755 bin/lodestar /usr/local/bin/lodestar
+sudo systemctl start lodestar
 ```
 
 先升 Server，再升 Agent。Agent 升级使用相同的 stop → 保留旧二进制 → install → start 顺序（或不带 `--token` 重新执行安装命令），不需要重置密钥。
@@ -299,56 +325,56 @@ sudo systemctl start tza-server
 1. 在自己电脑上生成一次密钥（私钥另行备份，丢了就要换钥）：
 
    ```sh
-   tza-server agent-keygen --id ops-2026 --out ~/tza-agent-signing/agent.key
+   lodestar agent-keygen --id ops-2026 --out ~/lodestar-agent-signing/agent.key
    ```
 
    同目录会写出公钥 `upgrade-key.pub`。
 
-2. 每次发版，用带版本号的 ldflags（`-X github.com/leeska/TZA-ControlCenter/internal/model.Version=X.Y.Z`）编好 Agent 后签名；版本须是 `X.Y.Z`，不带 `-dev` 之类后缀：
+2. 每次发版，用带版本号的 ldflags（`-X github.com/leeska/Lodestar/internal/model.Version=X.Y.Z`）编好 Agent 后签名；版本须是 `X.Y.Z`，不带 `-dev` 之类后缀：
 
    ```sh
-   tza-server agent-sign --key ~/tza-agent-signing/agent.key --version X.Y.Z tza-agent-linux-amd64 tza-agent-linux-arm64
+   lodestar agent-sign --key ~/lodestar-agent-signing/agent.key --version X.Y.Z lodestar-agent-linux-amd64 lodestar-agent-linux-arm64
    ```
 
-   `bash scripts/pipeline.sh build` 设了 `TZA_AGENT_KEY=~/tza-agent-signing/agent.key` 时会自动签名，并把签名与公钥一起嵌进 Server。
+   `bash scripts/pipeline.sh build` 设了 `LODESTAR_AGENT_KEY=~/lodestar-agent-signing/agent.key` 时会自动签名，并把签名与公钥一起嵌进 Server。
 
-3. 把两个二进制、各自的 `.sig` 和 `upgrade-key.pub` 放进 Server 数据目录的 `agents/`（属主 `tza-probe`）。`/dl/upgrade-key.pub` 随即可取。
+3. 把两个二进制、各自的 `.sig` 和 `upgrade-key.pub` 放进 Server 数据目录的 `agents/`（属主 `lodestar`）。`/dl/upgrade-key.pub` 随即可取。
 
-4. 每台节点执行一次安装命令（首次接入用「接入」给出的命令；已接入的不带 `--token` 再执行一次），安装脚本把公钥钉到 `/etc/tza-probe/upgrade-key.pub`。之后在后台「节点管理」勾选节点点「升级 Agent」（或标题栏的「升级 Agent（N）」、那一行的「升级」、状态格里的「需更新 ⇡」）即可。
+4. 每台节点执行一次安装命令（首次接入用「接入」给出的命令；已接入的不带 `--token` 再执行一次），安装脚本把公钥钉到 `/etc/lodestar/upgrade-key.pub`。之后在后台「节点管理」勾选节点点「升级 Agent」（或标题栏的「升级 Agent（N）」、那一行的「升级」、状态格里的「需更新 ⇡」）即可。
 
-Agent 在下一次上报时拿到新版本的下载路径、SHA-256 与签名，先验签（密钥、架构、版本须比自己新），再下载到 `/var/lib/tza-agent`、核对摘要并试跑 `--version`，然后以状态 3 退出；systemd 单元的 `ExecStartPre=-+/usr/local/bin/tza-agent --config /etc/tza-probe/agent.json --apply-update` 在重启前按钉住的公钥再验一遍，才把它换到 `/usr/local/bin/tza-agent`（单元开了 `ProtectSystem=strict`，Agent 自己写不了 /usr 和 /etc），旧版本留在 `tza-agent.previous`。OpenRC 没有沙箱，Agent 验签后就地替换，`supervise-daemon` 负责拉起。
+Agent 在下一次上报时拿到新版本的下载路径、SHA-256 与签名，先验签（密钥、架构、版本须比自己新），再下载到 `/var/lib/lodestar-agent`、核对摘要并试跑 `--version`，然后以状态 3 退出；systemd 单元的 `ExecStartPre=-+/usr/local/bin/lodestar-agent --config /etc/lodestar/agent.json --apply-update` 在重启前按钉住的公钥再验一遍，才把它换到 `/usr/local/bin/lodestar-agent`（单元开了 `ProtectSystem=strict`，Agent 自己写不了 /usr 和 /etc），旧版本留在 `lodestar-agent.previous`。OpenRC 没有沙箱，Agent 验签后就地替换，`supervise-daemon` 负责拉起。
 
 后台的提示：「安装包未签名」表示 `agents/` 里缺 `.sig`、`.sig` 签的不是当前这个二进制，或缺公钥；「需手工升级一次」表示节点上的 Agent 较早、或还没钉公钥，按弹窗里的命令在机器上执行一次即可。没配签名时节点照常安装和运行，只是升级要在机器上重跑安装命令。换钥：生成新钥、用新钥签名、替换 `agents/upgrade-key.pub`，再在每台节点重跑一次安装命令。
 
-新版本如果改了数据库结构，Server 启动时自动执行尚未执行的迁移，每条迁移在自己的事务里完成，失败就回滚并停止启动，修好后重启即重试。安装脚本在替换二进制之前先用新版本执行 `tza-server check-data --data 数据目录`：库比新版本还新、或早于 v2.0.0 时在这里中止，现有安装原样不动。升级后的数据库旧程序打不开（v2.0.0 见到迁移后的库会拒绝启动），因此**升级前先备份数据目录**，回滚必须同时还原旧二进制和这份备份。
+新版本如果改了数据库结构，Server 启动时自动执行尚未执行的迁移，每条迁移在自己的事务里完成，失败就回滚并停止启动，修好后重启即重试。安装脚本在替换二进制之前先用新版本执行 `lodestar check-data --data 数据目录`：库比新版本还新、或早于 v2.0.0 时在这里中止，现有安装原样不动。升级后的数据库旧程序打不开（v2.0.0 见到迁移后的库会拒绝启动），因此**升级前先备份数据目录**，回滚必须同时还原旧二进制和这份备份。
 
 从 v2.0.0 升上来时，地区偏移检测原来单独的 `ipguard.db` 会并入主库：策略和检测记录导入主库后，旧文件改名为 `ipguard.db.migrated`（连同 `-wal` / `-shm`）保留，确认无误后可以自行删除。之后后台的「备份」也包含地区偏移的数据。
 
 ## 备份与恢复
 
-最简单的是后台“面板设置 → 数据备份”直接下载数据库快照（`GET /api/v1/admin/backup`，不用停服）；恢复时停服，把它放进数据目录、命名为 `tza-probe.db`（替换原文件），删掉同目录的 `tza-probe.db-wal` 与 `tza-probe.db-shm` 后启动。快照含通知凭据与 MCP Key 摘要，按私密文件保管；它只含数据库，管理密钥 `admin-token` 与后台账号 `admin-account` 需另外保存。
+最简单的是后台“面板设置 → 数据备份”直接下载数据库快照（`GET /api/v1/admin/backup`，不用停服）；恢复时停服，把它放进数据目录、命名为 `lodestar.db`（替换原文件），删掉同目录的 `lodestar.db-wal` 与 `lodestar.db-shm` 后启动。快照含通知凭据与 MCP Key 摘要，按私密文件保管；它只含数据库，管理密钥 `admin-token` 与后台账号 `admin-account` 需另外保存。
 
 要连同管理密钥一起备份，就停服复制完整数据目录。以下为 Server systemd 部署的备份命令：
 
 ```sh
-sudo systemctl stop tza-server
-backup_dir="/var/backups/tza-probe/$(date +%Y%m%d-%H%M%S)"
+sudo systemctl stop lodestar
+backup_dir="/var/backups/lodestar/$(date +%Y%m%d-%H%M%S)"
 sudo install -d -m 0700 "$backup_dir"
-sudo cp -a /var/lib/tza-probe "$backup_dir/data"
-sudo systemctl start tza-server
+sudo cp -a /var/lib/lodestar "$backup_dir/data"
+sudo systemctl start lodestar
 ```
 
-确认复制成功后再认为备份完成。备份包含管理密钥、通知凭据及 SQLite WAL/SHM 文件，保持私有权限。不能只复制运行中的 `tza-probe.db`。
+确认复制成功后再认为备份完成。备份包含管理密钥、通知凭据及 SQLite WAL/SHM 文件，保持私有权限。不能只复制运行中的 `lodestar.db`。
 
-恢复时停止 Server，将当前目录移到另一个路径留作回退；把备份的 `data` 完整复制回 `/var/lib/tza-probe`，恢复 `tza-probe:tza-probe` 所有权后启动对应版本的 Server。Agent 配置位于各主机的 `/etc/tza-probe/agent.json`，单独保存。
+恢复时停止 Server，将当前目录移到另一个路径留作回退；把备份的 `data` 完整复制回 `/var/lib/lodestar`，恢复 `lodestar:lodestar` 所有权后启动对应版本的 Server。Agent 配置位于各主机的 `/etc/lodestar/agent.json`，单独保存。
 
 ## Docker Server（可选）
 
 ```sh
-docker build -t tza-probe:local .
-docker volume create tza-data
-docker run -d --name tza-server --restart unless-stopped \
-  -p 127.0.0.1:25774:25774 -v tza-data:/data tza-probe:local
+docker build -t lodestar:local .
+docker volume create lodestar-data
+docker run -d --name lodestar --restart unless-stopped \
+  -p 127.0.0.1:25774:25774 -v lodestar-data:/data lodestar:local
 ```
 
 容器运行账户 UID 为 65532；使用宿主目录绑定时需授予对应权限。更新镜像仍需保留原数据卷，备份时停止容器后复制完整数据。Agent 在宿主机运行，避免把容器指标当成主机指标。

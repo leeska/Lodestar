@@ -17,15 +17,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/agent"
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
-	"github.com/leeska/TZA-ControlCenter/internal/httpapi"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/module"
-	"github.com/leeska/TZA-ControlCenter/internal/proxy"
-	"github.com/leeska/TZA-ControlCenter/internal/remote"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
-	"github.com/leeska/TZA-ControlCenter/internal/users"
+	"github.com/leeska/Lodestar/internal/agent"
+	"github.com/leeska/Lodestar/internal/channel"
+	"github.com/leeska/Lodestar/internal/httpapi"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/module"
+	"github.com/leeska/Lodestar/internal/proxy"
+	"github.com/leeska/Lodestar/internal/remote"
+	"github.com/leeska/Lodestar/internal/storage"
+	"github.com/leeska/Lodestar/internal/users"
 )
 
 // 主控经管理通道把内核与配置下发到节点：首次安装内核并应用配置；没有变化不重发；停用的使用者
@@ -35,7 +35,7 @@ func TestProxyOverChannel(t *testing.T) {
 	defer cancel()
 	userMod, proxyMod, remoteMod := &users.Module{}, &proxy.Module{}, &remote.Module{}
 	mods := []module.Module{remoteMod, userMod, proxyMod}
-	store, err := storage.OpenWith(filepath.Join(t.TempDir(), "tza-probe.db"), module.Migrations(mods))
+	store, err := storage.OpenWith(filepath.Join(t.TempDir(), "lodestar.db"), module.Migrations(mods))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func TestProxyOverChannel(t *testing.T) {
 		defer mu.Unlock()
 		n := 0
 		for _, c := range commands {
-			if strings.HasPrefix(c, "systemctl restart tza-proxy-xray") {
+			if strings.HasPrefix(c, "systemctl restart lodestar-proxy-xray") {
 				n++
 			}
 		}
@@ -133,11 +133,11 @@ func TestProxyOverChannel(t *testing.T) {
 	if len(synced.Nodes) != 1 || synced.Nodes[0].Error != "" || !synced.Nodes[0].Kernels["xray"].Synced || !synced.Nodes[0].Kernels["xray"].Active {
 		t.Fatalf("首次同步：%+v", synced.Nodes)
 	}
-	config, err := os.ReadFile(filepath.Join(root, "etc/tza-proxy/xray.json"))
+	config, err := os.ReadFile(filepath.Join(root, "etc/lodestar-proxy/xray.json"))
 	if err != nil || !bytes.Contains(config, []byte(a.ProxyUUID)) || !bytes.Contains(config, []byte(b.ProxyUUID)) {
 		t.Fatalf("配置里要有两位使用者：%s", config)
 	}
-	if installed, err := os.ReadFile(filepath.Join(root, "usr/local/lib/tza-probe/kernels/xray", proxy.Kernels["xray"].Version, "xray")); err != nil || !bytes.Equal(installed, fake) {
+	if installed, err := os.ReadFile(filepath.Join(root, "usr/local/lib/lodestar/kernels/xray", proxy.Kernels["xray"].Version, "xray")); err != nil || !bytes.Equal(installed, fake) {
 		t.Fatal("内核要原样装到节点上", err)
 	}
 	if applies() != 1 {
@@ -149,7 +149,7 @@ func TestProxyOverChannel(t *testing.T) {
 	}
 	call("PUT", "/admin/users/"+b.ID, map[string]any{"name": "乙", "enabled": false}, nil)
 	call("POST", "/admin/proxy/sync", nil, &synced)
-	config, _ = os.ReadFile(filepath.Join(root, "etc/tza-proxy/xray.json"))
+	config, _ = os.ReadFile(filepath.Join(root, "etc/lodestar-proxy/xray.json"))
 	if bytes.Contains(config, []byte(b.ProxyUUID)) || !bytes.Contains(config, []byte(a.ProxyUUID)) || applies() != 2 {
 		t.Fatalf("停用的使用者要去掉：%s", config)
 	}
@@ -239,7 +239,7 @@ func TestProxyOverChannel(t *testing.T) {
 	// 用完额度的人在下一轮被移出配置；订阅照常能取，客户端据此显示用量。
 	call("PUT", "/admin/users/"+a.ID, map[string]any{"name": "甲", "enabled": true, "traffic_limit": 4000}, nil)
 	call("POST", "/admin/proxy/sync", nil, &synced)
-	config, _ = os.ReadFile(filepath.Join(root, "etc/tza-proxy/xray.json"))
+	config, _ = os.ReadFile(filepath.Join(root, "etc/lodestar-proxy/xray.json"))
 	if bytes.Contains(config, []byte(a.ProxyUUID)) {
 		t.Fatal("超额的使用者要从配置里去掉")
 	}
@@ -255,10 +255,10 @@ func TestProxyOverChannel(t *testing.T) {
 	}
 	call("DELETE", "/admin/proxy/inbounds/"+in.ID, nil, nil)
 	call("POST", "/admin/proxy/sync", nil, &synced)
-	if _, err := os.Stat(filepath.Join(root, "etc/tza-proxy/xray.json")); err == nil {
+	if _, err := os.Stat(filepath.Join(root, "etc/lodestar-proxy/xray.json")); err == nil {
 		t.Fatal("删掉入站后节点上的配置要移除")
 	}
-	if !strings.Contains(strings.Join(commands, "\n"), "systemctl disable --now tza-proxy-xray") {
+	if !strings.Contains(strings.Join(commands, "\n"), "systemctl disable --now lodestar-proxy-xray") {
 		t.Fatal(commands)
 	}
 }

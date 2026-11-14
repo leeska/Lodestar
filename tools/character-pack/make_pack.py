@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""TZA ControlCenter 角色包生成器：把「地区 → 角色设定」变成一个能在后台直接上传的角色包（zip）。
+"""Lodestar 角色包生成器：把「地区 → 角色设定」变成一个能在后台直接上传的角色包（zip）。
 
 两步，可以分开跑：
 
@@ -16,9 +16,9 @@
   python3 make_pack.py build pack.json --work work/        # 原图自己放进 work/raw/<id>.png 也行
 
 图像接口（兼容 OpenAI 的 /chat/completions，能返回图片的模型，例如 Nano Banana Pro）：
-  TZA_IMAGE_API_BASE   如 https://api.example.com/v1
-  TZA_IMAGE_API_KEY    密钥（只从环境变量读，不写进任何文件、不打印）
-  TZA_IMAGE_MODEL      默认 gemini-3-pro-image
+  LODESTAR_IMAGE_API_BASE   如 https://api.example.com/v1
+  LODESTAR_IMAGE_API_KEY    密钥（只从环境变量读，不写进任何文件、不打印）
+  LODESTAR_IMAGE_MODEL      默认 gemini-3-pro-image
 
 设定文件 pack.json 的格式见 README.md；角色包格式见仓库 docs/THEMES.md。
 依赖：Pillow、numpy（python3 -m pip install pillow numpy）。
@@ -86,11 +86,11 @@ def load_spec(path):
 # ---------------------------------------------------------------------------- image API
 
 def api_config():
-    base = os.environ.get("TZA_IMAGE_API_BASE", "").rstrip("/")
-    key = os.environ.get("TZA_IMAGE_API_KEY", "")
+    base = os.environ.get("LODESTAR_IMAGE_API_BASE", "").rstrip("/")
+    key = os.environ.get("LODESTAR_IMAGE_API_KEY", "")
     if not base or not key:
-        sys.exit("先设置 TZA_IMAGE_API_BASE 与 TZA_IMAGE_API_KEY（兼容 OpenAI 的 /chat/completions 图像接口）")
-    return base, key, os.environ.get("TZA_IMAGE_MODEL", "gemini-3-pro-image")
+        sys.exit("先设置 LODESTAR_IMAGE_API_BASE 与 LODESTAR_IMAGE_API_KEY（兼容 OpenAI 的 /chat/completions 图像接口）")
+    return base, key, os.environ.get("LODESTAR_IMAGE_MODEL", "gemini-3-pro-image")
 
 
 def data_url(path):

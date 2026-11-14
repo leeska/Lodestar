@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
-	"github.com/leeska/TZA-ControlCenter/web"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/storage"
+	"github.com/leeska/Lodestar/web"
 )
 
 // 前台默认外观是后台可控的：存进设置、读回设置、并在样式表之前交给浏览器
@@ -161,7 +161,7 @@ func TestPanelPriceUnitSetting(t *testing.T) {
 	if view.PriceUnit != model.DefaultPriceUnit {
 		t.Fatalf("未配置时该是 %s，得到 %s", model.DefaultPriceUnit, view.PriceUnit)
 	}
-	if _, js := request("GET", "/theme-default.js", "", nil); !strings.Contains(string(js), `__tzaPriceUnit="`+model.DefaultPriceUnit+`"`) {
+	if _, js := request("GET", "/theme-default.js", "", nil); !strings.Contains(string(js), `__lodestarPriceUnit="`+model.DefaultPriceUnit+`"`) {
 		t.Fatalf("首屏脚本没带默认汇总单位: %s", js)
 	}
 
@@ -179,7 +179,7 @@ func TestPanelPriceUnitSetting(t *testing.T) {
 	if view.PriceUnit != "USD" {
 		t.Fatalf("设置没保存: %s", view.PriceUnit)
 	}
-	if _, js := request("GET", "/theme-default.js", "", nil); !strings.Contains(string(js), `__tzaPriceUnit="USD"`) {
+	if _, js := request("GET", "/theme-default.js", "", nil); !strings.Contains(string(js), `__lodestarPriceUnit="USD"`) {
 		t.Fatalf("首屏脚本没跟上汇总单位: %s", js)
 	}
 

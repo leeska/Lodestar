@@ -3,7 +3,7 @@
 // 写在 theme-boot.js 里的话链接会插到内置样式表前面，优先级反了。
 // 经典脚本、不内联，满足 CSP 的 script-src 'self'。清单与 data-skin 由 theme-boot.js 先定好。
 (function () {
-  var list = window.__tzaThemes || [];
+  var list = window.__lodestarThemes || [];
   var skin = document.documentElement.dataset.skin;
   for (var i = 0; i < list.length; i++) {
     var t = list[i];

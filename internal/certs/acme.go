@@ -80,7 +80,7 @@ func (a *ACME) client(ctx context.Context) (*acme.Client, error) {
 			return nil, err
 		}
 	}
-	c := &acme.Client{Key: signer, DirectoryURL: a.Directory, UserAgent: "tza-probe"}
+	c := &acme.Client{Key: signer, DirectoryURL: a.Directory, UserAgent: "lodestar"}
 	if _, err := c.Register(ctx, &acme.Account{}, acme.AcceptTOS); err != nil && !errors.Is(err, acme.ErrAccountAlreadyExists) {
 		return nil, fmt.Errorf("注册 ACME 账号失败：%w", err)
 	}

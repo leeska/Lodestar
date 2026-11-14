@@ -1,75 +1,75 @@
 #!/bin/sh
-# TZA ControlCenter Server 一键安装（Linux amd64 / arm64）。
+# Lodestar Server 一键安装（Linux amd64 / arm64）。
 #
 # 两种安装方式，二选一：
 #
 # 从 GitHub Release 安装（默认，推荐）：下载预编译发布包，免 Go 与 git，发布包内嵌两种架构的
 # Agent（签过名的发布可以在后台一键升级 Agent）。
 # 安装最新发布：
-#   curl -fsSL https://raw.githubusercontent.com/leeska/TZA-ControlCenter/main/deploy/install.sh | sudo sh
+#   curl -fsSL https://raw.githubusercontent.com/leeska/Lodestar/main/deploy/install.sh | sudo sh
 # 安装指定版本：
-#   curl -fsSL https://raw.githubusercontent.com/leeska/TZA-ControlCenter/main/deploy/install.sh | sudo sh -s -- --release v1.0.0
+#   curl -fsSL https://raw.githubusercontent.com/leeska/Lodestar/main/deploy/install.sh | sudo sh -s -- --release v1.0.0
 #
 # 从源码构建（需要 git 与 Go）：拉取 main（或 --ref 指定的分支 / tag）在本机编译 Server 与两种
 # 架构的 Agent。本机编出的 Agent 没有签名，节点只能重跑接入命令升级。
 # 构建 main（指定分支或 tag 把 --source 换成 --ref REF）：
-#   curl -fsSL https://raw.githubusercontent.com/leeska/TZA-ControlCenter/main/deploy/install.sh | sudo sh -s -- --source
+#   curl -fsSL https://raw.githubusercontent.com/leeska/Lodestar/main/deploy/install.sh | sudo sh -s -- --source
 #
 # 用本机已有的发布包安装（离线、未发布的版本、迁移到新主机时）：
-#   sudo sh install.sh --package /root/tza-probe-linux-amd64.tar.gz
+#   sudo sh install.sh --package /root/lodestar-linux-amd64.tar.gz
 # 旁边有同名的 .sha256 时先校验。
 #
-# 脚本只做五件事：取到 tza-server、装到 /usr/local/bin、建好数据目录、生成管理密钥与
+# 脚本只做五件事：取到 lodestar、装到 /usr/local/bin、建好数据目录、生成管理密钥与
 # 后台账号、装 systemd 服务。加 --with-browser 时再装地区偏移检测用的隔离浏览器
-# （固定版本的 Chromium、独立用户与无网络的 tza-browser 服务，见 docs/IP-GUARD-INTEGRATION.md）。
-# 重复执行即升级：旧二进制保留为 tza-server.previous，数据目录不动，已有的密钥与账号保留；
+# （固定版本的 Chromium、独立用户与无网络的 lodestar-browser 服务，见 docs/IP-GUARD-INTEGRATION.md）。
+# 重复执行即升级：旧二进制保留为 lodestar.previous，数据目录不动，已有的密钥与账号保留；
 # 服务已在运行时自动重启换上新版本，并等到新版本应答 /healthz 再结束。
-# 后台初始密码只在首次安装时显示一次；忘记密码执行 sudo tza-server reset-password --data 数据目录。
+# 后台初始密码只在首次安装时显示一次；忘记密码执行 sudo lodestar reset-password --data 数据目录。
 set -eu
 
-REPO="leeska/TZA-ControlCenter"
+REPO="leeska/Lodestar"
 RAW="https://raw.githubusercontent.com/${REPO}/main"
 MODE="release"
 VERSION=""
 REF="main"
 LISTEN="127.0.0.1:25774"
-DATA="/var/lib/tza-probe"
-BIN="/usr/local/bin/tza-server"
-UNIT="/etc/systemd/system/tza-server.service"
-SERVICE_USER="tza-probe"
+DATA="/var/lib/lodestar"
+BIN="/usr/local/bin/lodestar"
+UNIT="/etc/systemd/system/lodestar.service"
+SERVICE_USER="lodestar"
 SYSTEMD="auto"
 PICKED=""
 BROWSER="no"
-BROWSER_UNIT="/etc/systemd/system/tza-browser.service"
-BROWSER_DIR="/opt/tza-browser"
-BROWSER_STATE="/var/lib/tza-browser"
-BROWSER_RUN="/run/tza-browser"
-BROWSER_USER="tza-browser"
-BROWSER_GROUP="tza-browser-control"
+BROWSER_UNIT="/etc/systemd/system/lodestar-browser.service"
+BROWSER_DIR="/opt/lodestar-browser"
+BROWSER_STATE="/var/lib/lodestar-browser"
+BROWSER_RUN="/run/lodestar-browser"
+BROWSER_USER="lodestar-browser"
+BROWSER_GROUP="lodestar-browser-control"
 NGINX="auto"
-NGINX_LOG="/etc/nginx/conf.d/tza-probe-log.conf"
+NGINX_LOG="/etc/nginx/conf.d/lodestar-log.conf"
 
 usage() {
   cat <<'EOF'
-TZA ControlCenter Server 一键安装（Linux amd64 / arm64）
+Lodestar Server 一键安装（Linux amd64 / arm64）
 
-  curl -fsSL https://raw.githubusercontent.com/leeska/TZA-ControlCenter/main/deploy/install.sh | sudo sh -s -- [选项]
+  curl -fsSL https://raw.githubusercontent.com/leeska/Lodestar/main/deploy/install.sh | sudo sh -s -- [选项]
 
 安装方式（二选一，默认 --release）
   --release [vX.Y.Z] 从 GitHub Release 下载预编译发布包，免 git 与 Go；不写版本装最新发布
   --source           从源码构建（需要 git 与 Go），默认 main 分支
   --ref REF          源码构建用的分支或 tag，默认 main（隐含 --source）
   --version vX.Y.Z   同 --release vX.Y.Z
-  --package FILE     用本机的发布包 tza-probe-linux-<架构>.tar.gz 安装（旁边有 FILE.sha256 时先校验）
+  --package FILE     用本机的发布包 lodestar-linux-<架构>.tar.gz 安装（旁边有 FILE.sha256 时先校验）
 
 其他选项
   --listen ADDR      监听地址，默认 127.0.0.1:25774（跨主机接入请配置 HTTPS 反代）
-  --data DIR         数据目录，默认 /var/lib/tza-probe（保存后台账号、数据库与兼容 API 凭据）
+  --data DIR         数据目录，默认 /var/lib/lodestar（保存后台账号、数据库与兼容 API 凭据）
   --no-systemd       只安装二进制与数据目录，不注册 systemd 服务
   --with-browser     同时安装地区偏移检测的隔离浏览器（约 300 MB 内存、200 MB 磁盘；需要 systemd）。
                      装过一次后，再次执行本脚本会保留并一起升级它
-  --no-nginx         本机装有 nginx 时也不写入 /etc/nginx/conf.d/tza-probe-log.conf
-                     （默认写入：定义 $tza_loggable，站点用它跳过 Agent 上报的访问日志）
+  --no-nginx         本机装有 nginx 时也不写入 /etc/nginx/conf.d/lodestar-log.conf
+                     （默认写入：定义 $lodestar_loggable，站点用它跳过 Agent 上报的访问日志）
   -h, --help         显示本说明
 EOF
 }
@@ -97,8 +97,9 @@ if [ "$PICKED" = "both" ]; then
   echo "从源码构建（--source/--ref）、从 Release 安装（--release/--version）与本地发布包（--package）只能选一种" >&2; exit 2
 fi
 case "$VERSION" in ""|v*) ;; *) echo "版本号要以 v 开头，例如 v1.0.0：$VERSION" >&2; exit 2 ;; esac
-# 装过浏览器的主机：升级时不带 --with-browser 也保留它。
+# 装过浏览器的主机：升级时不带 --with-browser 也保留它（改名前的单元也算）。
 [ -f "$BROWSER_UNIT" ] && BROWSER="yes"
+[ -f /etc/systemd/system/tza-browser.service ] && BROWSER="yes"
 if [ "$BROWSER" = "yes" ] && [ "$SYSTEMD" = "no" ]; then
   echo "--with-browser 需要 systemd（浏览器靠 systemd 的 PrivateNetwork 隔离网络），不能与 --no-systemd 同用" >&2; exit 2
 fi
@@ -137,11 +138,11 @@ if [ "$MODE" = "package" ]; then
     echo "校验和一致"
   fi
   tar -xzf "$PACKAGE" -C "$WORK"
-  [ -f "${WORK}/tza-server" ] || { echo "发布包里没有 tza-server" >&2; exit 1; }
+  [ -f "${WORK}/lodestar" ] || { echo "发布包里没有 lodestar" >&2; exit 1; }
   # --version 打一行日志「日期 时间 INFO vX.Y.Z」，取最后一段。
-  VERSION="$("${WORK}/tza-server" --version 2>&1 | tail -n 1 | awk '{print $NF}' || true)"
-  [ -f "${WORK}/deploy/tza-server.service" ] && UNIT_SRC="${WORK}/deploy/tza-server.service"
-  [ -f "${WORK}/deploy/tza-browser.service" ] && BROWSER_UNIT_SRC="${WORK}/deploy/tza-browser.service"
+  VERSION="$("${WORK}/lodestar" --version 2>&1 | tail -n 1 | awk '{print $NF}' || true)"
+  [ -f "${WORK}/deploy/lodestar.service" ] && UNIT_SRC="${WORK}/deploy/lodestar.service"
+  [ -f "${WORK}/deploy/lodestar-browser.service" ] && BROWSER_UNIT_SRC="${WORK}/deploy/lodestar-browser.service"
 elif [ "$MODE" = "release" ]; then
   need curl
   need sha256sum
@@ -155,7 +156,7 @@ elif [ "$MODE" = "release" ]; then
       *) echo "查不到最新发布版本，请用 --release vX.Y.Z 指定，或改用 --source 从源码构建" >&2; exit 1 ;;
     esac
   fi
-  PACK="tza-probe-linux-${ARCH}.tar.gz"
+  PACK="lodestar-linux-${ARCH}.tar.gz"
   URL="https://github.com/${REPO}/releases/download/${VERSION}/${PACK}"
   echo "下载 ${URL}"
   if ! curl -fsSL -o "${WORK}/${PACK}" "$URL"; then
@@ -168,9 +169,9 @@ elif [ "$MODE" = "release" ]; then
     echo "未取到校验和文件，跳过校验" >&2
   fi
   tar -xzf "${WORK}/${PACK}" -C "$WORK"
-  [ -f "${WORK}/tza-server" ] || { echo "发布包里没有 tza-server" >&2; exit 1; }
-  [ -f "${WORK}/deploy/tza-server.service" ] && UNIT_SRC="${WORK}/deploy/tza-server.service"
-  [ -f "${WORK}/deploy/tza-browser.service" ] && BROWSER_UNIT_SRC="${WORK}/deploy/tza-browser.service"
+  [ -f "${WORK}/lodestar" ] || { echo "发布包里没有 lodestar" >&2; exit 1; }
+  [ -f "${WORK}/deploy/lodestar.service" ] && UNIT_SRC="${WORK}/deploy/lodestar.service"
+  [ -f "${WORK}/deploy/lodestar-browser.service" ] && BROWSER_UNIT_SRC="${WORK}/deploy/lodestar-browser.service"
 else
   need git
   need go
@@ -189,40 +190,118 @@ else
   fi
   LDFLAGS="-s -w -X github.com/${REPO}/internal/model.Version=${VERSION}"
   (cd "${WORK}/src" && CGO_ENABLED=0 go build -trimpath -ldflags "$LDFLAGS" \
-    -o "${WORK}/tza-server" ./cmd/server)
-  [ -f "${WORK}/src/deploy/tza-server.service" ] && UNIT_SRC="${WORK}/src/deploy/tza-server.service"
-  [ -f "${WORK}/src/deploy/tza-browser.service" ] && BROWSER_UNIT_SRC="${WORK}/src/deploy/tza-browser.service"
+    -o "${WORK}/lodestar" ./cmd/server)
+  [ -f "${WORK}/src/deploy/lodestar.service" ] && UNIT_SRC="${WORK}/src/deploy/lodestar.service"
+  [ -f "${WORK}/src/deploy/lodestar-browser.service" ] && BROWSER_UNIT_SRC="${WORK}/src/deploy/lodestar-browser.service"
   # 源码构建默认不含 Agent 二进制，后台的一键安装命令会没用。这里顺手把两种架构都
   # 编好放进数据目录（Server 分发时优先用数据目录里这份，见 docs/DEPLOYMENT.md）。
   AGENTS="${WORK}/agents"
   mkdir -p "$AGENTS"
   for arch in amd64 arm64; do
     (cd "${WORK}/src" && CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath -ldflags "$LDFLAGS" \
-      -o "${AGENTS}/tza-agent-linux-${arch}" ./cmd/agent)
+      -o "${AGENTS}/lodestar-agent-linux-${arch}" ./cmd/agent)
   done
-  echo "已构建 Agent：tza-agent-linux-amd64、tza-agent-linux-arm64"
+  echo "已构建 Agent：lodestar-agent-linux-amd64、lodestar-agent-linux-arm64"
 fi
+
+# ---------------------------------------------------------------- 从改名前的 TZA 安装迁移
+# 改名前的安装用 tza-server / tza-browser 服务、/var/lib/tza-probe 数据目录和 tza-probe 用户。
+# 检测到时：先用新版本核对旧库，停服务，把旧数据目录整份打包到 /root（0600，回滚用），
+# 再把用户、目录、单元、二进制换成新名字；之后照常升级。任何一步失败都会停下。
+LEGACY_DATA="/var/lib/tza-probe"
+migrate_legacy() {
+  [ -d "$LEGACY_DATA" ] || return 0
+  if [ "$DATA" != "/var/lib/lodestar" ]; then
+    echo "!! 发现改名前的数据目录 ${LEGACY_DATA}，但这次用的是 --data ${DATA}，不自动迁移。" >&2
+    echo "   要迁移就去掉 --data；要全新安装就先把 ${LEGACY_DATA} 挪走。" >&2
+    exit 1
+  fi
+  if [ -e "$DATA" ]; then
+    echo "!! ${LEGACY_DATA} 和 ${DATA} 同时存在，不知道该用哪个，已中止，没有改动任何东西。" >&2
+    exit 1
+  fi
+  echo "发现改名前的 TZA 安装，迁移到 Lodestar"
+  if grep -q 'check-data' "${WORK}/lodestar" 2>/dev/null && ! "${WORK}/lodestar" check-data --data "$LEGACY_DATA"; then
+    echo "!! 版本 ${VERSION} 不能使用 ${LEGACY_DATA}，已中止，现有安装与服务未做任何改动。" >&2
+    exit 1
+  fi
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl stop tza-browser 2>/dev/null || true
+    systemctl stop tza-server 2>/dev/null || true
+  fi
+  STAMP="$(date +%Y%m%d-%H%M%S)"
+  umask 077
+  if command -v zstd >/dev/null 2>&1; then
+    SNAP="/root/lodestar-premigrate-${STAMP}.tar.zst"
+    tar -C /var/lib --zstd -cf "$SNAP" tza-probe
+  else
+    SNAP="/root/lodestar-premigrate-${STAMP}.tar.gz"
+    tar -C /var/lib -czf "$SNAP" tza-probe
+  fi
+  chmod 0600 "$SNAP"
+  umask 022
+  echo "已把旧数据目录整份备份到 ${SNAP}（回滚：停掉 lodestar，解压回 /var/lib，装回旧版本）"
+  if id -u tza-probe >/dev/null 2>&1 && ! id -u "$SERVICE_USER" >/dev/null 2>&1; then
+    usermod -l "$SERVICE_USER" -d "$DATA" tza-probe
+    getent group tza-probe >/dev/null 2>&1 && groupmod -n "$SERVICE_USER" tza-probe
+  fi
+  if id -u tza-browser >/dev/null 2>&1 && ! id -u "$BROWSER_USER" >/dev/null 2>&1; then
+    usermod -l "$BROWSER_USER" -d "$BROWSER_STATE" tza-browser
+    getent group tza-browser >/dev/null 2>&1 && groupmod -n "$BROWSER_USER" tza-browser
+  fi
+  if getent group tza-browser-control >/dev/null 2>&1 && ! getent group "$BROWSER_GROUP" >/dev/null 2>&1; then
+    groupmod -n "$BROWSER_GROUP" tza-browser-control
+  fi
+  mv "$LEGACY_DATA" "$DATA"
+  for f in "$DATA"/tza-probe.db*; do
+    [ -e "$f" ] && mv "$f" "${DATA}/lodestar.db${f#"$DATA"/tza-probe.db}"
+  done
+  rm -f "$DATA"/agents/tza-agent-linux-*
+  [ -d /var/lib/tza-browser ] && [ ! -e "$BROWSER_STATE" ] && mv /var/lib/tza-browser "$BROWSER_STATE"
+  [ -d /opt/tza-browser ] && [ ! -e "$BROWSER_DIR" ] && mv /opt/tza-browser "$BROWSER_DIR"
+  rm -rf /run/tza-browser
+  rm -f /etc/tmpfiles.d/tza-browser.conf
+  if [ -f /etc/apparmor.d/tza-browser-chromium ]; then
+    command -v apparmor_parser >/dev/null 2>&1 && apparmor_parser -R /etc/apparmor.d/tza-browser-chromium 2>/dev/null || true
+    rm -f /etc/apparmor.d/tza-browser-chromium
+  fi
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl disable tza-browser tza-server >/dev/null 2>&1 || true
+  fi
+  for u in tza-server:lodestar tza-browser:lodestar-browser; do
+    old="/etc/systemd/system/${u%%:*}.service"; new="/etc/systemd/system/${u#*:}.service"
+    [ -d "${old}.d" ] && [ ! -e "${new}.d" ] && mv "${old}.d" "${new}.d"
+    rm -f "$old"
+  done
+  command -v systemctl >/dev/null 2>&1 && systemctl daemon-reload || true
+  if [ -f /usr/local/bin/tza-server ]; then
+    mv /usr/local/bin/tza-server "${BIN}.previous"
+    rm -f /usr/local/bin/tza-server.previous
+  fi
+  echo "已迁移：用户 ${SERVICE_USER}、数据目录 ${DATA}、服务 lodestar / lodestar-browser"
+}
+migrate_legacy
 
 # 升级前先用新版本核对数据目录：库比新版本还新、或早于 v2.0.0（不再升级）时在这里停下，
 # 旧二进制与正在运行的服务原样保留。v2.0.0 起的库能原地升级，迁移在新版本启动时执行。
-# 旧版本的 tza-server 没有这条子命令，跳过。
-if [ -d "$DATA" ] && grep -q 'check-data' "${WORK}/tza-server" 2>/dev/null; then
-  if ! "${WORK}/tza-server" check-data --data "$DATA"; then
+# 旧版本的 lodestar 没有这条子命令，跳过。
+if [ -d "$DATA" ] && grep -q 'check-data' "${WORK}/lodestar" 2>/dev/null; then
+  if ! "${WORK}/lodestar" check-data --data "$DATA"; then
     echo "!! 版本 ${VERSION} 不能使用现有数据目录 ${DATA}，已中止，现有安装与服务未做任何改动。" >&2
     echo "   库比这个版本还新：请安装更新的版本。库早于 v2.0.0：换一个数据目录全新部署，" >&2
-    echo "   例如 --data /var/lib/tza-probe-v2（旧目录保留，可随时回到旧版本），或继续安装旧版本 --release v1.9.1。" >&2
+    echo "   例如 --data /var/lib/lodestar-v2（旧目录保留，可随时回到旧版本），或继续安装旧版本 --release v1.9.1。" >&2
     exit 1
   fi
 fi
 
-if [ -f "$BIN" ] && [ -f "${DATA}/tza-probe.db" ]; then
+if [ -f "$BIN" ] && [ -f "${DATA}/lodestar.db" ]; then
   echo "提示：新版本启动时可能迁移数据库，迁移后旧版本打不开；需要回滚的话，请先备份 ${DATA}。"
 fi
 if [ -f "$BIN" ]; then
   cp -p "$BIN" "${BIN}.previous"
   echo "已保留旧二进制：${BIN}.previous"
 fi
-install -m 0755 "${WORK}/tza-server" "$BIN"
+install -m 0755 "${WORK}/lodestar" "$BIN"
 
 if ! getent group "$SERVICE_USER" >/dev/null 2>&1; then
   groupadd --system "$SERVICE_USER"
@@ -238,14 +317,14 @@ if [ -n "${AGENTS:-}" ] && [ -d "${AGENTS:-}" ]; then
   install -d -m 0700 -o "$SERVICE_USER" -g "$SERVICE_USER" "${DATA}/agents"
   for arch in amd64 arm64; do
     install -m 0600 -o "$SERVICE_USER" -g "$SERVICE_USER" \
-      "${AGENTS}/tza-agent-linux-${arch}" "${DATA}/agents/tza-agent-linux-${arch}"
+      "${AGENTS}/lodestar-agent-linux-${arch}" "${DATA}/agents/lodestar-agent-linux-${arch}"
   done
   echo "$VERSION" > "$MARK"
   chown "$SERVICE_USER:$SERVICE_USER" "$MARK"
 elif [ -f "$MARK" ]; then
-  rm -f "${DATA}/agents/tza-agent-linux-amd64" "${DATA}/agents/tza-agent-linux-arm64" "$MARK"
+  rm -f "${DATA}/agents/lodestar-agent-linux-amd64" "${DATA}/agents/lodestar-agent-linux-arm64" "$MARK"
   echo "已移除之前源码构建放入 ${DATA}/agents 的 Agent，改用发布包内嵌的 Agent"
-elif [ -f "${DATA}/agents/tza-agent-linux-amd64" ] || [ -f "${DATA}/agents/tza-agent-linux-arm64" ]; then
+elif [ -f "${DATA}/agents/lodestar-agent-linux-amd64" ] || [ -f "${DATA}/agents/lodestar-agent-linux-arm64" ]; then
   echo "注意：${DATA}/agents 里已有 Agent，会优先于发布包内嵌的 Agent 分发；不需要请删掉后重启服务" >&2
 fi
 
@@ -337,18 +416,18 @@ browser_userns() {
   fi
   if [ "$(sysctl -n kernel.apparmor_restrict_unprivileged_userns 2>/dev/null || echo 0)" = 1 ]; then
     command -v apparmor_parser >/dev/null 2>&1 || { echo "AppArmor 限制了用户命名空间，但找不到 apparmor_parser" >&2; exit 1; }
-    cat > /etc/apparmor.d/tza-browser-chromium <<'APPARMOR'
-# TZA ControlCenter：地区偏移检测的隔离浏览器。只放行 Chromium 沙箱需要的用户命名空间。
+    cat > /etc/apparmor.d/lodestar-browser-chromium <<'APPARMOR'
+# Lodestar：地区偏移检测的隔离浏览器。只放行 Chromium 沙箱需要的用户命名空间。
 abi <abi/4.0>,
 include <tunables/global>
 
-profile tza-browser-chromium /opt/tza-browser/chromium-*/chrome-headless-shell-*/chrome-headless-shell flags=(unconfined) {
+profile lodestar-browser-chromium /opt/lodestar-browser/chromium-*/chrome-headless-shell-*/chrome-headless-shell flags=(unconfined) {
   userns,
-  include if exists <local/tza-browser-chromium>
+  include if exists <local/lodestar-browser-chromium>
 }
 APPARMOR
-    apparmor_parser -r /etc/apparmor.d/tza-browser-chromium
-    echo "已为 Chromium 写入 AppArmor 配置：/etc/apparmor.d/tza-browser-chromium"
+    apparmor_parser -r /etc/apparmor.d/lodestar-browser-chromium
+    echo "已为 Chromium 写入 AppArmor 配置：/etc/apparmor.d/lodestar-browser-chromium"
   fi
 }
 
@@ -357,25 +436,25 @@ browser_unit() {
     cp "$BROWSER_UNIT_SRC" "$BROWSER_UNIT"
     return
   fi
-  if command -v curl >/dev/null 2>&1 && curl -fsSL -o "$BROWSER_UNIT" "${RAW}/deploy/tza-browser.service"; then
+  if command -v curl >/dev/null 2>&1 && curl -fsSL -o "$BROWSER_UNIT" "${RAW}/deploy/lodestar-browser.service"; then
     return
   fi
-  # 与 deploy/tza-browser.service 保持一致（cmd/server 的测试会核对），取不到时的兜底。
+  # 与 deploy/lodestar-browser.service 保持一致（cmd/server 的测试会核对），取不到时的兜底。
   cat > "$BROWSER_UNIT" <<'UNIT'
 [Unit]
-Description=TZA ControlCenter browser worker (region drift check)
-Documentation=https://github.com/leeska/TZA-ControlCenter/blob/main/docs/IP-GUARD-INTEGRATION.md
-After=tza-server.service
+Description=Lodestar browser worker (region drift check)
+Documentation=https://github.com/leeska/Lodestar/blob/main/docs/IP-GUARD-INTEGRATION.md
+After=lodestar.service
 
 [Service]
 # Chromium reads Google / Meta pages for the region drift check. It has no network
 # of its own: PrivateNetwork leaves only loopback, and every connection goes through
 # the Server's private socket and from there through the node's Agent.
-User=tza-browser
-Group=tza-browser
-SupplementaryGroups=tza-browser-control
-ExecStart=/usr/local/bin/tza-server browser-worker --socket /run/tza-browser/control.sock --state /var/lib/tza-browser
-StateDirectory=tza-browser
+User=lodestar-browser
+Group=lodestar-browser
+SupplementaryGroups=lodestar-browser-control
+ExecStart=/usr/local/bin/lodestar browser-worker --socket /run/lodestar-browser/control.sock --state /var/lib/lodestar-browser
+StateDirectory=lodestar-browser
 StateDirectoryMode=0700
 Restart=on-failure
 RestartSec=5
@@ -387,7 +466,7 @@ ProtectHome=yes
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes
-ReadWritePaths=/run/tza-browser
+ReadWritePaths=/run/lodestar-browser
 NoNewPrivileges=yes
 CapabilityBoundingSet=
 LockPersonality=yes
@@ -408,10 +487,10 @@ UNIT
 }
 
 setup_browser() {
-  # 旧版本的 tza-server 没有 browser-install / browser-worker：它会把不认识的子命令当成
+  # 旧版本的 lodestar 没有 browser-install / browser-worker：它会把不认识的子命令当成
   # 普通启动，以 root 起一个 Server 卡住脚本。先确认这个二进制带着浏览器。
   if ! grep -q 'browser-install' "$BIN" 2>/dev/null; then
-    echo "!! 版本 ${VERSION} 的 tza-server 不含隔离浏览器，跳过 --with-browser（Server 照常安装）。" >&2
+    echo "!! 版本 ${VERSION} 的 lodestar 不含隔离浏览器，跳过 --with-browser（Server 照常安装）。" >&2
     echo "   请安装包含浏览器的发布版本，或用 --source 从源码构建。" >&2
     BROWSER="failed"
     return
@@ -425,8 +504,8 @@ setup_browser() {
   usermod -aG "$BROWSER_GROUP" "$BROWSER_USER"
   browser_libraries
   browser_userns
-  echo "d ${BROWSER_RUN} 0750 ${SERVICE_USER} ${BROWSER_GROUP} -" > /etc/tmpfiles.d/tza-browser.conf
-  systemd-tmpfiles --create /etc/tmpfiles.d/tza-browser.conf
+  echo "d ${BROWSER_RUN} 0750 ${SERVICE_USER} ${BROWSER_GROUP} -" > /etc/tmpfiles.d/lodestar-browser.conf
+  systemd-tmpfiles --create /etc/tmpfiles.d/lodestar-browser.conf
   install -d -m 0700 -o "$BROWSER_USER" -g "$BROWSER_USER" "$BROWSER_STATE"
   # 先在与正式服务相同的隔离里自检：只有回环网卡、非 root、沙箱生效、有字体。
   echo "浏览器自检（与正式服务同样的隔离）"
@@ -447,22 +526,22 @@ setup_browser() {
 started="no"
 if [ "$SYSTEMD" != "no" ] && [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then
   if [ -z "$UNIT_SRC" ]; then
-    UNIT_SRC="${WORK}/tza-server.service"
+    UNIT_SRC="${WORK}/lodestar.service"
     fetch="no"
-    if command -v curl >/dev/null 2>&1 && curl -fsSL -o "$UNIT_SRC" "${RAW}/deploy/tza-server.service"; then
+    if command -v curl >/dev/null 2>&1 && curl -fsSL -o "$UNIT_SRC" "${RAW}/deploy/lodestar.service"; then
       fetch="yes"
     fi
     if [ "$fetch" = "no" ]; then
-      # 与 deploy/tza-server.service 保持一致，取不到远端单元文件时的兜底。
+      # 与 deploy/lodestar.service 保持一致，取不到远端单元文件时的兜底。
       cat > "$UNIT_SRC" <<'UNIT'
 [Unit]
-Description=TZA ControlCenter Server
+Description=Lodestar Server
 After=network.target
 
 [Service]
-User=tza-probe
-Group=tza-probe
-ExecStart=/usr/local/bin/tza-server --listen 127.0.0.1:25774 --data /var/lib/tza-probe
+User=lodestar
+Group=lodestar
+ExecStart=/usr/local/bin/lodestar --listen 127.0.0.1:25774 --data /var/lib/lodestar
 Restart=on-failure
 RestartSec=5
 UMask=0077
@@ -470,7 +549,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/tza-probe
+ReadWritePaths=/var/lib/lodestar
 
 [Install]
 WantedBy=multi-user.target
@@ -479,16 +558,16 @@ UNIT
   fi
   sed -e "s#^ExecStart=.*#ExecStart=${BIN} --listen ${LISTEN} --data ${DATA}#" "$UNIT_SRC" > "$UNIT"
   # 数据目录不在默认位置时，systemd 的只读保护也要跟着放行。
-  if [ "$DATA" != "/var/lib/tza-probe" ]; then
+  if [ "$DATA" != "/var/lib/lodestar" ]; then
     sed -i "s#^ReadWritePaths=.*#ReadWritePaths=${DATA}#" "$UNIT"
   fi
   [ "$BROWSER" = "yes" ] && setup_browser
   systemctl daemon-reload
-  systemctl enable tza-server >/dev/null 2>&1
+  systemctl enable lodestar >/dev/null 2>&1
   # 升级时服务还在跑旧进程，enable --now 不会换掉它：一律 restart（没在跑时等同 start）。
-  if systemctl is-active --quiet tza-server; then ACTION="重启"; else ACTION="启动"; fi
+  if systemctl is-active --quiet lodestar; then ACTION="重启"; else ACTION="启动"; fi
   # 重启失败也要把后面的登录信息打印出来（首次安装的密码只显示这一次），最后再以失败退出。
-  if systemctl restart tza-server; then started="yes"; else started="failed"; fi
+  if systemctl restart lodestar; then started="yes"; else started="failed"; fi
   # 等到 /healthz 报出的正是刚装的版本，才算新进程起来了（旧进程退出前也可能还在应答）。
   RUNNING=""
   if [ "$started" = "yes" ] && command -v curl >/dev/null 2>&1; then
@@ -499,8 +578,8 @@ UNIT
     done
   fi
   if [ "$BROWSER" = "yes" ] && [ "$started" = "yes" ]; then
-    systemctl enable tza-browser >/dev/null 2>&1
-    if systemctl restart tza-browser; then BROWSER="started"; else BROWSER="failed"; fi
+    systemctl enable lodestar-browser >/dev/null 2>&1
+    if systemctl restart lodestar-browser; then BROWSER="started"; else BROWSER="failed"; fi
   fi
 elif [ "$BROWSER" = "yes" ]; then
   echo "--with-browser 需要 systemd，本机没有可用的 systemd，未安装浏览器" >&2
@@ -508,31 +587,42 @@ elif [ "$BROWSER" = "yes" ]; then
 fi
 
 # ---------------------------------------------------------------- nginx 访问日志过滤
-# 本机装有 nginx 时写入 conf.d/tza-probe-log.conf，只定义 $tza_loggable，不改任何站点：
-# 站点要在 server 块里写 access_log ... if=$tza_loggable 才生效（见 deploy/nginx-site.conf）。
+# 本机装有 nginx 时写入 conf.d/lodestar-log.conf，只定义 $lodestar_loggable，不改任何站点：
+# 站点要在 server 块里写 access_log ... if=$lodestar_loggable 才生效（见 deploy/nginx-site.conf）。
 # nginx -t 不通过就撤回这个文件，nginx 原样不动（本机配置原本就有错时也会走到这里）。
 nginx_log() {
   NGINX="skipped"
   command -v nginx >/dev/null 2>&1 && [ -d /etc/nginx/conf.d ] || return 0
-  cat > "${WORK}/tza-probe-log.conf" <<'NGINX'
-# TZA ControlCenter：Agent 周期上报的访问日志过滤（http 层，由 deploy/install.sh 装到 /etc/nginx/conf.d/）。
+  cat > "${WORK}/lodestar-log.conf" <<'NGINX'
+# Lodestar：Agent 周期上报的访问日志过滤（http 层，由 deploy/install.sh 装到 /etc/nginx/conf.d/）。
 # 每个节点每隔几秒就上报一次，全部记下来一天上百 MB。/api/v1/agent/* 返回 2xx / 3xx，
-# 或 499（Agent 主动断开长轮询）时 $tza_loggable 为 0；其他请求和 Agent 的 4xx / 5xx 照常记录。
-# 站点的 server 块里这样用：access_log /var/log/nginx/access.log combined if=$tza_loggable;
+# 或 499（Agent 主动断开长轮询）时 $lodestar_loggable 为 0；其他请求和 Agent 的 4xx / 5xx 照常记录。
+# 站点的 server 块里这样用：access_log /var/log/nginx/access.log combined if=$lodestar_loggable;
+map "$status $request_uri" $lodestar_loggable {
+    "~^([23][0-9][0-9]|499) /api/v1/agent/" 0;
+    default 1;
+}
+# 改名前写在站点里的 if=$tza_loggable 照样能用。
 map "$status $request_uri" $tza_loggable {
     "~^([23][0-9][0-9]|499) /api/v1/agent/" 0;
     default 1;
 }
 NGINX
-  if [ -f "$NGINX_LOG" ] && cmp -s "${WORK}/tza-probe-log.conf" "$NGINX_LOG"; then
+  if [ -f "$NGINX_LOG" ] && cmp -s "${WORK}/lodestar-log.conf" "$NGINX_LOG"; then
     NGINX="current"
     return 0
   fi
+  # 改名前的 tza-probe-log.conf 定义的 $tza_loggable，新文件里也有：先挪走旧文件免得重复定义，
+  # 新文件过不了 nginx -t 时一起放回去。
+  LEGACY_NGINX_LOG="/etc/nginx/conf.d/tza-probe-log.conf"
+  MOVED_LEGACY=""
+  if [ -f "$LEGACY_NGINX_LOG" ]; then MOVED_LEGACY="${WORK}/tza-probe-log.conf"; mv "$LEGACY_NGINX_LOG" "$MOVED_LEGACY"; fi
   OLD_NGINX_LOG=""
-  if [ -f "$NGINX_LOG" ]; then OLD_NGINX_LOG="${WORK}/tza-probe-log.conf.old"; cp -p "$NGINX_LOG" "$OLD_NGINX_LOG"; fi
-  install -m 0644 "${WORK}/tza-probe-log.conf" "$NGINX_LOG"
+  if [ -f "$NGINX_LOG" ]; then OLD_NGINX_LOG="${WORK}/lodestar-log.conf.old"; cp -p "$NGINX_LOG" "$OLD_NGINX_LOG"; fi
+  install -m 0644 "${WORK}/lodestar-log.conf" "$NGINX_LOG"
   if ! nginx -t >/dev/null 2>&1; then
     if [ -n "$OLD_NGINX_LOG" ]; then cp -p "$OLD_NGINX_LOG" "$NGINX_LOG"; else rm -f "$NGINX_LOG"; fi
+    [ -n "$MOVED_LEGACY" ] && mv "$MOVED_LEGACY" "$LEGACY_NGINX_LOG"
     NGINX="failed"
     return 0
   fi
@@ -557,18 +647,18 @@ if [ "$started" = "yes" ]; then
   else
     echo "!! 服务已${ACTION}，但 30 秒内没有应答 http://${LISTEN}/healthz，请查看服务日志" >&2
   fi
-  echo "服务状态：systemctl status tza-server"
-  echo "服务日志：journalctl -u tza-server -n 100 --no-pager"
+  echo "服务状态：systemctl status lodestar"
+  echo "服务日志：journalctl -u lodestar -n 100 --no-pager"
 elif [ "$started" = "failed" ]; then
-  echo "!! systemctl restart tza-server 失败，服务没有起来。查看原因：" >&2
-  echo "   journalctl -u tza-server -n 100 --no-pager" >&2
-  echo "   旧二进制保留在 ${BIN}.previous，可 cp -p 回去后再 systemctl restart tza-server" >&2
+  echo "!! systemctl restart lodestar 失败，服务没有起来。查看原因：" >&2
+  echo "   journalctl -u lodestar -n 100 --no-pager" >&2
+  echo "   旧二进制保留在 ${BIN}.previous，可 cp -p 回去后再 systemctl restart lodestar" >&2
 else
   echo "未注册 systemd 服务，手动启动："
   echo "  sudo -u ${SERVICE_USER} ${BIN} --listen ${LISTEN} --data ${DATA}"
 fi
 if [ "$BROWSER" = "started" ]; then
-  echo "地区偏移检测浏览器已启动：systemctl status tza-browser（日志 journalctl -u tza-browser）"
+  echo "地区偏移检测浏览器已启动：systemctl status lodestar-browser（日志 journalctl -u lodestar-browser）"
   echo "节点开通检测出口：在节点上重新执行接入命令并加 --ipguard（后台「地区偏移检测」页给出完整命令）"
 elif [ "$BROWSER" = "failed" ]; then
   echo "!! 地区偏移检测浏览器没有启用，见上方原因；修好后重新执行本脚本并加 --with-browser" >&2
@@ -577,8 +667,8 @@ case "$NGINX" in
   installed|current|reload-failed)
     [ "$NGINX" = "installed" ] && echo "已写入 ${NGINX_LOG}（Agent 上报的访问日志过滤）"
     [ "$NGINX" = "reload-failed" ] && echo "!! 已写入 ${NGINX_LOG}，但 systemctl reload nginx 失败，请手动重载" >&2
-    if ! grep -rqs 'if=\$tza_loggable' /etc/nginx/sites-enabled /etc/nginx/conf.d; then
-      echo "   站点的 server 块里加上 access_log /var/log/nginx/access.log combined if=\$tza_loggable; 才会生效"
+    if ! grep -rqs 'if=\$lodestar_loggable' /etc/nginx/sites-enabled /etc/nginx/conf.d; then
+      echo "   站点的 server 块里加上 access_log /var/log/nginx/access.log combined if=\$lodestar_loggable; 才会生效"
     fi ;;
   failed)
     echo "!! 写入 ${NGINX_LOG} 后 nginx -t 未通过，已撤回，nginx 未改动；用 nginx -t 查看原因" >&2 ;;

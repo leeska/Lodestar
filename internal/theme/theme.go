@@ -18,23 +18,23 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/leeska/TZA-ControlCenter/pkg/tzapkg"
+	"github.com/leeska/Lodestar/pkg/lspkg"
 )
 
 // MaxUpload caps one uploaded archive.
-const MaxUpload = tzapkg.MaxUpload
+const MaxUpload = lspkg.MaxUpload
 
-// The package format lives in pkg/tzapkg.
+// The package format lives in pkg/lspkg.
 type (
-	Colors     = tzapkg.Colors
-	Manifest   = tzapkg.Manifest
-	Decoration = tzapkg.Decoration
-	Setting    = tzapkg.SkinSetting
+	Colors     = lspkg.Colors
+	Manifest   = lspkg.Manifest
+	Decoration = lspkg.Decoration
+	Setting    = lspkg.SkinSetting
 )
 
 const (
-	TypeSkin  = tzapkg.TypeSkin
-	TypeAddon = tzapkg.TypeAddon
+	TypeSkin  = lspkg.TypeSkin
+	TypeAddon = lspkg.TypeAddon
 )
 
 // Builtins are the skins compiled into web/: their stylesheets are always on
@@ -85,7 +85,7 @@ func (s *Store) Installed() []Manifest {
 	}
 	out := []Manifest{}
 	for _, e := range entries {
-		if !e.IsDir() || !tzapkg.ValidID(e.Name()) || builtin(e.Name()) {
+		if !e.IsDir() || !lspkg.ValidID(e.Name()) || builtin(e.Name()) {
 			continue
 		}
 		if m, err := s.read(e.Name()); err == nil {
@@ -102,7 +102,7 @@ func (s *Store) Known(id string) bool {
 	if builtin(id) {
 		return true
 	}
-	if s == nil || s.Dir == "" || !tzapkg.ValidID(id) {
+	if s == nil || s.Dir == "" || !lspkg.ValidID(id) {
 		return false
 	}
 	s.mu.RLock()
@@ -118,7 +118,7 @@ func (s *Store) read(id string) (Manifest, error) {
 	if err != nil {
 		return Manifest{}, err
 	}
-	m, err := tzapkg.Parse(raw)
+	m, err := lspkg.Parse(raw)
 	if err != nil || m.ID != id {
 		return Manifest{}, fmt.Errorf("theme %s: invalid manifest", id)
 	}
@@ -135,7 +135,7 @@ func (s *Store) Install(archive []byte) (Manifest, error) {
 	if s == nil || s.Dir == "" {
 		return Manifest{}, errors.New("这个 Server 没有配置主题目录")
 	}
-	m, files, err := tzapkg.Open(archive)
+	m, files, err := lspkg.Open(archive)
 	if err != nil {
 		return Manifest{}, err
 	}
@@ -187,7 +187,7 @@ func (s *Store) Remove(id string) error {
 	if builtin(id) {
 		return errors.New("内置主题不能删除")
 	}
-	if s == nil || s.Dir == "" || !tzapkg.ValidID(id) {
+	if s == nil || s.Dir == "" || !lspkg.ValidID(id) {
 		return os.ErrNotExist
 	}
 	s.mu.Lock()
@@ -211,17 +211,17 @@ func (s *Store) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id, file := r.PathValue("id"), r.PathValue("file")
-	ctype, ok := tzapkg.ContentType(file)
+	ctype, ok := lspkg.ContentType(file)
 	// Dot files are never package content (zips may not carry them by accident
 	// either way): refusing them keeps any server-side record out of reach.
 	hidden := strings.HasPrefix(file, ".") || strings.Contains(file, "/.")
-	if s == nil || s.Dir == "" || !tzapkg.ValidID(id) || !tzapkg.SafePath(file) || !ok || builtin(id) || hidden {
+	if s == nil || s.Dir == "" || !lspkg.ValidID(id) || !lspkg.SafePath(file) || !ok || builtin(id) || hidden {
 		http.NotFound(w, r)
 		return
 	}
 	s.mu.RLock()
 	m, manifestErr := s.read(id)
-	if manifestErr != nil || !tzapkg.ThemeFileAllowed(m, file) {
+	if manifestErr != nil || !lspkg.ThemeFileAllowed(m, file) {
 		s.mu.RUnlock()
 		http.NotFound(w, r)
 		return

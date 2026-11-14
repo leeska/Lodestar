@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/agentsig"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/agentsig"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 func digest(b []byte) string {
@@ -36,7 +36,7 @@ func pinned() map[string]ed25519.PublicKey { return map[string]ed25519.PublicKey
 // signed is the upgrade a Server relays for binary, signed with key as version.
 func signed(key ed25519.PrivateKey, binary []byte, version string) model.AgentUpgrade {
 	sig := agentsig.Sign(key, "ops", runtime.GOARCH, version, digest(binary))
-	return model.AgentUpgrade{Version: version, Path: "/dl/tza-agent-linux-amd64", SHA256: sig.SHA256, Arch: sig.Arch, KeyID: sig.KeyID, Sig: sig.Sig}
+	return model.AgentUpgrade{Version: version, Path: "/dl/lodestar-agent-linux-amd64", SHA256: sig.SHA256, Arch: sig.Arch, KeyID: sig.KeyID, Sig: sig.Sig}
 }
 
 // stage puts binary into state as a downloaded upgrade with signature sig.
@@ -62,7 +62,7 @@ func newTestUpdater(t *testing.T, binary []byte) (*Updater, string) {
 		t.Skip("the updater runs shell scripts as fake binaries")
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/dl/tza-agent-linux-amd64" {
+		if r.URL.Path != "/dl/lodestar-agent-linux-amd64" {
 			http.NotFound(w, r)
 			return
 		}
@@ -70,7 +70,7 @@ func newTestUpdater(t *testing.T, binary []byte) (*Updater, string) {
 	}))
 	t.Cleanup(server.Close)
 	bin := t.TempDir()
-	exe := filepath.Join(bin, "tza-agent")
+	exe := filepath.Join(bin, "lodestar-agent")
 	if err := os.WriteFile(exe, []byte("#!/bin/sh\necho old\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -112,11 +112,11 @@ func TestUpdaterRefusesBadDownloads(t *testing.T) {
 	otherArch.Arch = "mips"
 	for name, up := range map[string]model.AgentUpgrade{
 		"checksum":       signed(testKey, []byte("other"), "1.1.0"),
-		"bad digest":     {Path: "/dl/tza-agent-linux-amd64", SHA256: "zz"},
+		"bad digest":     {Path: "/dl/lodestar-agent-linux-amd64", SHA256: "zz"},
 		"foreign url":    withPath("//evil.example/x"),
 		"traversal":      withPath("/dl/../api/v1/x"),
-		"missing":        withPath("/dl/tza-agent-linux-arm64"),
-		"unsigned":       {Version: "1.1.0", Path: "/dl/tza-agent-linux-amd64", SHA256: digest(next)},
+		"missing":        withPath("/dl/lodestar-agent-linux-arm64"),
+		"unsigned":       {Version: "1.1.0", Path: "/dl/lodestar-agent-linux-amd64", SHA256: digest(next)},
 		"foreign key":    signed(foreignKey, next, "1.1.0"),
 		"older":          signed(testKey, next, "0.9.0"),
 		"pre-release":    signed(testKey, next, "1.1.0-rc1"),
@@ -153,7 +153,7 @@ func TestUpdaterRefusesBadDownloads(t *testing.T) {
 func TestApplyStagedDiscardsTamperedFile(t *testing.T) {
 	testAgentVersion(t)
 	state, bin := t.TempDir(), t.TempDir()
-	exe := filepath.Join(bin, "tza-agent")
+	exe := filepath.Join(bin, "lodestar-agent")
 	os.WriteFile(exe, []byte("old"), 0o755)
 	if applied, err := ApplyStaged(state, exe, pinned()); applied || err != nil {
 		t.Fatalf("nothing staged: %v %v", applied, err)

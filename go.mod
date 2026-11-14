@@ -1,4 +1,4 @@
-module github.com/leeska/TZA-ControlCenter
+module github.com/leeska/Lodestar
 
 go 1.27.3
 

@@ -28,19 +28,19 @@ go test -race ./...        # 没有 gcc 的机器去掉 -race
 只针对独立 loopback 数据目录。脚本会创建并删除自己的测试节点和任务，**不要指向生产数据**。
 
 ```sh
-npm install --prefix /tmp/tza-ui-deps --no-audit --no-fund jsdom@26.1.0 esbuild@0.25.10
-go build -o bin/tza-server ./cmd/server
-mkdir -p /tmp/tza-ui-data
-./bin/tza-server init --data /tmp/tza-ui-data > /tmp/tza-ui-credentials
-./bin/tza-server --listen 127.0.0.1:25874 --data /tmp/tza-ui-data
+npm install --prefix /tmp/lodestar-ui-deps --no-audit --no-fund jsdom@26.1.0 esbuild@0.25.10
+go build -o bin/lodestar ./cmd/server
+mkdir -p /tmp/lodestar-ui-data
+./bin/lodestar init --data /tmp/lodestar-ui-data > /tmp/lodestar-ui-credentials
+./bin/lodestar --listen 127.0.0.1:25874 --data /tmp/lodestar-ui-data
 # 官方主题包（复古印刷 / 现代极简 / 二次元）打成 zip，ui-smoke 会把它们装到这台一次性 Server 上：
-go run ./tools/themepack -out /tmp/tza-ui-themes themes/*
+go run ./tools/themepack -out /tmp/lodestar-ui-themes themes/*
 # 另一个终端：
-TZA_UI_DEPS=/tmp/tza-ui-deps \
-TZA_TEST_URL=http://127.0.0.1:25874 \
-TZA_TEST_ADMIN_FILE=/tmp/tza-ui-data/admin-token \
-TZA_TEST_CREDENTIALS_FILE=/tmp/tza-ui-credentials \
-TZA_TEST_THEMES=/tmp/tza-ui-themes \
+LODESTAR_UI_DEPS=/tmp/lodestar-ui-deps \
+LODESTAR_TEST_URL=http://127.0.0.1:25874 \
+LODESTAR_TEST_ADMIN_FILE=/tmp/lodestar-ui-data/admin-token \
+LODESTAR_TEST_CREDENTIALS_FILE=/tmp/lodestar-ui-credentials \
+LODESTAR_TEST_THEMES=/tmp/lodestar-ui-themes \
 node scripts/ui-smoke.mjs
 ```
 

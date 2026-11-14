@@ -54,11 +54,11 @@ func TestDirectoryOverrideChecksumAndRanges(t *testing.T) {
 
 func TestParseDownload(t *testing.T) {
 	cases := map[string][3]any{
-		"tza-agent-linux-amd64":        {"amd64", false, true},
-		"tza-agent-linux-arm64.sha256": {"arm64", true, true},
-		"tza-agent-linux-mips":         {"", false, false},
-		"tza-server-linux-amd64":       {"", false, false},
-		"..":                           {"", false, false},
+		"lodestar-agent-linux-amd64":        {"amd64", false, true},
+		"lodestar-agent-linux-arm64.sha256": {"arm64", true, true},
+		"lodestar-agent-linux-mips":         {"", false, false},
+		"lodestar-server-linux-amd64":       {"", false, false},
+		"..":                                {"", false, false},
 	}
 	for name, want := range cases {
 		arch, sum, ok := ParseDownload(name)
@@ -73,10 +73,10 @@ func TestScriptIsPOSIXAndSecretFree(t *testing.T) {
 	if !strings.HasPrefix(script, "#!/bin/sh\n") {
 		t.Fatal("script must start with a POSIX sh shebang")
 	}
-	for _, needle := range []string{"set -eu", "/dl/$NAME.sha256", "chmod 0600 \"$CONFIG\"", "systemctl restart tza-agent", "--uninstall", "<<'TZA_AGENT_SERVICE'", "--geo-provider", "--trace-method", "\"geo_provider\": \"%s\"", "\"trace_method\": \"%s\"",
+	for _, needle := range []string{"set -eu", "/dl/$NAME.sha256", "chmod 0600 \"$CONFIG\"", "systemctl restart lodestar-agent", "--uninstall", "<<'LODESTAR_AGENT_SERVICE'", "--geo-provider", "--trace-method", "\"geo_provider\": \"%s\"", "\"trace_method\": \"%s\"",
 		// 初始化系统两条路都要在：只写 systemd 时，Alpine/OpenRC 节点跑面板“接入”的一行命令
 		// 会直接 fail（实测 kr/sg 两台因此长期停在旧版本），只能手工替换二进制。
-		"INIT=openrc", "rc-service tza-agent start", "rc-update add tza-agent default", "<<'TZA_AGENT_INIT'"} {
+		"INIT=openrc", "rc-service lodestar-agent start", "rc-update add lodestar-agent default", "<<'LODESTAR_AGENT_INIT'"} {
 		if !strings.Contains(script, needle) {
 			t.Errorf("script missing %q", needle)
 		}
@@ -86,7 +86,7 @@ func TestScriptIsPOSIXAndSecretFree(t *testing.T) {
 			t.Errorf("script retains removed plugin provisioning %q", needle)
 		}
 	}
-	if strings.Contains(script, "<<'TZA_RUNTIME_SERVICE'") || strings.Contains(script, `install -m 0755 "$BIN" "$RT_HELPER"`) {
+	if strings.Contains(script, "<<'LODESTAR_RUNTIME_SERVICE'") || strings.Contains(script, `install -m 0755 "$BIN" "$RT_HELPER"`) {
 		t.Fatal("install script must not create a second Agent service or binary")
 	}
 	// The script is served without authentication, so it must never carry

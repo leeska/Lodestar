@@ -13,7 +13,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
+	"github.com/leeska/Lodestar/internal/storage"
 )
 
 func Migrations() []storage.Migration {
@@ -162,7 +162,7 @@ func validName(h string) bool {
 
 // DefaultDir is where a target writes when no directory is given.
 func DefaultDir(domain string) string {
-	return "/etc/tza-certs/" + strings.ReplaceAll(domain, "*", "_")
+	return "/etc/lodestar-certs/" + strings.ReplaceAll(domain, "*", "_")
 }
 
 // Store keeps certificates, DNS accounts and the ACME state. mu orders the

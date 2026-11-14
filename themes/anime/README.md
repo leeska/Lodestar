@@ -11,7 +11,7 @@
 现有角色 id 保持不变，方便保留已保存的绑定。
 
 后台「主题 → 二次元 → 设置」打开本包 `settings/index.html` 自定义的弹窗，在其中添加角色包、开关动效与角色包、选择每个节点的角色。角色绑定保存到节点 `decoration` 字段；选择自动则清除绑定，恢复按地区匹配。
-开发者可通过 [`settings_ui` 与 TZASettings SDK](../../docs/THEMES.md#开发者自定义设置弹窗) 自定义整个弹窗。
+开发者可通过 [`settings_ui` 与 LodestarSettings SDK](../../docs/THEMES.md#开发者自定义设置弹窗) 自定义整个弹窗。
 
 角色仍由通用装饰机制渲染：`card-backdrop` 放立绘、`card-backdrop-layer` 放闭眼帧、`card-overlay` 放双手、`card-plate` 放节点的商家名牌。
 图片、几何、配色与眨眼节奏在本包的 `anime.css` 中；附加角色从清单读取。

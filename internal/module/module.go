@@ -11,8 +11,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/storage"
 )
 
 // Module is one feature of the Server.

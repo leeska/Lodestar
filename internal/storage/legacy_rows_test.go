@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 // 这些行由早期版本写下时字段更少：任务 JSON 没有 family / port，结果 JSON 没有 sent。

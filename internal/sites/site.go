@@ -12,8 +12,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/leeska/TZA-ControlCenter/internal/certs"
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
+	"github.com/leeska/Lodestar/internal/certs"
+	"github.com/leeska/Lodestar/internal/channel"
 )
 
 // Kinds of site.
@@ -213,7 +213,7 @@ func (s Site) body(b *strings.Builder) {
 // paths for a TLS site; version is the node's nginx version.
 func (s Site) Config(crt, key, version string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "# 由 TZA ControlCenter 管理（站点 %s「%s」），在面板里修改，手改会被覆盖。\n", s.ID, strings.ReplaceAll(s.Name, "\n", " "))
+	fmt.Fprintf(&b, "# 由 Lodestar 管理（站点 %s「%s」），在面板里修改，手改会被覆盖。\n", s.ID, strings.ReplaceAll(s.Name, "\n", " "))
 	names := strings.Join(s.Domains, " ")
 	b.WriteString("server {\n    listen 80;\n    listen [::]:80;\n")
 	fmt.Fprintf(&b, "    server_name %s;\n", names)
@@ -234,7 +234,7 @@ func (s Site) Config(crt, key, version string) string {
 	}
 	fmt.Fprintf(&b, "    server_name %s;\n", names)
 	fmt.Fprintf(&b, "    ssl_certificate %s;\n    ssl_certificate_key %s;\n", crt, key)
-	b.WriteString("    ssl_protocols TLSv1.2 TLSv1.3;\n    ssl_session_cache shared:TZASSL:10m;\n")
+	b.WriteString("    ssl_protocols TLSv1.2 TLSv1.3;\n    ssl_session_cache shared:LODESTARSSL:10m;\n")
 	s.body(&b)
 	b.WriteString("}\n")
 	return b.String()

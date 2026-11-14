@@ -7,7 +7,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 // DeleteTask removes a task and, for an unlock task, the verdicts it produced:

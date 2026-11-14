@@ -1,7 +1,7 @@
 // Package totp is the panel login's second factor: RFC 6238 time-based codes
 // (HMAC-SHA1, 30-second steps, 6 digits), the format every authenticator app
 // reads. The secret lives in its own 0600 file next to admin-account, so a
-// password reset leaves it alone and `tza-server reset-password
+// password reset leaves it alone and `lodestar reset-password
 // --disable-totp` can remove it without touching the database.
 package totp
 
@@ -105,7 +105,7 @@ func Load(dir string) (cfg Config, ok bool, err error) {
 		return Config{}, false, err
 	}
 	if err := json.Unmarshal(data, &cfg); err != nil || cfg.Secret == "" {
-		return Config{}, false, fmt.Errorf("%s 内容无效，可用 tza-server reset-password --disable-totp 关闭两步验证", path(dir))
+		return Config{}, false, fmt.Errorf("%s 内容无效，可用 lodestar reset-password --disable-totp 关闭两步验证", path(dir))
 	}
 	return cfg, true, nil
 }

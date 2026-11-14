@@ -1,6 +1,6 @@
 ---
 name: character-pack
-description: 为 TZA ControlCenter 的二次元主题生成按地区匹配的角色包（立绘、闭眼帧、双手层、配色，打包成可上传的 zip）。用户说要给某些地区 / 节点做二次元角色、自己生成角色、做角色包时使用。
+description: 为 Lodestar 的二次元主题生成按地区匹配的角色包（立绘、闭眼帧、双手层、配色，打包成可上传的 zip）。用户说要给某些地区 / 节点做二次元角色、自己生成角色、做角色包时使用。
 ---
 
 # 生成二次元角色包
@@ -35,7 +35,7 @@ description: 为 TZA ControlCenter 的二次元主题生成按地区匹配的角
 ## 3. 配置图像接口
 
 - 需要一个兼容 OpenAI `/chat/completions`、能返回图片的接口（推荐 Nano Banana Pro：`gemini-3-pro-image`）。
-- 让用户提供接口地址和密钥，只通过环境变量传给脚本：`TZA_IMAGE_API_BASE`、`TZA_IMAGE_API_KEY`、`TZA_IMAGE_MODEL`。
+- 让用户提供接口地址和密钥，只通过环境变量传给脚本：`LODESTAR_IMAGE_API_BASE`、`LODESTAR_IMAGE_API_KEY`、`LODESTAR_IMAGE_MODEL`。
   **不要把密钥写进仓库、设定文件或任何会被提交的文件**；需要落盘时放到临时目录并 `chmod 600`。
 - 密钥如果是在对话里贴出来的，完成后提醒用户去平台作废、换一把新的。
 - 依赖：`python3 -m pip install pillow numpy`（系统 Python 装不了就建一个 venv）。

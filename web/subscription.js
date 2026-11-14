@@ -5,7 +5,7 @@ import { esc } from "./api.js";
 export const subscriptionURL = (token, format = "") => `${location.origin}/api/v1/sub/${encodeURIComponent(token)}${format ? `?format=${format}` : ""}`;
 
 export function subscriptionItems(token, name) {
-  const title = `TZA · ${name}`;
+  const title = `Lodestar · ${name}`;
   const clash = subscriptionURL(token, "clash");
   const singbox = subscriptionURL(token, "singbox");
   return [

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 func TestTaskControlsPreserveHistoryAndSchedule(t *testing.T) {

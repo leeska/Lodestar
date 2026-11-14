@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/ipguard"
+	"github.com/leeska/Lodestar/internal/ipguard"
 )
 
 func TestCentralBrowserLive(t *testing.T) {
-	directory := os.Getenv("TZA_CENTRAL_QA_DIR")
-	expectedIP := os.Getenv("TZA_CENTRAL_QA_IP")
+	directory := os.Getenv("LODESTAR_CENTRAL_QA_DIR")
+	expectedIP := os.Getenv("LODESTAR_CENTRAL_QA_IP")
 	if directory == "" || expectedIP == "" {
 		t.Skip("requires isolated Linux browser service and approved QA exit")
 	}

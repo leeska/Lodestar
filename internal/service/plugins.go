@@ -8,16 +8,16 @@ import (
 	"os"
 	"sync"
 
-	"github.com/leeska/TZA-ControlCenter/internal/catalog"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/pkg/tzapkg"
+	"github.com/leeska/Lodestar/internal/catalog"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/pkg/lspkg"
 )
 
 // Plugins is the installed-plugin port (internal/plugin.Store). Plugin
 // answers an error for a missing id or a plugin.json that no longer parses.
 type Plugins interface {
-	List() []tzapkg.Plugin
-	Plugin(id string) (tzapkg.Plugin, error)
+	List() []lspkg.Plugin
+	Plugin(id string) (lspkg.Plugin, error)
 	Remove(id string) error
 }
 
@@ -25,20 +25,20 @@ type Plugins interface {
 // where it came from and what it may do. A notify plugin carries its settings
 // form; a target set only its size (the targets show up in the catalog).
 type PluginView struct {
-	ID          string           `json:"id"`
-	Kind        string           `json:"kind"`
-	Name        string           `json:"name"`
-	Hint        string           `json:"hint,omitempty"`
-	Version     string           `json:"version,omitempty"`
-	Author      string           `json:"author,omitempty"`
-	Source      string           `json:"source,omitempty"`
-	Permissions []string         `json:"permissions"`
-	Settings    []tzapkg.Setting `json:"settings,omitempty"`
-	Targets     int              `json:"targets,omitempty"`
+	ID          string          `json:"id"`
+	Kind        string          `json:"kind"`
+	Name        string          `json:"name"`
+	Hint        string          `json:"hint,omitempty"`
+	Version     string          `json:"version,omitempty"`
+	Author      string          `json:"author,omitempty"`
+	Source      string          `json:"source,omitempty"`
+	Permissions []string        `json:"permissions"`
+	Settings    []lspkg.Setting `json:"settings,omitempty"`
+	Targets     int             `json:"targets,omitempty"`
 }
 
 // ViewPlugin describes one plugin.
-func ViewPlugin(p tzapkg.Plugin) PluginView {
+func ViewPlugin(p lspkg.Plugin) PluginView {
 	v := PluginView{ID: p.ID, Kind: p.Kind, Name: p.Name, Hint: p.Hint, Version: p.Version, Author: p.Author, Source: p.Source, Permissions: p.Permissions(), Targets: len(p.Targets)}
 	if v.Permissions == nil {
 		v.Permissions = []string{}
@@ -134,7 +134,7 @@ func (s *Service) Catalog() (Catalog, error) {
 		return out, nil
 	}
 	for _, p := range s.Plugins.List() {
-		if p.Kind != tzapkg.KindTargets {
+		if p.Kind != lspkg.KindTargets {
 			continue
 		}
 		out.Plugins = append(out.Plugins, CatalogSource{ID: p.ID, Name: p.Name, Count: len(p.Targets)})
@@ -146,13 +146,13 @@ func (s *Service) Catalog() (Catalog, error) {
 }
 
 // pluginTargets are the targets of every installed target set.
-func (s *Service) pluginTargets() []tzapkg.Target {
+func (s *Service) pluginTargets() []lspkg.Target {
 	if s.Plugins == nil {
 		return nil
 	}
-	var out []tzapkg.Target
+	var out []lspkg.Target
 	for _, p := range s.Plugins.List() {
-		if p.Kind == tzapkg.KindTargets {
+		if p.Kind == lspkg.KindTargets {
 			out = append(out, p.Targets...)
 		}
 	}

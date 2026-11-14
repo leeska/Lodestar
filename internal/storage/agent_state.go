@@ -9,7 +9,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
+	"github.com/leeska/Lodestar/internal/model"
 )
 
 // acceptAgentState runs inside the report/heartbeat transaction. Retired

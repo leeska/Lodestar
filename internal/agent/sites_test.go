@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
+	"github.com/leeska/Lodestar/internal/channel"
 )
 
 func applySites(t *testing.T, h *NginxHost, files map[string]string) channel.SitesResult {
@@ -46,7 +46,7 @@ func TestNginxApply(t *testing.T) {
 		}
 		return nil, nil
 	}}
-	a := map[string]string{"tza-site-a1.conf": "server { server_name a.example; }", "tza-site-b2.conf": "server { server_name b.example; }"}
+	a := map[string]string{"lodestar-site-a1.conf": "server { server_name a.example; }", "lodestar-site-b2.conf": "server { server_name b.example; }"}
 	if res := applySites(t, h, a); res.Error != "" {
 		t.Fatal(res)
 	}
@@ -54,18 +54,18 @@ func TestNginxApply(t *testing.T) {
 		t.Fatal(commands)
 	}
 	broken = true
-	res := applySites(t, h, map[string]string{"tza-site-a1.conf": "oops;", "tza-site-c3.conf": "server {}"})
+	res := applySites(t, h, map[string]string{"lodestar-site-a1.conf": "oops;", "lodestar-site-c3.conf": "server {}"})
 	if res.Error == "" || !strings.Contains(res.Output, "unknown directive") {
 		t.Fatal("nginx -t 失败要报错并带回输出", res)
 	}
-	got, _ := os.ReadFile(filepath.Join(dir, "tza-site-a1.conf"))
-	if string(got) != a["tza-site-a1.conf"] {
+	got, _ := os.ReadFile(filepath.Join(dir, "lodestar-site-a1.conf"))
+	if string(got) != a["lodestar-site-a1.conf"] {
 		t.Fatal("失败要恢复原来的文件", string(got))
 	}
-	if _, err := os.Stat(filepath.Join(dir, "tza-site-c3.conf")); err == nil {
+	if _, err := os.Stat(filepath.Join(dir, "lodestar-site-c3.conf")); err == nil {
 		t.Fatal("失败时新文件要删掉")
 	}
-	if _, err := os.Stat(filepath.Join(dir, "tza-site-b2.conf")); err != nil {
+	if _, err := os.Stat(filepath.Join(dir, "lodestar-site-b2.conf")); err != nil {
 		t.Fatal("失败时被删的文件要恢复")
 	}
 	broken = false
@@ -93,7 +93,7 @@ server {
 server {
     server_name blog.example.com;
 }
-# configuration file /etc/nginx/conf.d/tza-site-ab12.conf:
+# configuration file /etc/nginx/conf.d/lodestar-site-ab12.conf:
 server {
     server_name app.example.com;
 }

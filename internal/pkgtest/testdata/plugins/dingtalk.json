@@ -5,7 +5,7 @@
   "name": "钉钉机器人",
   "hint": "群自定义机器人，支持加签与自定义关键词",
   "version": "1.0.0",
-  "author": "TZA",
+  "author": "Lodestar",
   "notify": {
     "hosts": ["oapi.dingtalk.com"],
     "settings": [

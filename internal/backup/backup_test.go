@@ -13,14 +13,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/agent"
-	"github.com/leeska/TZA-ControlCenter/internal/backup"
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
-	"github.com/leeska/TZA-ControlCenter/internal/httpapi"
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/module"
-	"github.com/leeska/TZA-ControlCenter/internal/remote"
-	"github.com/leeska/TZA-ControlCenter/internal/storage"
+	"github.com/leeska/Lodestar/internal/agent"
+	"github.com/leeska/Lodestar/internal/backup"
+	"github.com/leeska/Lodestar/internal/channel"
+	"github.com/leeska/Lodestar/internal/httpapi"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/module"
+	"github.com/leeska/Lodestar/internal/remote"
+	"github.com/leeska/Lodestar/internal/storage"
 )
 
 type recorder struct {
@@ -142,7 +142,7 @@ func TestBackupToNodeAndRestore(t *testing.T) {
 	if ev := events.list(); len(ev) != 1 || !ev[0].Active || ev[0].Kind != model.EventBackup || !strings.Contains(ev[0].Message, "没存下") {
 		t.Fatalf("备份告警：%+v", ev)
 	}
-	files, _ := filepath.Glob(filepath.Join(vault, "*.tzabk"))
+	files, _ := filepath.Glob(filepath.Join(vault, "*.lsbk"))
 	if len(files) != 2 {
 		t.Fatalf("只保留 2 份：%v", files)
 	}

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/internal/notify"
-	"github.com/leeska/TZA-ControlCenter/pkg/tzapkg"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/internal/notify"
+	"github.com/leeska/Lodestar/pkg/lspkg"
 )
 
 // notificationKey is the settings row holding the channel as JSON. Before it
@@ -126,16 +126,16 @@ func (s *Service) pluginSettings(ctx context.Context, id string, values map[stri
 }
 
 // notifyPlugin resolves an installed notify plugin, as a model error.
-func (s *Service) notifyPlugin(id string) (tzapkg.Plugin, error) {
+func (s *Service) notifyPlugin(id string) (lspkg.Plugin, error) {
 	if s.Plugins == nil {
-		return tzapkg.Plugin{}, model.Invalid("这个 Server 没有启用插件")
+		return lspkg.Plugin{}, model.Invalid("这个 Server 没有启用插件")
 	}
 	p, err := s.Plugins.Plugin(id)
 	if err != nil {
-		return tzapkg.Plugin{}, model.Invalid(fmt.Sprintf("通知插件 %s 不可用：%v", id, err))
+		return lspkg.Plugin{}, model.Invalid(fmt.Sprintf("通知插件 %s 不可用：%v", id, err))
 	}
-	if p.Kind != tzapkg.KindNotify {
-		return tzapkg.Plugin{}, model.Invalid(fmt.Sprintf("插件 %s 不是通知插件", id))
+	if p.Kind != lspkg.KindNotify {
+		return lspkg.Plugin{}, model.Invalid(fmt.Sprintf("插件 %s 不是通知插件", id))
 	}
 	return p, nil
 }

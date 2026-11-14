@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/leeska/TZA-ControlCenter/internal/model"
-	"github.com/leeska/TZA-ControlCenter/pkg/tzapkg"
+	"github.com/leeska/Lodestar/internal/model"
+	"github.com/leeska/Lodestar/pkg/lspkg"
 )
 
 // SkinOptions are the administrator's theme settings, by skin id and then by
-// setting id (see tzapkg.SkinSetting). They apply to every visitor and are
+// setting id (see lspkg.SkinSetting). They apply to every visitor and are
 // sent to the page with the skin list. A value the theme no longer declares is
 // simply ignored by the page, so nothing here has to follow package updates.
 func (s *Service) SkinOptions(ctx context.Context) (map[string]map[string]any, error) {
@@ -27,14 +27,14 @@ func (s *Service) SkinOptions(ctx context.Context) (map[string]map[string]any, e
 
 // SetSkinOptions merges patch into one skin's settings after checking it
 // against the settings the skin declares, and returns that skin's values.
-func (s *Service) SetSkinOptions(ctx context.Context, skin string, settings []tzapkg.SkinSetting, patch map[string]json.RawMessage) (map[string]any, error) {
+func (s *Service) SetSkinOptions(ctx context.Context, skin string, settings []lspkg.SkinSetting, patch map[string]json.RawMessage) (map[string]any, error) {
 	if len(settings) == 0 {
 		return nil, model.Invalid("这个主题没有可调的设置")
 	}
 	if len(patch) == 0 {
 		return nil, model.Invalid("至少给一项设置")
 	}
-	values, err := tzapkg.SkinOptionValues(settings, patch)
+	values, err := lspkg.SkinOptionValues(settings, patch)
 	if err != nil {
 		return nil, model.Invalid(err.Error())
 	}

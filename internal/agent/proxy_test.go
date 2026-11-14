@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leeska/TZA-ControlCenter/internal/channel"
+	"github.com/leeska/Lodestar/internal/channel"
 )
 
 // 代理内核：校验后安装、配置先过内核检查再写入并重启服务、状态读回、移除只删配置与服务。
@@ -86,15 +86,15 @@ func TestProxyHost(t *testing.T) {
 		t.Fatal(r)
 	}
 	if info, err := os.Stat(h.configPath("xray")); err != nil || info.Mode().Perm() != 0640 {
-		t.Fatal("配置只给 root 和 tza-proxy 组读", err)
+		t.Fatal("配置只给 root 和 lodestar-proxy 组读", err)
 	}
 	unitText, _ := os.ReadFile(h.unitPath("xray"))
-	for _, want := range []string{"User=tza-proxy", h.binaryPath("xray", "1.0") + " run -config " + h.configPath("xray"), "CAP_NET_BIND_SERVICE", "ProtectSystem=strict"} {
+	for _, want := range []string{"User=lodestar-proxy", h.binaryPath("xray", "1.0") + " run -config " + h.configPath("xray"), "CAP_NET_BIND_SERVICE", "ProtectSystem=strict"} {
 		if !strings.Contains(string(unitText), want) {
 			t.Fatalf("服务单元缺 %q\n%s", want, unitText)
 		}
 	}
-	if !strings.Contains(strings.Join(calls, "\n"), "systemctl restart tza-proxy-xray") {
+	if !strings.Contains(strings.Join(calls, "\n"), "systemctl restart lodestar-proxy-xray") {
 		t.Fatal(calls)
 	}
 	var status channel.ProxyStatus
@@ -119,11 +119,11 @@ func TestProxyHost(t *testing.T) {
 	}
 }
 
-// The agent keeps /etc/tza-probe at 0700, so the unprivileged service user
+// The agent keeps /etc/lodestar at 0700, so the unprivileged service user
 // must find its config somewhere else (v2.5.0 got this wrong).
 func TestProxyConfigOutsideAgentDir(t *testing.T) {
 	h := &ProxyHost{}
-	if strings.HasPrefix(h.configPath("xray"), "/etc/tza-probe/") {
+	if strings.HasPrefix(h.configPath("xray"), "/etc/lodestar/") {
 		t.Fatalf("config %s is unreadable for %s", h.configPath("xray"), ProxyUser)
 	}
 }
