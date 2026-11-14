@@ -79,7 +79,7 @@ func TestSiteBrand(t *testing.T) {
 		return code
 	}
 
-	// 没配过：两项都空，首屏也是空（前端显示内置的 TZA ControlCenter）。
+	// 没配过：两项都空，首屏也是空（前端显示内置的 TZA CC）。
 	if p := panel(); p.SiteName != "" || p.SiteLogo != "" {
 		t.Fatalf("未配置: %+v", p)
 	}

@@ -180,7 +180,7 @@ function wireAccountView(acct, mcp) {
   content().querySelector("#edit-account")?.addEventListener("click", () => accountForm(acct));
 }
 // 站点品牌：名称换掉标签页标题与品牌区的 PROBE，logo 换掉 t·z·a 字标与 favicon。两项各自保存、
-// 各自清除；都清掉就回到内置的 TZA ControlCenter 品牌。保存后 applyBrand 当场换上本页的标题、图标与侧栏，
+// 各自清除；都清掉就回到内置的 TZA CC 品牌。保存后 applyBrand 当场换上本页的标题、图标与侧栏，
 // 公开面板与别的访客下一次打开时由 /theme-default.js 在首屏前带上。
 const LOGO_TYPES = "image/png,image/jpeg,image/gif,image/webp,image/x-icon,image/vnd.microsoft.icon,image/svg+xml,.ico,.svg";
 function brandPanel(settings) {

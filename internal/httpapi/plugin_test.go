@@ -97,7 +97,7 @@ func TestPluginRoutesAndChannel(t *testing.T) {
 		t.Fatalf("test notification: %d %s", w.Code, w.Body)
 	}
 	mu.Lock()
-	if len(received) != 1 || received[0]["topic"] != "probe" || received[0]["title"] != "TZA ControlCenter · 连接测试" || auth != "Bearer tk_secret" {
+	if len(received) != 1 || received[0]["topic"] != "probe" || received[0]["title"] != "TZA CC · 连接测试" || auth != "Bearer tk_secret" {
 		t.Fatalf("receiver got %v (auth %q)", received, auth)
 	}
 	mu.Unlock()

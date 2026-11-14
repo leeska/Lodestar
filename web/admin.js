@@ -50,7 +50,7 @@ function login() {
   });
 }
 function shell() {
-  state.container.innerHTML = `<div class="admin-layout"><aside data-part="sidebar" class="sidebar">${brandHTML()}<button type="button" id="nav-toggle" class="nav-toggle" aria-expanded="false" aria-controls="admin-nav"><span aria-hidden="true">☰</span> 菜单 · <b id="nav-current"></b></button><nav id="admin-nav">${navHTML()}</nav><div class="sidebar-bottom"><a href="/">公开面板 ↗</a>${skinButton("sidebar-skin")}${themeButton("sidebar-theme")}<button id="logout">退出登录</button><small>TZA ControlCenter</small></div></aside><main class="admin-main"><header data-part="admin-top" class="admin-top"><span>控制台 <span class="muted">/</span> <b id="breadcrumb"></b></span><span class="pill" id="fleet-status" aria-live="polite"></span></header><div id="admin-content"></div></main></div>`;
+  state.container.innerHTML = `<div class="admin-layout"><aside data-part="sidebar" class="sidebar">${brandHTML()}<button type="button" id="nav-toggle" class="nav-toggle" aria-expanded="false" aria-controls="admin-nav"><span aria-hidden="true">☰</span> 菜单 · <b id="nav-current"></b></button><nav id="admin-nav">${navHTML()}</nav><div class="sidebar-bottom"><a href="/">公开面板 ↗</a>${skinButton("sidebar-skin")}${themeButton("sidebar-theme")}<button id="logout">退出登录</button><small>TZA CC · ControlCenter</small></div></aside><main class="admin-main"><header data-part="admin-top" class="admin-top"><span>控制台 <span class="muted">/</span> <b id="breadcrumb"></b></span><span class="pill" id="fleet-status" aria-live="polite"></span></header><div id="admin-content"></div></main></div>`;
   state.container.querySelectorAll("[data-tab]").forEach(
     (b) =>
       (b.onclick = guard(async () => {

@@ -101,12 +101,12 @@ func ValidatePanelSkin(v string) error {
 	return fmt.Errorf("默认皮肤须为 %s 之一，或一个已安装的主题包", strings.Join(PanelSkins, " / "))
 }
 
-// 站点名称：浏览器标签页标题与公开面板、后台品牌区显示的名字。空值就是内置的 TZA ControlCenter 品牌，
+// 站点名称：浏览器标签页标题与公开面板、后台品牌区显示的名字。空值就是内置的 TZA CC 品牌，
 // 所以没配过的部署外观不变。logo 是上传的图片文件，不在这张表里（见 internal/brand）。
 const (
 	SettingSiteName = "site_name"
 
-	DefaultSiteName = "TZA ControlCenter"
+	DefaultSiteName = "TZA CC"
 	MaxSiteNameLen  = 32 // 字符数：品牌区一行放得下，标签页标题也不至于被截成省略号
 )
 

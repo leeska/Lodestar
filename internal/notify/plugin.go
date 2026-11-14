@@ -36,7 +36,7 @@ func EventVars(e model.Event) map[string]string {
 	case e.Active:
 		status, priority, urgent, active = "告警触发", "4", "1", "true"
 	}
-	title := []string{"TZA ControlCenter", status}
+	title := []string{"TZA CC", status}
 	if e.Kind != "test" {
 		title = append(title, kindName(e.Kind))
 	}
