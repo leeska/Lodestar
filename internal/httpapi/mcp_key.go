@@ -1,85 +1,50 @@
 package httpapi
 
 import (
-	"crypto/subtle"
-	"encoding/json"
+	"errors"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/leeska/Lodestar/internal/model"
 )
 
-// Store only a digest; the secret is returned once when generated.
-const mcpKeySetting = "mcp_api_key"
-
-type mcpKeyRecord struct {
-	Hash      string    `json:"hash"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-func (a *API) loadMCPKey(r *http.Request) (mcpKeyRecord, error) {
-	value, err := a.Store.Setting(r.Context(), mcpKeySetting)
-	var record mcpKeyRecord
-	if err == nil && value != "" {
-		err = json.Unmarshal([]byte(value), &record)
-	}
-	return record, err
-}
-
+// mcpKeyRoutes keep the settings page's single "MCP key": it is the access key
+// with id "mcp" and full rights. Keys with their own name and limits are made
+// on the Agent 接入 page (keyRoutes).
 func (a *API) mcpKeyRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/admin/mcp-key", a.admin(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
-		record, err := a.loadMCPKey(r)
-		if err != nil {
-			fail(w, err)
-			return
-		}
-		out := map[string]any{"configured": record.Hash != ""}
-		if record.Hash != "" {
-			out["created_at"] = record.CreatedAt
+		out := map[string]any{"configured": false}
+		if a.Keys != nil {
+			key, err := a.Keys.Get(r.Context(), "mcp")
+			if err != nil && !errors.Is(err, model.ErrNotFound) {
+				fail(w, err)
+				return
+			}
+			if err == nil && key.Active(time.Now()) {
+				out["configured"], out["created_at"] = true, time.Unix(key.CreatedAt, 0).UTC()
+			}
 		}
 		write(w, 200, out)
 	}))
 	mux.HandleFunc("POST /api/v1/admin/mcp-key", a.admin(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
-		key := "lodestar_mcp_" + model.Secret()
-		now := time.Now().UTC()
-		value, err := json.Marshal(mcpKeyRecord{Hash: model.Hash(key), CreatedAt: now})
-		if err == nil {
-			err = a.Store.SetSetting(r.Context(), mcpKeySetting, string(value))
+		if a.Keys == nil {
+			write(w, 503, map[string]string{"error": "访问密钥不可用"})
+			return
 		}
-		if err != nil {
+		key := "lodestar_mcp_" + model.Secret()
+		if err := a.Keys.SetLegacyMCP(r.Context(), key); err != nil {
 			fail(w, err)
 			return
 		}
-		write(w, 200, map[string]any{"configured": true, "created_at": now, "api_key": key})
+		write(w, 200, map[string]any{"configured": true, "created_at": time.Now().UTC(), "api_key": key})
 	}))
 	mux.HandleFunc("DELETE /api/v1/admin/mcp-key", a.admin(func(w http.ResponseWriter, r *http.Request) {
-		respond(w, a.Store.SetSetting(r.Context(), mcpKeySetting, ""))
+		if a.Keys == nil {
+			respond(w, nil)
+			return
+		}
+		respond(w, a.Keys.RevokeLegacyMCP(r.Context()))
 	}))
-}
-
-func (a *API) mcpAuth(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		key, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if !ok || key == "" {
-			write(w, 401, map[string]string{"error": "MCP API Key 无效或已撤销"})
-			return
-		}
-		record, err := a.loadMCPKey(r)
-		if err != nil {
-			fail(w, err)
-			return
-		}
-		if record.Hash == "" || subtle.ConstantTimeCompare([]byte(model.Hash(key)), []byte(record.Hash)) != 1 {
-			write(w, 401, map[string]string{"error": "MCP API Key 无效或已撤销"})
-			return
-		}
-		if !sameOrigin(r) {
-			write(w, 403, map[string]string{"error": "请求来源不受信任"})
-			return
-		}
-		next(w, r)
-	}
 }

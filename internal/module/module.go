@@ -11,6 +11,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/leeska/Lodestar/internal/action"
 	"github.com/leeska/Lodestar/internal/model"
 	"github.com/leeska/Lodestar/internal/storage"
 )
@@ -45,6 +46,12 @@ type Routes interface {
 	// signed-in actor and the client address filled in. On an admin write it
 	// replaces the generic entry the API would otherwise record.
 	Audit(r *http.Request, e model.AuditEntry)
+}
+
+// Actioner is a module that offers capabilities to outside agents (the action
+// API, MCP, OpenAPI and the Skill all come from these).
+type Actioner interface {
+	Actions() []action.Action
 }
 
 // Migrations is core's migrations followed by every module's, in the order

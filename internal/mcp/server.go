@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/leeska/Lodestar/internal/action"
 	"github.com/leeska/Lodestar/internal/model"
 	"github.com/leeska/Lodestar/internal/notify"
 	"github.com/leeska/Lodestar/internal/plugin"
@@ -49,7 +50,7 @@ var versions = []string{Modern, legacyLatest, legacyEarly}
 
 // DefaultInstructions tells a client's model what this endpoint is for when the
 // composition root does not override it.
-const DefaultInstructions = "Lodestar 探针面板的管理通道：节点状态、主机历史、TCP 延迟与回程线路标签。回程标签按实际经过的骨干命名（163 / CN2GIA / CN2GT / CTG / 4837 / 9929 / 10099 / CMIN2 / CMI），跳地址已脱敏，标签未知时不猜。本通道持有 MCP API Key，除只读查询外还能新增、修改、删除节点与任务，轮换节点密钥，修改通知设置；这些写操作立即生效，删除不可撤销，执行前请向用户确认。"
+const DefaultInstructions = "Lodestar 是用户自托管的个人中枢，目前管理服务器节点、探测任务、告警、代理、转发、Docker、证书、网站与备份。工具名是「模块_动作」，可用哪些取决于这把访问密钥的权限。只读工具随时可用；写操作立即生效；高风险工具（删除、轮换密钥、在节点上执行命令等）不传 confirm 时只返回将要做什么，必须先向用户说明并得到同意，再带 confirm: true 调用。回程标签按实际经过的骨干命名（163 / CN2GIA / CN2GT / CTG / 4837 / 9929 / 10099 / CMIN2 / CMI），标签未知时不猜。"
 
 // JSON-RPC codes plus the two the 2026-07-28 revision allocates inside the
 // implementation-defined range for header validation and version negotiation.
@@ -89,6 +90,12 @@ type Server struct {
 	Plugins *plugin.Store
 	// Logo is the uploaded site logo (get_settings reports its URL); nil means none.
 	Logo interface{ URL() string }
+	// Actions, when set, makes tools/list and tools/call come from the action
+	// registry: the actions the caller in ctx may use, run through Run (which
+	// checks the caller and the confirmation again). Without it the server
+	// offers this package's own tools, as before the registry existed.
+	Actions func(ctx context.Context) []action.Action
+	Run     func(ctx context.Context, name string, in json.RawMessage, confirm bool) (any, error)
 }
 
 // service is the management surface the tools call; it is cheap to build, and
@@ -269,8 +276,19 @@ func (s *Server) dispatch(ctx context.Context, mode, method string, params call)
 	case "ping":
 		return map[string]any{}, nil, 0
 	case "tools/list":
+		if s.Actions != nil {
+			out := map[string]any{"tools": s.actionTools(ctx)}
+			if modern {
+				// The list depends on the caller's key, so clients must not share it.
+				out["ttlMs"], out["cacheScope"] = 3600000, "private"
+			}
+			return out, nil, 0
+		}
 		return s.toolList(modern), nil, 0
 	case "tools/call":
+		if s.Actions != nil {
+			return s.callAction(ctx, params)
+		}
 		return s.callTool(ctx, params)
 	case "prompts/list":
 		return map[string]any{"prompts": []any{}}, nil, 0

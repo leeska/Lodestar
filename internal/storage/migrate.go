@@ -44,6 +44,10 @@ func CoreMigrations() []Migration {
 			_, err := c.Tx.Exec(auditTable)
 			return err
 		}},
+		{Module: "core", Version: 3, Name: "api keys", Up: func(c *MigrationContext) error {
+			_, err := c.Tx.Exec(apiKeysTable)
+			return err
+		}},
 	}
 }
 

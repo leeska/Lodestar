@@ -20,7 +20,7 @@ v3.0.0 起由 TZA ControlCenter 改名为 Lodestar，旧安装的自动迁移见
 - **计费与提醒**：计费周期、流量额度、价格与到期时间、达量降速、按剩余时间比例估算的剩余价值；离线 / 续费 / 流量 / 降速 / 负载提醒，经 Telegram 或 Webhook 发送。
 - **公开面板**：顶部磁贴汇总剩余价值与每月成本，统一单位在后台「面板设置 → 计费汇总」切换（跨币种按内置固定参考汇率折算）；卡片与列表两种视图，浅色 / 深色主题与多套外观风格；搜索认中文、全拼、拼音首字母、英文与代号（香港 = `xianggang` / `xg` / `hk`）。
 - **管理后台**：节点管理与拖动排序、密钥轮换、任务目录检索与批量绑定、用量校正、告警事件与投递状态。
-- **MCP 接口** `/mcp`：AI 客户端用后台生成的 MCP API Key 读写整站，能力与管理面板一致。
+- **Agent 接入**：能力注册表统一生成 API（`/api/v1/actions`）、MCP（`/mcp`）、OpenAPI 与可下载的 Skill；访问密钥分只读 / 可写 / 高风险三档、可限定模块，高风险操作每次都要显式确认。见 [docs/MCP.md](docs/MCP.md)。
 - **独立前台**：主题可用自己的 HTML / JavaScript 完全重写公开页，通过隔离环境中的 API v1 读取公开监控数据；支持自己的导航、布局、交互和路由，详见 [开发指南](docs/FRONTENDS.md)。
 - **主题**：仅内置现代极简（默认）；液态玻璃、复古印刷、二次元等外观是主题包，在后台「主题」页上传 zip 安装（发行包附带官方主题 zip）；每个主题可以声明自己的设置菜单，附加包挂在它依附的主题的设置里开关；Server 不连接任何外部市场，监控数据不出本机。
 - **声明式插件**：通知渠道（飞书、钉钉、企业微信、Bark、ntfy、Gotify……）与探测目标集，在后台「插件」页上传安装。插件只是一份 `plugin.json`（数据与模板，由 Probe 解释），不含代码；安装前列出它能做的事、发往哪些域名，由你确认。格式见 [插件说明](docs/PLUGINS.md)。
@@ -151,15 +151,11 @@ chmod 600 agent.json
 - Telegram 推送按状态、节点、实际读数、触发条件与时间分段，解除事件区分指标正常、节点离线和规则移除；详见 [通知模板说明](docs/NOTIFICATIONS.md)。
 - 保留期固定：主机历史 30 天、网络结果 7 天、流量账本 400 天、告警事件 90 天。
 
-## MCP 接口
+## Agent 接入（API / MCP / Skill）
 
-Server 在 `POST /mcp` 提供 [Model Context Protocol](https://modelcontextprotocol.io) 端点，用“面板设置 → MCP API Key”生成的独立 Key（`Authorization: Bearer <API Key>`）鉴权。Key 只在生成时显示一次，可重新生成或撤销，旧 Key 立即失效；管理密钥和面板 Cookie 无法访问 MCP。工具覆盖节点、任务、提醒规则及通知和面板设置，读写与面板走同一套校验；已存的 Bot Token / Webhook 不回显。**写工具立即生效、删除不可撤销**，接入前请确认客户端会在执行前征求你的同意。
-
-```json
-{ "mcpServers": { "lodestar": { "type": "http", "url": "https://probe.example.com/mcp", "headers": { "Authorization": "Bearer MCP_API_KEY" } } } }
-```
-
-共 29 个工具，包含查询和修改节点、任务、提醒规则、通知（含通知插件）及面板设置，列出已装插件。`update_*` 只修改提交的字段。完整的 Key 管理、客户端配置、工具清单、curl 自检和排错步骤见 [MCP 接入指南](docs/MCP.md)；协议字段见 [HTTP 协议](docs/API.md)。
+外部 agent（Claude Code、Codex 等）用后台「Agent 接入」页建的访问密钥（`Authorization: Bearer ls_…`）调用 Lodestar 的能力：
+`GET /api/v1/actions` 列出能用的能力，`POST /api/v1/actions/<能力名>` 执行；同样的能力在 `POST /mcp` 是 MCP 工具，在 `/api/v1/openapi.json` 有 OpenAPI 文档，页面上还能下载 Skill 包。
+密钥分只读 / 可写 / 高风险三档，可限定模块、设有效期、随时吊销；高风险能力（删除、换密钥、执行命令等）每次调用都要显式确认。详见 [Agent 接入](docs/MCP.md)。
 
 ## 升级顺序
 

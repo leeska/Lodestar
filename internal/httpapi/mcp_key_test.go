@@ -1,7 +1,6 @@
 package httpapi
 
 import (
-	"context"
 	"encoding/json"
 	"net/http/httptest"
 	"path/filepath"
@@ -65,7 +64,8 @@ func TestMCPKeyLifecycleAndIsolation(t *testing.T) {
 		return out.APIKey
 	}
 	key := generate()
-	value, err := s.Setting(context.Background(), mcpKeySetting)
+	var value string
+	err = s.DB().QueryRow("SELECT hash FROM api_keys WHERE id = 'mcp'").Scan(&value)
 	if err != nil || strings.Contains(value, key) || !strings.Contains(value, model.Hash(key)) {
 		t.Fatalf("key storage must contain only digest: %v", err)
 	}

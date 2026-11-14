@@ -5,9 +5,12 @@ package httpapi
 import (
 	"context"
 	"crypto/subtle"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/leeska/Lodestar/internal/action"
+	"github.com/leeska/Lodestar/internal/apikey"
 	"io"
 	"log/slog"
 	"net"
@@ -70,8 +73,15 @@ type API struct {
 	Themes     *theme.Store    // uploaded theme packages; nil means built-in skins only
 	Plugins    *plugin.Store   // installed declarative plugins; nil means none
 	Logo       *brand.Store    // uploaded site logo; nil means the built-in mark only
-	mu         sync.Mutex
-	sessions   map[string]browserSession
+	// Keys are the access keys for the action API and MCP; nil allows only
+	// the owner's session and the admin token.
+	Keys *apikey.Store
+	// actions is the capability registry; root the finished handler that
+	// route-backed actions are sent through. Both are set by Handler.
+	actions  *action.Registry
+	root     http.Handler
+	mu       sync.Mutex
+	sessions map[string]browserSession
 	// totpPending is a secret offered by setup and not yet confirmed.
 	totpPending   string
 	totpOffered   time.Time
@@ -149,6 +159,11 @@ func (a *API) Handler() http.Handler {
 	a.sessions = map[string]browserSession{}
 	a.loadSessions()
 	a.deviceKey = deviceSigningKey(a.AdminToken)
+	if a.Keys == nil {
+		if db, ok := a.Store.(interface{ DB() *sql.DB }); ok {
+			a.Keys = &apikey.Store{DB: db.DB()}
+		}
+	}
 	a.svc = &service.Service{Store: a.Store, Notifier: a.Notifier, Themes: a.Themes, Plugins: a.Plugins, Logo: a.Logo}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -294,10 +309,12 @@ func (a *API) Handler() http.Handler {
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		write(w, 404, map[string]string{"error": "接口不存在"})
 	})
-	// MCP uses an independent, revocable API key managed in the panel.
+	// 外部 agent 的入口：访问密钥、能力注册表、/api/v1/actions、/mcp 与 OpenAPI。
 	a.mcpKeyRoutes(mux)
 	probe := &mcp.Server{Source: a.Store, Notifier: a.Notifier, Themes: a.Themes, Plugins: a.Plugins, Logo: a.Logo}
-	mux.HandleFunc("POST /mcp", a.mcpAuth(probe.ServeHTTP))
+	a.actions = a.buildActions(probe)
+	a.actionRoutes(mux, probe)
+	a.keyRoutes(mux)
 	mux.HandleFunc("/mcp", func(w http.ResponseWriter, r *http.Request) {
 		// The modern revision dropped the standalone SSE stream (GET) and
 		// session termination (DELETE), so both answer 405.
@@ -357,7 +374,7 @@ func (a *API) Handler() http.Handler {
 	// 已安装主题包的静态文件（样式表、图片、字体）；类型白名单与 nosniff 见 theme.Store.ServeHTTP。
 	mux.Handle("GET /themes/{id}/{file...}", a.Themes)
 	mux.Handle("/", a.Assets)
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	a.root = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "same-origin")
 		w.Header().Set("X-Frame-Options", "DENY")
@@ -369,8 +386,12 @@ func (a *API) Handler() http.Handler {
 		}
 		mux.ServeHTTP(w, r)
 	})
+	return a.root
 }
 func (a *API) isAdmin(r *http.Request) bool {
+	if _, ok := internalActor(r); ok {
+		return true
+	}
 	// 与 agent() 一样只认标准的 Bearer 形式：TrimPrefix 在没有前缀时原样返回，会让裸放密钥的
 	// Authorization 头也通过。
 	if token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer "); ok && a.AdminToken != "" && len(token) == len(a.AdminToken) && subtle.ConstantTimeCompare([]byte(token), []byte(a.AdminToken)) == 1 {
@@ -476,6 +497,9 @@ func (a *API) audit(r *http.Request, e model.AuditEntry) {
 // actor names who is signed in: the account's username for a browser
 // session, "api-key" for the admin token.
 func (a *API) actor(r *http.Request) string {
+	if actor, ok := internalActor(r); ok {
+		return actor.Name
+	}
 	if strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
 		return "api-key"
 	}

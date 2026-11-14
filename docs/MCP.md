@@ -1,17 +1,33 @@
-# MCP 接入指南
+# Agent 接入：API、MCP 与 Skill
 
-Lodestar 在 `POST /mcp` 提供 MCP 接口，AI 客户端可查询节点、探测结果和告警，也可管理节点、任务、提醒规则及通知和面板设置，并把通知插件设为告警渠道。服务端与后台共用业务校验，写入会立即反映到面板。
+Lodestar 的每项能力都登记在一份**能力注册表**里（`internal/action`），外部 agent 有三种用法，用的是同一份能力清单和同一套访问密钥：
 
-## 1. 生成 API Key
+- **API**：`GET /api/v1/actions` 列出这把密钥能用的能力；`POST /api/v1/actions/<能力名>` 执行，请求体是参数对象，结果在 `result` 里。
+  OpenAPI 文档在 `GET /api/v1/openapi.json`。
+- **MCP**：`POST /mcp`。工具名是能力名把点换成下划线（`nodes.list` → `nodes_list`）；旧版工具名（`list_nodes` 等）仍然能调用。
+- **Skill**：后台「Agent 接入」页下载 `lodestar-skill.zip`，解压到 agent 的 skills 目录（Claude Code：`~/.claude/skills/`）。
 
-1. 使用用户名密码登录 `/admin`。
-2. 打开 **面板设置 → MCP API Key**，点击 **生成 API Key**。
-3. 复制并保存完整 Key，格式为 `lodestar_mcp_…`。Key 只显示一次，关闭后无法再次查看。
-4. 记下同一区块中的连接地址，例如 `https://probe.example.com/mcp`。
+能力名是「模块.动作」，按风险分三档：
 
-安装、升级脚本不会生成或打印 MCP Key。首次生成前，MCP 请求返回 HTTP 401。数据库只保存 Key 的 SHA-256 摘要，服务重启后 Key 仍有效。
+| 档 | 含义 |
+| --- | --- |
+| `read` | 只读 |
+| `write` | 新建、修改，立即生效 |
+| `danger` | 删除、换密钥或订阅地址、在节点上执行命令、改备份口令等。**每次调用都要显式确认**：不带确认时返回 HTTP 428（MCP 里是工具错误）和将要做的事，不执行；API 加 `?confirm=true`、MCP 传参数 `confirm: true` 才执行 |
 
-当前每个面板只有一个有效 MCP Key。点击 **重新生成** 会立即使旧 Key 失效，所有使用它的客户端都需要更新；点击 **撤销** 会停用 MCP 访问，之后可再生成新 Key。
+走后台路由的能力在进程内调用后台自己的接口，校验与审计日志和在后台点按钮完全一样；审计里的操作者记为 `key:<密钥名>`。
+
+## 1. 访问密钥
+
+在后台 **系统 → Agent 接入** 新建：
+
+1. 填名字（审计日志里会显示），选权限档（只读 / 可写 / 高风险）、可用模块（默认全部，含以后新增的）和有效期。
+2. 密钥形如 `ls_<12 位 id>_<64 位>`，**只显示一次**。数据库只存 SHA-256 摘要。
+3. 页面列出每把密钥的最近使用时间与来源地址，可以随时吊销；吊销后可以删除记录。
+
+访问密钥只能访问上面三个入口，不能访问后台自己的 `/api/v1/admin/*`，也不能登录后台。数据目录里的旧管理密钥（`admin-token`）不能用在这里。
+
+「面板设置 → MCP API Key」还在：它生成的是一把名为 `MCP`、全部权限的访问密钥（旧版本生成的 `lodestar_mcp_…` / `tza_mcp_…` 升级后照常可用）。新接入建议在「Agent 接入」里按需建权限更小的密钥。
 
 ## 2. 配置客户端
 
@@ -23,7 +39,7 @@ Lodestar 在 `POST /mcp` 提供 MCP 接口，AI 客户端可查询节点、探�
 | 服务地址 | `https://probe.example.com/mcp` |
 | 传输 | HTTP / Streamable HTTP |
 | 请求头名 | `Authorization` |
-| 请求头值 | `Bearer lodestar_mcp_…`，替换为完整 Key |
+| 请求头值 | `Bearer ls_…`，替换为完整的访问密钥 |
 
 若客户端接受 `mcpServers`、`type`、`url`、`headers` 这种 JSON 配置结构，可使用下面的示例。不同客户端的字段、文件位置和添加入口可能不同，请按客户端的配置格式填写上述地址与请求头。
 
@@ -34,14 +50,14 @@ Lodestar 在 `POST /mcp` 提供 MCP 接口，AI 客户端可查询节点、探�
       "type": "http",
       "url": "https://probe.example.com/mcp",
       "headers": {
-        "Authorization": "Bearer REPLACE_WITH_MCP_API_KEY"
+        "Authorization": "Bearer REPLACE_WITH_ACCESS_KEY"
       }
     }
   }
 }
 ```
 
-将域名换成自己的面板地址，将 `REPLACE_WITH_MCP_API_KEY` 换成完整 Key，保留前面的 `Bearer `。远程连接使用 HTTPS；反代配置见 [部署说明](DEPLOYMENT.md)。
+将域名换成自己的面板地址，将 `REPLACE_WITH_ACCESS_KEY` 换成完整 Key，保留前面的 `Bearer `。远程连接使用 HTTPS；反代配置见 [部署说明](DEPLOYMENT.md)。
 
 地址是 `/mcp`，不带 `/api/v1` 前缀，也没有单独的 `/sse` 地址。用浏览器直接打开地址会发送 GET 并得到 405，这不代表服务不可用。若客户端只能填写 URL、不能携带自定义认证头，无法直接连接当前端点；本服务没有 OAuth 登录流程。
 

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/leeska/Lodestar/internal/apikey"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -35,8 +36,7 @@ func TestMCPEndpointUsesIndependentKey(t *testing.T) {
 	server := httptest.NewServer((&API{Store: s, AdminToken: admin, Assets: web.Handler()}).Handler())
 	defer server.Close()
 	mcpKey := model.Secret()
-	value, _ := json.Marshal(mcpKeyRecord{Hash: model.Hash(mcpKey), CreatedAt: time.Now()})
-	if err := s.SetSetting(context.Background(), mcpKeySetting, string(value)); err != nil {
+	if err := (&apikey.Store{DB: s.DB()}).SetLegacyMCP(context.Background(), mcpKey); err != nil {
 		t.Fatal(err)
 	}
 	message := `{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28"}}}`
@@ -70,7 +70,7 @@ func TestMCPEndpointUsesIndependentKey(t *testing.T) {
 		t.Fatalf("legacy administrator key accepted: %d", code)
 	}
 	code, body := call(mcpKey, "")
-	if code != 200 || !strings.Contains(string(body), "list_nodes") {
+	if code != 200 || !strings.Contains(string(body), "nodes_list") {
 		t.Fatalf("administrator MCP request: %d %s", code, body)
 	}
 	if code, _ := call(mcpKey, "https://evil.example"); code != 403 {
