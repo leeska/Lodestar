@@ -175,7 +175,7 @@ func run() error {
 				slog.Info("installation predates the rename to Lodestar; restarting to migrate it")
 				return errRestart
 			}
-			slog.Warn("still running under the old names: the rename migration did not finish, see journalctl -u lodestar-agent-migrate")
+			slog.Info("the rename migration has been started; if this agent keeps running under the old names it failed, see journalctl -u lodestar-agent-migrate")
 		} else if err := agent.StartDetachedMigration(agent.StateDir(), exe, *path); err != nil {
 			slog.Warn("rename migration not started", "error", err)
 		}
