@@ -51,3 +51,12 @@
 ## v3.10.0 发布
 
 发布前复核：生产为 v3.9.0，主控、隔离浏览器及 nginx 均 active，13/13 节点在线，磁盘可用约 91 GB；本地 `main` 与 `origin/main` 无分歧。使用既有可信 Agent 签名密钥构建，私钥留在本机。部署前校验包摘要及数据兼容性，停服备份完整数据目录，保留旧二进制和历史备份。
+
+发布及生产验收：
+
+- 发布代码提交 `0583542`，已推送 `origin/main`。`bash scripts/pipeline.sh all` 通过：43 个 Go 包、vet、竞态（116 秒）、前端行为、一次性 Server 集成（87 秒）及双架构签名构建；日志 `/tmp/lodestar-v3100-release.log`。角色包自检仍因缺少 Pillow / numpy 跳过。
+- 发布包 `/tmp/lodestar-release-v3.10.0`；生产目录 `/root/lodestar-v3.10.0`。amd64 包 SHA-256 为 `421a7e52dc744e0c76b4633ec5c7f41454afe856f251817a8dc1fd2d91d46f2c`，上传后校验通过；安装 `EXIT=0`，安装后的主控二进制与包内文件一致。
+- 停服完整备份 `/root/lodestar-before-v3.10.0.tar.zst`，282541768 字节、权限 0600，压缩完整性检查通过。旧二进制保留为 `/usr/local/bin/lodestar.previous`，此前备份与发布包继续保留。
+- 主控、隔离浏览器及 nginx 均 active，控制 socket 存在；公网 HTTPS healthz 返回 v3.10.0，8 个关键 UI 文件与发布源码逐字节一致。13/13 节点在线，Agent 均为 v3.9.0，与升级前备份中的实际版本一致；此前记录的 v3.1.0 已不代表本次发布前的现场状态。
+- SQLite `quick_check=ok`，模块迁移版本与升级前备份一致。HIBP=false、DNS=false、登录提醒=true；助理模型未配置、简报关闭、自动化规则 0、安全账户 0，均与发布前一致。9 个 nginx 站点文件摘要一致。
+- 停服备份期间，尚未重启的旧 browser worker 记录了 6 条主控 socket 暂时断开的 warning；主控与 worker 重启后无 warning / error。生产验收摘要保存于 `/root/lodestar-v3.10.0/verification.json`，临时解包的备份数据库副本已清理。

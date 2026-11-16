@@ -5,6 +5,8 @@
 
 > 写于 2026-11-15，当时线上和 `main` 都是 v3.2.0（提交 `3aa1174`）。
 
+2026-11-16 已发布 v3.10.0，发布代码 `0583542` 已推送 `origin/main`；当前生产验收见下列 UI 重构记录，原始版本分工继续保留作对照。
+
 实施进度见 [v3.3—v3.9 记录](IMPLEMENTATION-2026-11-15.md) 和 [v3.10.0 UI 重构记录](UI-REFACTOR-2026-11-16.md)：下面保留最初的版本分工与验收标准，已实现和已部署的版本逐项记在实施记录中。
 
 ---
@@ -23,9 +25,9 @@
 
 - 主控在 bero：termark 资产 `5FY8MV92f5n5dNUJ`，SSH 端口 22222，Debian 13。面板地址 https://probe.leeska.net，前面是 Cloudflare。
 - 服务：`lodestar`（监听 127.0.0.1:25774）、`lodestar-browser`（地区偏移检测用的隔离浏览器）。数据目录 `/var/lib/lodestar`，数据库 `lodestar.db`，保险箱密钥 `vault.key`。
-- 节点：13 台，都是 v3.1.0 的 `lodestar-agent`，配置在 `/etc/lodestar/agent.json`。
+- 节点：2026-11-16 验收为 13 台，均在线，实际 Agent 版本为 v3.9.0，与 v3.10.0 升级前备份一致；配置在 `/etc/lodestar/agent.json`。
 - bero 上还有别的 nginx 站点（evan.fan、pi.leeska.net、tza.cc），**不要动**。
-- `/root` 下有两份升级前的数据备份（`lodestar-premigrate-*.tar.zst`、`lodestar-before-v3.2.0.tar.zst`），含签名材料和私人数据，权限 0600，不要外传。
+- `/root` 按版本保留升级前完整备份，最近一份为 `lodestar-before-v3.10.0.tar.zst`，此前的 `lodestar-premigrate-*.tar.zst` 及各版本备份继续保留；含签名材料和私人数据，权限 0600，不要外传。
 - 目前**没有异地备份**：后台「备份」模块已经做好，但还没设口令和存放节点，要用户自己设。
 
 ### 1.3 刻意没做 / 留下的债
