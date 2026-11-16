@@ -25,9 +25,9 @@
 
 ### 1.2 线上环境
 
-- 主控在 bero：termark 资产 `5FY8MV92f5n5dNUJ`，SSH 端口 22222，Debian 13。面板地址 https://probe.leeska.net，前面是 Cloudflare。
+- 主控在 bero：termark 资产 `5FY8MV92f5n5dNUJ`，SSH 端口 22222，Debian 13。面板地址 https://lodestar.leeska.net，前面是 Cloudflare（代理开启）。2026-11-17 起旧域名 probe.leeska.net 已停用：DNS 记录、nginx 站点和源站证书都已删除。新域名的证书由面板「证书」模块用 Let's Encrypt DNS-01 签发（证书 id `c1728460d4730224`）。bero 的 Agent 没开管理通道，所以由 bero 上的 `lodestar-cert-sync.timer` 每天通过本机面板接口同步到 `/etc/nginx/ssl/lodestar.leeska.net.{crt,key}`，只在序列号变化时下载并重载 nginx（脚本 `/usr/local/sbin/lodestar-cert-sync`）。
 - 服务：`lodestar`（监听 127.0.0.1:25774）、`lodestar-browser`（地区偏移检测用的隔离浏览器）。数据目录 `/var/lib/lodestar`，数据库 `lodestar.db`，保险箱密钥 `vault.key`。
-- 节点：2026-11-16 验收为 13 台，均在线，实际 Agent 版本为 v3.9.0，与 v3.10.0 升级前备份一致；配置在 `/etc/lodestar/agent.json`。
+- 节点：2026-11-17 为 11 台，均在线，Agent v3.10.1；配置在 `/etc/lodestar/agent.json`，`endpoint` 已全部改为 `https://lodestar.leeska.net`。新接入的节点要从新域名打开后台再生成接入命令。
 - bero 上还有别的 nginx 站点（evan.fan、pi.leeska.net、tza.cc），**不要动**。
 - `/root` 只保留最近两份升级前完整备份：`lodestar-before-v3.10.1.tar.zst` 与 `lodestar-before-v3.10.0.tar.zst`。更早的版本备份、`lodestar-premigrate-*.tar.zst` 和旧发布目录已于 2026-11-16 按用户要求删除。备份含签名材料和私人数据，权限 0600，不要外传。以后每次发版后删掉最旧的一份，保持两份。
 - 目前**没有异地备份**：后台「备份」模块已经做好，但还没设口令和存放节点，要用户自己设。
@@ -145,7 +145,7 @@ OUT=<产物目录> VERSION=vX.Y.Z LODESTAR_AGENT_KEY=$HOME/.config/tza-probe/age
 4. 验证以下几项：
    - `systemctl is-active lodestar lodestar-browser nginx`
    - `curl 127.0.0.1:25774/healthz` 返回新版本号
-   - `https://probe.leeska.net/healthz` 返回 200
+   - `https://lodestar.leeska.net/healthz` 返回 200
    - 用 python 只读打开 `/var/lib/lodestar/lodestar.db`，确认 13 台节点的 `last_seen` 都在 60 秒内，`schema_migrations` 里有新模块
    - `journalctl -u lodestar` 里没有新的 error 或 warn
 5. 删掉上一个版本的 `/root/lodestar-v*` 目录和 `pkg/`。
