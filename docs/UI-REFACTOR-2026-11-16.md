@@ -60,3 +60,19 @@
 - 主控、隔离浏览器及 nginx 均 active，控制 socket 存在；公网 HTTPS healthz 返回 v3.10.0，8 个关键 UI 文件与发布源码逐字节一致。13/13 节点在线，Agent 均为 v3.9.0，与升级前备份中的实际版本一致；此前记录的 v3.1.0 已不代表本次发布前的现场状态。
 - SQLite `quick_check=ok`，模块迁移版本与升级前备份一致。HIBP=false、DNS=false、登录提醒=true；助理模型未配置、简报关闭、自动化规则 0、安全账户 0，均与发布前一致。9 个 nginx 站点文件摘要一致。
 - 停服备份期间，尚未重启的旧 browser worker 记录了 6 条主控 socket 暂时断开的 warning；主控与 worker 重启后无 warning / error。生产验收摘要保存于 `/root/lodestar-v3.10.0/verification.json`，临时解包的备份数据库副本已清理。
+
+## v3.10.1 发布
+
+发布提交 `b74434d`，已推送 `origin/main`。内容：
+
+- 助理一轮处理在 Server 后台运行，离开页面不再中断；回到会话时重新接上并重放本轮事件，「停止」调用 stop 接口真正取消。
+- `agents`、`alerts`、`automation`、`certs`、`docker`、`nodes`、`proxy`、`settings`、`sites`、`users` 的写操作由助理或自动化发起时需确认；网关流结尾不带空行时不再误报中断；旧 MCP 工具有了中文标题。
+- 界面：shadcn 皮肤下选中标记与消息左边线不再弯成括号；补齐无样式按钮，统一刷新按钮；逾期待办标橙并去掉秒；手机行内按钮至少 36px；确认卡片收起长说明；深色模式选中态可见。
+
+验收：
+
+- 本机隔离数据目录下，Chromium 桌面 1440×900 与手机 375×812 逐页检查 27 个页面（45 个路由）：无脚本错误、无横向溢出；助理离开再返回、停止、确认后重启仍可执行均已实测。
+- `bash scripts/pipeline.sh all` 通过（Go 测试、vet、竞态 116 秒、前端行为、一次性 Server 集成 87 秒、双架构签名构建）；日志 `/tmp/lodestar-v3101-release.log`，角色包自检仍因缺少 Pillow / numpy 跳过。amd64 包 SHA-256 `c7a3517a36a0725a6fada009f98b967c521daae5e666356fbdb2e99b138136f4`，上传后校验通过。
+- 停服备份 `/root/lodestar-before-v3.10.1.tar.zst`，282476384 字节、0600，`zstd -t` 通过；安装 `EXIT=0`，主控二进制与包内一致。
+- 主控、隔离浏览器、nginx 均 active；本机与公网 healthz 返回 v3.10.1 / 200；`journalctl` 部署后无 warning；SQLite `quick_check=ok`，模块迁移版本不变；13/13 节点 60 秒内上报。线上 `admin-assistant.js`、`styles.css`、`admin-todo.js` 与源码一致。本版 Agent 无改动，节点保持 v3.9.0。
+- 清理：删除 `/root` 中 v3.2.0–v3.9.0 的升级前备份与 premigrate 包、v3.2.0–v3.10.0 发布目录、本次 `pkg/` 和数据目录里的 `ipguard.db.migrated`，根分区占用由 24G 降到 21G；本机 `/tmp` 删除 v3.3–v3.10 旧发布包、预览构建与数据、截图。
