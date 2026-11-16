@@ -16,36 +16,37 @@ import (
 var legacyActions = map[string]struct {
 	name   string
 	danger bool
+	title  string
 }{
-	"block_checks":         {name: "blocks.checks"},
-	"list_nodes":           {name: "nodes.list"},
-	"list_tasks":           {name: "tasks.list"},
-	"recent_events":        {name: "events.list"},
-	"node_history":         {name: "nodes.history"},
-	"node_network_history": {name: "nodes.network_history"},
-	"node_observations":    {name: "nodes.observations"},
-	"latency_samples":      {name: "nodes.latency_samples"},
-	"create_node":          {name: "nodes.create"},
-	"update_node":          {name: "nodes.update"},
-	"delete_node":          {name: "nodes.delete", danger: true},
-	"batch_update_nodes":   {name: "nodes.batch_update"},
-	"rotate_node_token":    {name: "nodes.rotate_token", danger: true},
-	"correct_node_traffic": {name: "nodes.correct_traffic"},
-	"rename_group":         {name: "nodes.rename_group"},
-	"create_task":          {name: "tasks.create"},
-	"update_task":          {name: "tasks.update"},
-	"delete_task":          {name: "tasks.delete", danger: true},
-	"control_task":         {name: "tasks.control"},
-	"task_runs":            {name: "tasks.runs"},
-	"list_catalog":         {name: "tasks.catalog"},
-	"list_alert_rules":     {name: "alerts.list_rules"},
-	"create_alert_rule":    {name: "alerts.create_rule"},
-	"update_alert_rule":    {name: "alerts.update_rule"},
-	"delete_alert_rule":    {name: "alerts.delete_rule", danger: true},
-	"get_settings":         {name: "settings.get"},
-	"update_settings":      {name: "settings.update"},
-	"test_notification":    {name: "settings.test_notification"},
-	"list_plugins":         {name: "plugins.list"},
+	"block_checks":         {name: "blocks.checks", title: "查看封锁检测"},
+	"list_nodes":           {name: "nodes.list", title: "列出节点"},
+	"list_tasks":           {name: "tasks.list", title: "列出任务"},
+	"recent_events":        {name: "events.list", title: "最近事件"},
+	"node_history":         {name: "nodes.history", title: "节点历史"},
+	"node_network_history": {name: "nodes.network_history", title: "节点网络历史"},
+	"node_observations":    {name: "nodes.observations", title: "节点观测"},
+	"latency_samples":      {name: "nodes.latency_samples", title: "延迟样本"},
+	"create_node":          {name: "nodes.create", title: "添加节点"},
+	"update_node":          {name: "nodes.update", title: "修改节点"},
+	"delete_node":          {name: "nodes.delete", danger: true, title: "删除节点"},
+	"batch_update_nodes":   {name: "nodes.batch_update", title: "批量修改节点"},
+	"rotate_node_token":    {name: "nodes.rotate_token", danger: true, title: "轮换节点令牌"},
+	"correct_node_traffic": {name: "nodes.correct_traffic", title: "校正节点流量"},
+	"rename_group":         {name: "nodes.rename_group", title: "重命名分组"},
+	"create_task":          {name: "tasks.create", title: "新建探测任务"},
+	"update_task":          {name: "tasks.update", title: "修改探测任务"},
+	"delete_task":          {name: "tasks.delete", danger: true, title: "删除探测任务"},
+	"control_task":         {name: "tasks.control", title: "启停探测任务"},
+	"task_runs":            {name: "tasks.runs", title: "任务运行记录"},
+	"list_catalog":         {name: "tasks.catalog", title: "探测目标目录"},
+	"list_alert_rules":     {name: "alerts.list_rules", title: "列出告警规则"},
+	"create_alert_rule":    {name: "alerts.create_rule", title: "新建告警规则"},
+	"update_alert_rule":    {name: "alerts.update_rule", title: "修改告警规则"},
+	"delete_alert_rule":    {name: "alerts.delete_rule", danger: true, title: "删除告警规则"},
+	"get_settings":         {name: "settings.get", title: "查看面板设置"},
+	"update_settings":      {name: "settings.update", title: "修改通知与面板设置"},
+	"test_notification":    {name: "settings.test_notification", title: "发送测试通知"},
+	"list_plugins":         {name: "plugins.list", title: "列出插件"},
 }
 
 // LegacyActions turns this package's tools into registry actions. Their
@@ -64,7 +65,11 @@ func (s *Server) LegacyActions() []action.Action {
 		if def.danger {
 			risk = action.Danger
 		}
-		title, _ := t.Annotations["title"].(string)
+		// 面板、Skill 与确认卡片显示中文名；MCP 的 annotations.title 保持原样。
+		title := def.title
+		if title == "" {
+			title, _ = t.Annotations["title"].(string)
+		}
 		name := t.Name
 		out = append(out, action.Action{
 			Name: def.name, Title: title, Description: t.Description, Input: t.InputSchema, Risk: risk, Alias: name,

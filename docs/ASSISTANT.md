@@ -12,15 +12,20 @@
 - 网关密钥可选，保存在保险箱的 `assistant:gateway:key`，设置接口只返回是否已经保存。留空保留原值，勾选清除才删除。
 - 附加提示词用于补充偏好，不改变权限和确认规则。
 
-对话文本、提供给模型的能力说明和工具结果会发送到配置的网关。会话记录存入本机数据库。停止等待不会回滚已经执行的操作。
+对话文本、提供给模型的能力说明和工具结果会发送到配置的网关。会话记录存入本机数据库。停止不会回滚已经执行的操作。
 
 ## 使用与确认
 
 可以从总览点「问助理」，或在助理页开启新对话。会话支持改名、删除和重新打开；工具的参数与结果可展开查看。
 
-Read / Write 能力直接执行。Danger 能力先展示名称、说明和实际参数，由用户选择「执行」或「不要」。一项确认只对应这一项调用，刷新或 Server 重启后仍能继续处理；重复提交失效的确认不会再次执行。
+Read 能力和个人数据模块（待办、日程、财务、资产、情报等）的 Write 能力直接执行。以下调用会先展示名称、说明和实际参数，由用户选择「执行」或「不要」：
 
-每轮最多 10 次工具调用，确认前后的调用合并计数。请求最多持续两分钟。断线会取消模型请求；已经完成的工具结果保留，执行中断且结果未记下的调用标记为结果未知，不能自动推断成功或直接重试。
+- 所有 Danger 能力；
+- 标记为 `Confirm` 的 Write 能力：`agents`、`alerts`、`automation`、`certs`、`docker`、`nodes`、`proxy`、`settings`、`sites`、`users` 模块的写操作（`settings.test_notification` 除外）。这些操作会改动基础设施、对外暴露范围或通知与数据的去向。模型读到的情报、网页等工具结果可能含有注入指令，因此不让模型自行执行这类修改。名单在 `internal/httpapi/actions.go` 的 `confirmModules`，自动化规则使用同一判断。
+
+一项确认只对应这一项调用，刷新或 Server 重启后仍能继续处理；重复提交失效的确认不会再次执行。
+
+每轮最多 10 次工具调用，确认前后的调用合并计数。一轮处理在 Server 后台运行，最多持续三分钟：离开页面、切换会话或断网只会断开流，处理继续进行并保存结果。回到这个会话时，页面会显示已保存的消息，并从头重放本轮事件、接着接收后续内容。「停止」会调用 stop 接口，取消后台处理和模型请求。已经完成的工具结果保留；执行中断（例如 Server 重启）且结果未记下的调用标记为结果未知，不能自动推断成功或直接重试。
 
 Markdown 只支持经过转义的文字、标题、列表、代码、粗体和 HTTP / HTTPS 链接，不执行模型返回的 HTML。
 
@@ -38,8 +43,10 @@ Markdown 只支持经过转义的文字、标题、列表、代码、粗体和 H
 | `DELETE /api/v1/admin/assistant/conversations/{id}` | 删除会话和消息 |
 | `POST /api/v1/admin/assistant/chat` | `{conversation_id?, message}` |
 | `POST /api/v1/admin/assistant/confirm` | `{conversation_id, call_id, approve}` |
+| `GET /api/v1/admin/assistant/conversations/{id}/live` | 接回正在运行的一轮，从头重放事件；没有运行时返回 204 |
+| `POST /api/v1/admin/assistant/conversations/{id}/stop` | 停止正在运行的一轮 |
 
-chat / confirm 返回 SSE，事件包括 `conversation`、`text`、`tool_call`、`tool_result`、`confirm`、`done`、`error`。`confirm` 表示本次流正常暂停，后续由单独的 confirm 请求继续。SSE 禁止代理缓冲，也不经过 API 的 gzip 压缩。
+chat / confirm / live 返回 SSE，事件包括 `conversation`、`user`、`text`、`tool_call`、`tool_result`、`confirm`、`done`、`error`。会话详情在运行期间带 `running: true` 和 `run_after`（本轮开始前最后一条已保存消息的 id），页面只渲染到这条，其余由重放补上。网关流最后一个事件后不带空行就关闭连接时，也会被正确处理。`confirm` 表示本次流正常暂停，后续由单独的 confirm 请求继续。SSE 禁止代理缓冲，也不经过 API 的 gzip 压缩。
 
 ## 外部 agent
 
@@ -53,4 +60,4 @@ assistant/1 迁移创建配置、会话和消息表；assistant/2 标记会话�
 
 工具结果最多保存约 32 KB；网关密钥即使被上游回显，也会在流和存储前遮盖。工具操作的审计身份以 `assistant:` 开头。
 
-`internal/httpapi/assistant_test.go` 使用假网关验证连续工具调用、危险操作拒绝与确认、防重放、重启后继续、访问范围、审计及取消传播。`internal/assistant/provider_test.go` 覆盖流格式、跨分片密钥遮盖和半截工具调用；`scripts/assistant-test.mjs` 验证 Markdown 转义。
+`internal/httpapi/assistant_test.go` 使用假网关验证连续工具调用、危险操作拒绝与确认、防重放、重启后继续、访问范围、审计、取消传播、离开页面后继续运行、stop 接口，以及基础设施写操作需要确认。`internal/assistant/provider_test.go` 覆盖流格式、跨分片密钥遮盖和半截工具调用；`scripts/assistant-test.mjs` 验证 Markdown 转义。

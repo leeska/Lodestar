@@ -25,6 +25,14 @@ func (m *Module) actor(ctx context.Context) (action.Actor, error) {
 }
 
 func (m *Module) Chat(ctx context.Context, id, text string, emit Emit) error {
+	fresh := id == ""
+	if fresh {
+		id = newID()
+	}
+	return m.chat(ctx, id, fresh, text, emit)
+}
+
+func (m *Module) chat(ctx context.Context, id string, fresh bool, text string, emit Emit) error {
 	actor, err := m.actor(ctx)
 	if err != nil {
 		return err
@@ -32,10 +40,6 @@ func (m *Module) Chat(ctx context.Context, id, text string, emit Emit) error {
 	text = strings.TrimSpace(text)
 	if text == "" || len(text) > maxText {
 		return action.Invalid("消息不能为空且不能超过 32 KB")
-	}
-	fresh := id == ""
-	if fresh {
-		id = newID()
 	}
 	release, err := m.acquire(id)
 	if err != nil {
@@ -75,6 +79,9 @@ func (m *Module) Chat(ctx context.Context, id, text string, emit Emit) error {
 		return err
 	}
 	if err := emit("conversation", map[string]string{"id": id}); err != nil {
+		return err
+	}
+	if err := emit("user", map[string]string{"content": text}); err != nil {
 		return err
 	}
 	return m.run(action.WithActor(ctx, actor), conversation, emit)
@@ -159,7 +166,7 @@ func (m *Module) run(ctx context.Context, conversation *Conversation, emit Emit)
 		for len(conversation.state.Queue) > 0 {
 			call := conversation.state.Queue[0]
 			act, exists := m.registry.Get(call.Name)
-			if exists && actor.Allows(act) && act.Risk == action.Danger {
+			if exists && actor.Allows(act) && act.NeedsConfirm() {
 				confirmation := action.Confirmation{Action: act.Name, Title: act.Title, Description: act.Description, Input: call.Arguments}
 				if err := emit("confirm", map[string]any{"conversation_id": conversation.ID, "call_id": call.ID, "confirmation": confirmation}); err != nil {
 					return err

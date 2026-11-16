@@ -311,6 +311,12 @@ func readStream(ctx context.Context, reader io.Reader, protocol, secret string, 
 			}
 		}
 	}
+	// 有的网关最后一个事件后面直接关闭连接、不带空行，这里补处理。
+	if !done && eventData != "" && scanner.Err() == nil {
+		if err := process(strings.TrimSuffix(eventData, "\n")); err != nil {
+			return reply, err
+		}
+	}
 	if !done {
 		return reply, fmt.Errorf("gateway stream interrupted")
 	}

@@ -27,7 +27,7 @@ export async function intelPage() {
   if (request !== generation || !root.isConnected || state.tab !== "intel") return;
   const sourceName = (id) => data.sources.find((source) => source.id === id)?.name || id;
   const tabs = [["items", "条目"], ["sources", "来源"], ["rules", "规则"]].map(([id, label]) => `<button type="button" data-intel-view="${id}" class="${view === id ? "active" : ""}">${label}</button>`).join("");
-  root.innerHTML = `<section data-part="page-heading" class="page-heading"><div><h1>情报</h1><p>收集关注的更新，重要的立即提醒，其余留在简报里。</p></div><div class="heading-actions"><button id="intel-refresh">刷新</button><button id="intel-add-rule">添加规则</button><button class="primary" id="intel-add-source">添加源</button></div></section><div class="segmented settings-tabs">${tabs}</div><div id="intel-content"></div>`;
+  root.innerHTML = `<section data-part="page-heading" class="page-heading"><div><h1>情报</h1><p>收集关注的更新，重要的立即提醒，其余留在简报里。</p></div><div class="heading-actions"><button class="quiet" id="intel-refresh">刷新</button><button id="intel-add-rule">添加规则</button><button class="primary" id="intel-add-source">添加源</button></div></section><div class="segmented settings-tabs">${tabs}</div><div id="intel-content"></div>`;
   root.querySelectorAll("[data-intel-view]").forEach((button) => { button.onclick = () => { view = button.dataset.intelView; setPageView(view); render(); }; });
   root.querySelector("#intel-refresh").onclick = () => render();
   root.querySelector("#intel-add-source").onclick = () => sourceForm(data, null);

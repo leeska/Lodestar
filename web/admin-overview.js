@@ -67,7 +67,7 @@ function intelligence(data, brief) {
   const list = items.slice(0, 4).map((item) => `<li><button type="button" class="today-intel-item" data-go="intel" data-view="items"><span>${esc(item.source_name || "订阅更新")}</span><b>${esc(item.title)}</b><small>${esc(dateTime(item.at))}${item.starred ? " · 已星标" : ""}</small></button></li>`).join("");
   const latest = brief?.entries?.[0];
   return `<section data-part="panel" class="panel today-intelligence">${heading("值得关注", "intel", "查看情报")}${data ? list ? `<ul class="today-intel-list">${list}</ul>` : empty("还没有未读更新。可以在情报中添加订阅来源。") : empty("情报读取失败，请刷新重试。")}
-    <div class="today-brief"><div><h3>${latest ? esc(latest.title) : "每日简报"}</h3><p>${latest ? esc((latest.body || "").slice(0, 220)) : brief ? "把到期、日程和关注的更新汇成一份简报。" : "简报记录读取失败，请刷新重试。"}</p></div><button type="button" data-go="brief">${latest ? "查看简报" : "设置简报"}</button></div></section>`;
+    <div class="today-brief"><div><h3>${latest ? esc(latest.title) : "每日简报"}</h3><p>${latest ? esc((latest.body || "").slice(0, 220)) : brief ? "把到期、日程和关注的更新汇成一份简报。" : "简报记录读取失败，请刷新重试。"}</p></div><button type="button" class="button" data-go="brief">${latest ? "查看简报" : "设置简报"}</button></div></section>`;
 }
 
 function cardHTML(card) {

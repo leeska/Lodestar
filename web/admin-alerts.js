@@ -251,7 +251,7 @@ export async function renderAlerts(nodesReady) {
   let body = "";
   if (!notificationView && state.alertView === "active") {
     // 没配通知渠道时在这里也提一句：正在告警却没人收到，比没有告警更该知道。
-    const warn = configured ? "" : `<div class="notice"><strong>通知渠道尚未配置</strong><span>下面的告警不会发到任何地方。</span><button type="button" data-notifications>配置通知渠道</button></div>`;
+    const warn = configured ? "" : `<div class="notice"><strong>通知渠道尚未配置</strong><span>下面的告警不会发到任何地方。</span><button type="button" class="button" data-notifications>配置通知渠道</button></div>`;
     body = `${warn}<section data-part="panel" class="panel"><div class="panel-head"><h3>正在告警</h3><span class="muted">指标不可用时标记待确认</span></div>${eventTable(eventRows(firing, configured), "当前没有正在告警的项目。")}</section>`;
   } else if (eventsView) {
     const filtered = eventFilter.node_id || eventFilter.kind;
@@ -260,7 +260,7 @@ export async function renderAlerts(nodesReady) {
     body = `<section data-part="panel" class="panel"><div class="panel-head"><h3>事件记录</h3><span class="muted">保存 90 天 · 每次加载 ${EVENT_PAGE} 条</span></div><div class="catalog-filters event-filters"><label>节点<select id="event-node"><option value="">全部节点</option>${nodeOptions.filter(([v]) => v).map(([v, l]) => `<option value="${esc(v)}"${v === eventFilter.node_id ? " selected" : ""}>${esc(l)}</option>`).join("")}</select></label><label>类型<select id="event-kind">${kindOptions.map(([v, l]) => `<option value="${esc(v)}"${v === eventFilter.kind ? " selected" : ""}>${esc(l)}</option>`).join("")}</select></label></div>${eventTable(eventRows(events, configured), filtered ? "没有符合筛选条件的事件。" : "暂无事件。提醒规则在「提醒规则」页开启。")}<div class="catalog-toolbar event-more"><button id="more-events" class="quiet" ${events.length < EVENT_PAGE ? "hidden" : ""}>加载更多</button></div></section>`;
   } else {
     const channelPanel = `<section data-part="panel" class="panel webhook-panel"><div><h3>通知渠道 · ${esc(channelName)}</h3><p>支持 Telegram 机器人、Webhook 或已安装的通知插件（飞书、钉钉、ntfy 等，在「插件」页安装），发送告警触发与恢复通知。</p>${settings.plugin_error ? `<p class="warn-text">${esc(settings.plugin_error)}，通知暂时发不出去；请重新配置渠道。</p>` : ""}<small>投递失败采用退避重试，最多 10 次；超过 24 小时的事件不再补发。接收端按 event.id 去重。</small></div><div class="webhook-actions"><button id="configure-webhook" class="primary">配置渠道</button><button id="test-webhook" ${configured ? "" : "disabled"}>发送测试</button></div></section>`;
-    body = notificationView ? channelPanel : `<div class="notice"><span>通知出口在系统设置中统一管理。</span><button type="button" data-notifications>通知渠道</button></div>${rulesPanel(rules)}${overviewPanel()}`;
+    body = notificationView ? channelPanel : `<div class="notice"><span>通知出口在系统设置中统一管理。</span><button type="button" class="button" data-notifications>通知渠道</button></div>${rulesPanel(rules)}${overviewPanel()}`;
   }
   content().innerHTML = heading + body;
   const shown = eventsView ? events : !notificationView && state.alertView === "active" ? firing : [];

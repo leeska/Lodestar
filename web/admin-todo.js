@@ -3,7 +3,7 @@ import { content, render, confirmAction, state, pageView, setPageView } from "./
 
 let view = "open";
 let generation = 0;
-const stamp = (seconds) => seconds ? new Date(seconds * 1000).toLocaleString("zh-CN", { hour12: false }) : "未设置";
+const stamp = (seconds) => seconds ? new Date(seconds * 1000).toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }) : "未设置";
 const localInput = (seconds) => {
   if (!seconds) return "";
   const date = new Date(seconds * 1000);

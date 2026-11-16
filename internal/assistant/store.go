@@ -57,8 +57,12 @@ type Conversation struct {
 	Messages  []Message            `json:"messages,omitempty"`
 	Pending   *action.Confirmation `json:"pending,omitempty"`
 	CallID    string               `json:"call_id,omitempty"`
-	state     turnState
-	owner     string
+	// Running is true while a turn of this conversation runs in the
+	// background; RunAfter is the last message saved before it started.
+	Running  bool  `json:"running,omitempty"`
+	RunAfter int64 `json:"run_after,omitempty"`
+	state    turnState
+	owner    string
 }
 
 type Module struct {
@@ -69,6 +73,7 @@ type Module struct {
 	execute  func(context.Context, string, json.RawMessage, bool) (any, error)
 	mu       sync.Mutex
 	active   map[string]bool
+	runs     map[string]*liveRun
 }
 
 func (*Module) ID() string { return "assistant" }
@@ -209,7 +214,7 @@ func (m *Module) conversation(ctx context.Context, id, owner string) (*Conversat
 	}
 	if len(conversation.state.Queue) > 0 {
 		call := conversation.state.Queue[0]
-		if act, ok := m.registry.Get(call.Name); ok && act.Risk == action.Danger {
+		if act, ok := m.registry.Get(call.Name); ok && act.NeedsConfirm() {
 			conversation.Pending = &action.Confirmation{Action: act.Name, Title: act.Title, Description: act.Description, Input: call.Arguments}
 			conversation.CallID = call.ID
 		}

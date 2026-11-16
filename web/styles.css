@@ -6414,6 +6414,8 @@ dialog.region-dialog .region-intro { margin: 0 0 var(--space-4); }
   overflow-y: auto;
 }
 .assistant-sidebar nav button {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
@@ -6421,8 +6423,9 @@ dialog.region-dialog .region-intro { margin: 0 0 var(--space-4); }
   max-width: 100%;
 }
 .assistant-sidebar nav button.active {
-  color: var(--accent);
-  background: rgba(var(--accent-rgb), 0.08);
+  color: var(--ink);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
 }
 .assistant-chat { min-width: 0; display: flex; flex-direction: column; }
 .assistant-chat-head {
@@ -6450,8 +6453,19 @@ dialog.region-dialog .region-intro { margin: 0 0 var(--space-4); }
 .assistant-speaker { font-size: var(--text-sm); }
 .assistant-message.from-user {
   padding: var(--space-3) var(--space-4);
-  background: rgba(var(--accent-rgb), 0.05);
-  border-left: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+  position: relative;
+}
+/* 左侧标记用伪元素：shadcn 皮肤给所有元素加了 !important 圆角，直接画 border-left 会弯成括号。 */
+.assistant-message.from-user::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: var(--space-2);
+  bottom: var(--space-2);
+  width: 2px;
+  border-radius: 2px;
+  background: var(--ink);
 }
 .assistant-prose { line-height: 1.8; font-size: var(--text-md); }
 .assistant-prose p { margin: var(--space-2) 0; }
@@ -6721,4 +6735,29 @@ dialog.region-dialog .region-intro { margin: 0 0 var(--space-4); }
   .today-status-grid { gap: 10px; }
   .today-status-grid .overview-card { padding: 14px; }
   .today-status-grid .overview-card strong { font-size: 18px; }
+}
+
+/* 二级导航的选中标记画在树形竖线上：皮肤里「圆角底 + 左侧内阴影」落在圆角上会弯成一个括号。 */
+html[data-skin] .sidebar nav .nav-children button.active,
+.sidebar nav .nav-children button.active { position: relative; box-shadow: none !important; }
+.sidebar nav .nav-children button.active::before {
+  content: "";
+  position: absolute;
+  left: -11px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--ink);
+}
+/* 只画左边线的容器不要圆角，否则竖线两端会弯（shadcn 皮肤对所有元素加了 !important 圆角）。 */
+html[data-skin] .sidebar .nav-children,
+html[data-skin] .theme-group.is-nested { border-radius: 0 !important; }
+/* 逾期等提醒文字：原来只在表格里有颜色，待办列表里的逾期时间是灰的。 */
+.warn-text,
+.agenda-list small.warn-text { color: var(--orange); }
+.notice > button { justify-self: start; align-self: flex-start; width: auto; }
+/* 手机上行内文字按钮（完成 / 编辑 / 删除）太小，按不准：至少 36px 高。 */
+@media (max-width: 700px) {
+  .row-actions button { min-height: 36px; padding: var(--space-2) var(--space-0-5) !important; }
 }

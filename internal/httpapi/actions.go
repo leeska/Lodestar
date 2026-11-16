@@ -40,7 +40,30 @@ func (a *API) buildActions(probe *mcp.Server) *action.Registry {
 			list = append(list, p.Actions()...)
 		}
 	}
+	for index := range list {
+		markConfirm(&list[index])
+	}
 	return action.NewRegistry(list...)
+}
+
+// confirmModules are the modules whose writes change infrastructure, network
+// exposure or where notifications and data go. When the assistant or an
+// automation rule calls one of them, the call waits for the owner like a
+// Danger action does. Personal records (todo, finance, assets, intel,
+// calendar …) stay direct.
+var confirmModules = map[string]bool{
+	"agents": true, "alerts": true, "automation": true, "certs": true, "docker": true,
+	"nodes": true, "proxy": true, "settings": true, "sites": true, "users": true,
+}
+
+// confirmExempt are writes inside those modules that cannot change anything
+// lasting.
+var confirmExempt = map[string]bool{"settings.test_notification": true}
+
+func markConfirm(act *action.Action) {
+	if act.Risk == action.Write && confirmModules[act.Module()] && !confirmExempt[act.Name] {
+		act.Confirm = true
+	}
 }
 
 // Actions is the registry (tests and the Skill use it).

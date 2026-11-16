@@ -59,3 +59,17 @@ func TestIncompleteStreamNeverExecutesPartialTool(t *testing.T) {
 		t.Fatal("an interrupted stream was accepted")
 	}
 }
+
+func TestStreamAcceptsFinalEventWithoutBlankLine(t *testing.T) {
+	for _, tail := range []string{"data: [DONE]", "data: [DONE]\n"} {
+		raw := "data: {\"choices\":[{\"delta\":{\"content\":\"完成\"}}]}\n\n" + tail
+		reply, err := readStream(context.Background(), strings.NewReader(raw), "openai", "", func(string, any) error { return nil })
+		if err != nil || reply.Content != "完成" {
+			t.Fatalf("tail %q: %+v %v", tail, reply, err)
+		}
+	}
+	raw := "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"text\":\"好\"}}\n\ndata: {\"type\":\"message_stop\"}"
+	if reply, err := readStream(context.Background(), strings.NewReader(raw), "anthropic", "", func(string, any) error { return nil }); err != nil || reply.Content != "好" {
+		t.Fatalf("anthropic tail: %+v %v", reply, err)
+	}
+}

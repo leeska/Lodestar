@@ -185,7 +185,7 @@ func (m *Module) attempt(ctx context.Context, rule Rule, key string, entry timel
 	if err := m.Vault.Put(ctx, "automation:run:"+run.ID+":args", string(args)); err != nil {
 		return m.finish(ctx, run, nil, err)
 	}
-	if target.Risk == action.Danger {
+	if target.NeedsConfirm() {
 		var pending int
 		if err := m.DB.QueryRowContext(ctx, `SELECT count(*) FROM automation_runs WHERE status='pending'`).Scan(&pending); err != nil {
 			return m.finish(ctx, run, nil, err)

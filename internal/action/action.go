@@ -88,11 +88,20 @@ type Action struct {
 	// Input is a JSON Schema object for the arguments.
 	Input map[string]any
 	Risk  Risk
+	// Confirm makes the panel's own agents (the assistant and automation
+	// rules) pause for the owner's confirmation even below Danger: changes to
+	// infrastructure, exposure or where data is sent should not follow from
+	// text a model read in a feed or tool result.
+	Confirm bool
 	// Alias is the tool name older MCP clients used; it still resolves.
 	Alias   string
 	Handler func(ctx context.Context, in json.RawMessage) (any, error)
 	Route   *Route
 }
+
+// NeedsConfirm reports whether an agent-initiated call must wait for the
+// owner: every Danger action, and the Write actions marked Confirm.
+func (a Action) NeedsConfirm() bool { return a.Risk == Danger || a.Confirm }
 
 // Module is the part of the name before the dot.
 func (a Action) Module() string { m, _, _ := strings.Cut(a.Name, "."); return m }
