@@ -1,5 +1,15 @@
 # 组件边界
 
+自动化位于 `internal/automation`：通过 `BindActions` 复用能力执行器，并在执行前重新解析访问密钥。加密参数、持久化触发认领、不可变待确认快照和原子消费组成执行边界。core/4 与 timeline/2 的 origin 标记防止自动化执行上下文产生的条目再次触发规则。
+
+安全模块位于 `internal/security`：复用资产账户和保险箱，不建立第二份密码或恢复码。安全元数据归 security/1；检测结果绑定保险箱密文 nonce，密码更新使旧结果过期。HIBP 固定端点只接收前缀，DNS 只做解析。登录观察接口复用 HTTP 层既有签名设备 Cookie 和审计，事件走既有通知出口。
+
+情报模块 `internal/intel` 实现三种 `connector.Connector`，带条件缓存的抓取由 `connector.Conditional` 表达。网络层 `internal/safefetch` 校验 DNS 后固定连接地址，防止私网访问和解析切换；来源、条目、规则归 intel/1，凭据归保险箱。`intel.fetch` 有界并发，条目按来源和稳定键去重；通知进入既有投递队列，简报通过只读的 `Brief` 接口取数据。见 [INTEL.md](INTEL.md)。
+
+每日简报位于 `internal/brief`，由 `brief.daily` 调度；用按本地日期认领的 `brief_runs` 防止自动重复投递。数据来自总览、资产、时间线、节点和任务；模型整理不带工具且失败回退。通知层提供独立的 `Summary` 消息入口，直接复用出口，不写告警事件。见 [BRIEF.md](BRIEF.md)。
+
+网页端助理位于 `internal/assistant`：按模块迁移保存配置和会话，网关密钥经 `vault` 加密，模型工具来自统一能力注册表。HTTP 装配时通过 `BindActions` 注入执行入口，工具仍走原有权限和审计；Danger 调用持久化为待确认状态，不由模型批准。流、取消、确认与外部 agent 权限说明见 [ASSISTANT.md](ASSISTANT.md)。
+
 所有运行组件统一版本发布，依赖方向单向。解耦不要求运行消息队列或额外服务。
 
 ```text
@@ -25,7 +35,7 @@ cmd/server and cmd/agent: composition roots and lifecycle
 - `storage` 实现持久化，没有服务端路由和探测逻辑。`store.go` 只管打开与连接池，`schema.go` / `migrate.go` 是表结构与版本迁移，其余按调用方分文件：`nodes.go`、`billing.go`、`agent.go`（上报、租约、结果）、`tasks.go`、`task_controls.go`、`observations.go`、`history.go`、`network_history.go`、`tcp_buckets.go`（网络历史的 6 分钟预聚合）、`samples.go`、`unlocks.go`、`events.go`、`settings.go`、`purge.go`（保留期与分批删除）、`backup.go`。
 - `service` 是后台与 MCP 共用的管理操作：节点、任务、设置的校验，部分更新的合并（PATCH / `update_*`），时间窗夹取，以及错误的种类与中文说明（`model.Invalid` / `NotFound` / `Conflict`）都只在这里定一次。适配层只负责解码请求、把错误翻成各自的形式（HTTP 状态码 / JSON-RPC 错误或工具结果）。
 - `httpapi` 只依赖持久化接口；从 `cmd/server` 注入 SQLite 实现。管理路由在 `httpapi/admin.go`，全部调用 `service`；公开读取与 Agent 协议在 `httpapi/api.go`。
-- `mcp` 调用同一个 `service`，读工具与写工具都走面板那套校验、脱敏与合并语义；它不知道路由与鉴权，由 `httpapi` 使用独立 MCP API Key 鉴权，因此 AI 客户端与面板看到同一份数据、同一套规则。需要接入命令时按请求的 Host 与 `X-Forwarded-Proto` 拼出与面板「接入」弹窗相同的那条命令。
+- `action` 是能力注册表，统一生成能力 API、MCP 工具、OpenAPI 与 Skill。`httpapi` 用访问密钥校验风险档、模块范围与有效期，高风险调用每次确认；能力再经 Handler 或进程内后台路由执行。`mcp` 从同一注册表列出与调用工具，原来的手写工具作为兼容能力保留，仍调用 `service` 共用校验、脱敏与合并语义。需要接入命令时按请求的 Host 与 `X-Forwarded-Proto` 拼出与面板「接入」弹窗相同的那条命令。
 - `notify` 只管告警规则、事件投递与发送器（Telegram / Webhook / 通知插件），不知道配置存在哪里：渠道经 `Channels` 接口拿到，存取、补全与校验由 `service` 负责（`service/notification.go`）。
 - `agent` 的采集、传输、探测接口可分别替换；CPU 采集不会被最长 60 秒的回程执行阻塞。
 - `probe` 不知道数据库或 HTTP；任务执行只允许固定动作，拒绝超频任务和无效目标。
@@ -38,9 +48,9 @@ Server 的发布产物包含网页，Agent 单独编译，只链接其依赖图�
 
 任务租约绑定节点、任务快照和 90 秒有效期。未知节点、重复结果、过期结果无法写入。同一种类在已有有效租约时不再下发（解锁检测的有效期与其 15 分钟上报窗口一致）；报了 `parallel_jobs` 能力的 Agent 按种类分别判断，一次最多领 8 个 TCP、1 个回程、1 个解锁任务并各自并行执行，长任务不阻塞延迟探测；没报这项能力的 Agent 按整批判断，每次最多两个任务。编辑任务定义使旧任务结果与租约失效。专用暂停、恢复、节点绑定操作保留历史；手动执行只调整调度时间，仍由 Agent 拉取，不引入远程命令通道。Agent 上传失败最多重试 3 次；下次探测周期重新下发，状态不能伪装为持续正常。
 
-公开端无 IP 上报字段；路径在 Agent 脱敏，HTTP 再过滤。公开查询只允许公开节点，管理密钥与 Agent 密钥不能互换。浏览器会话为 12 小时 HttpOnly/SameSite Cookie，服务重启失效。配置节点密钥只返回一次，数据库保存 SHA-256 摘要。管理密钥来自环境或权限 0600 的本地文件，不在日志中出现。后台账号（用户名 + PBKDF2-SHA256 密码摘要）存于数据目录 0600 的 `admin-account`，登录及浏览器会话鉴权时重读，终端 `lodestar reset-password` 改完即生效并撤销旧浏览器会话；后台仅支持用户名密码登录，超限时直接拒绝、不再计算摘要。实际密码校验按桶限流：没有设备凭据的请求共享 30 次突发额度、每 2 秒补充一次；登录成功过的浏览器拿到 HMAC 签名的 `lodestar_device` Cookie（绑定用户名与密码摘要，180 天，改密码即失效），之后使用独立的 10 次突发额度、每 6 秒补充一次；额度耗尽时正确密码也需等待补充，通过 `Retry-After` 告知等待秒数。不按来源 IP 分桶，因为 Server 通常在反代或 CDN 之后。MCP 使用后台生成的独立 API Key，数据库只保存 SHA-256 摘要，生成时仅回显一次，重新生成与撤销即时生效。
+公开端无 IP 上报字段；路径在 Agent 脱敏，HTTP 再过滤。公开查询只允许公开节点，管理密钥与 Agent 密钥不能互换。浏览器会话为 12 小时 HttpOnly/SameSite Cookie，令牌摘要保存在数据目录的 `admin-sessions`（0600），重启或升级后仍可用。配置节点密钥只返回一次，数据库保存 SHA-256 摘要。管理密钥来自环境或权限 0600 的本地文件，不在日志中出现。后台账号（用户名 + PBKDF2-SHA256 密码摘要）存于数据目录 0600 的 `admin-account`，登录及浏览器会话鉴权时重读，终端 `lodestar reset-password` 改完即生效并撤销旧浏览器会话；后台仅支持用户名密码登录，超限时直接拒绝、不再计算摘要。实际密码校验按桶限流：没有设备凭据的请求共享 30 次突发额度、每 2 秒补充一次；登录成功过的浏览器拿到 HMAC 签名的 `lodestar_device` Cookie（绑定用户名与密码摘要，180 天，改密码即失效），之后使用独立的 10 次突发额度、每 6 秒补充一次；额度耗尽时正确密码也需等待补充，通过 `Retry-After` 告知等待秒数。不按来源 IP 分桶，因为 Server 通常在反代或 CDN 之后。外部 agent 使用独立的分权限访问密钥，数据库只保存 SHA-256 摘要，生成时仅回显一次，吊销即时生效，不能用来登录后台或直接调用管理路由。
 
-设计刻意不抽象通用工作流、插件容器或万能 RPC 层；插件只有上面两类声明式格式，不执行第三方代码。新增功能是编进二进制的**模块**（见下节），不是运行时加载的插件。
+新增业务功能是编进二进制的**模块**（见下节），使用能力注册表、调度器、时间线和保险箱等核心服务。插件只有上面两类声明式格式，不执行第三方代码；自动化规则通过已有能力执行，不提供任意脚本环境，见 [AUTOMATION.md](AUTOMATION.md)。
 
 ## 模块
 
@@ -53,13 +63,15 @@ Lodestar 要做成自托管的个人中枢（目标见 [VISION.md](VISION.md)）
   - `Jobber`：声明定时任务（`module.Job`：名字、间隔、函数），由 `internal/jobs` 统一调度，记下每次结果，开始失败和恢复时各写一条时间线
   - `Overviewer`：给后台总览提供卡片（`module.Card`：标题、结论、语气、最多 6 条待处理项、点开去哪一页）。总览页 `GET /admin/overview` 先放核心的四张（节点、到期与流量、网络探测、告警），再按模块顺序放各模块的；某个模块读数出错只把它那张卡标成「读取失败」，不影响整页
   
-  `cmd/server` 的 `shippedModules()` 列出本二进制带的全部模块，顺序就是迁移的执行顺序。现有四个模块：`regiondrift`（地区偏移检测）、`remote`（远程管理：管理通道、命令、终端）和 `users`（使用者：分给朋友的账号，流量额度按月重置、到期时间、订阅 token 与只读用量页 `/u/{token}`）、`proxy`（代理：节点上的 VLESS Reality / Shadowsocks 2022 入站与转发，见下面「代理」一节）、`docker`（节点上的容器、镜像与 Compose 项目，见「Docker」一节）、`certs`（Let's Encrypt 证书的签发、续期与下发，见「证书」一节）、`backup`（加密备份到节点，见「备份」一节）和 `sites`（nginx 网站与反向代理，见「网站」一节）。模块用 `internal/httpjson` 读写 JSON、把错误翻成状态码，和 httpapi 用的是同一套规则。第一个独立出来的模块是 `internal/regiondrift`（地区偏移检测），检测逻辑本身仍在 `internal/ipguard` 和 `internal/browserworker`。
+  `cmd/server` 的 `shippedModules()` 列出本二进制带的全部模块，顺序就是迁移的执行顺序。业务模块包括：`regiondrift`（地区偏移检测）、`remote`（远程管理：管理通道、命令、终端）、`users`（使用者：分给朋友的账号，流量额度按月重置、到期时间、订阅 token 与只读用量页 `/u/{token}`）、`proxy`（代理：节点上的 VLESS Reality / Shadowsocks 2022 入站与转发，见下面「代理」一节）、`docker`（节点上的容器、镜像与 Compose 项目，见「Docker」一节）、`certs`（Let's Encrypt 证书的签发、续期与下发，见「证书」一节）、`backup`（加密备份到节点，见「备份」一节）和 `sites`（nginx 网站与反向代理，见「网站」一节）。模块用 `internal/httpjson` 读写 JSON、把错误翻成状态码，和 httpapi 用的是同一套规则。第一个独立出来的模块是 `internal/regiondrift`（地区偏移检测），检测逻辑本身仍在 `internal/ipguard` 和 `internal/browserworker`。
 - **核心服务**（也是模块，排在最前）：
   - `vault`（`internal/vault`）：保险箱。敏感字段用 AES-256-GCM 加密存在主库的 `vault` 表，密钥是数据目录里随机生成的 `vault.key`（0600）；以密文 id 作附加数据，挪到别的 id 下打不开。只拿到数据库读不出内容；加密备份里两者都在。
   - `timeline`（`internal/timeline`）：统一时间线。读的时候把告警事件（`events`）、审计（`audit_log`）和模块自己写的条目（`timeline` 表，`Emit` 写入）合成一条查询，不重复存储；模块条目保留 400 天。
   - `assets`（`internal/assets`）：资产账本。服务器之外的域名、订阅服务、设备、证件、账户、保险等，统一记费用、周期（与节点相同的「月 / 年…」）、到期日、自动续费、提醒提前天数；各类型的字段由 `assets.Kinds` 声明，标了 secret 的存进保险箱，查看要单独请求并写审计。定时任务「资产到期提醒」在提前期、7 天、1 天和过期时各经告警渠道（事件类型 `asset`）发一次，改了到期日发一条「已续期」。`Upcoming` 把面板节点的到期也并进来。
   - `jobs`（`internal/jobs`）：定时任务调度，后台「时间线」页下方能看到每个任务的上次结果，可以立即运行。
-  - `internal/connector`：外部数据源（RSS、网页变化、GitHub Release、日历、价格……）的统一接口和登记表，目前只有框架，情报与日程模块会在上面实现。
+  - `internal/connector`：外部数据源统一接口和登记表，情报实现 RSS / Atom、GitHub Release、网页变化；日历实现只读 iCal，地址作为保险箱 secret 传入。
+  - `internal/todo`、`internal/calendar`：待办与提醒、来源引用、私有日历快照；各自迁移和任务，todo 汇总两者进入简报“今天”。见 [CALENDAR-TODO.md](CALENDAR-TODO.md)。
+  - `internal/finance`：finance/1 管理整数金额的账户、流水、预算与每日余额快照，CSV 事务导入，资产和节点费用只读汇总。`internal/model/fx.go` 保存固定参考汇率，测试校验前后端一致。见 [FINANCE.md](FINANCE.md)。
 - **任务类型**：`model.RegisterTaskKind` 登记每种 `Task.Type`。登记的内容包括：
   - 定义从哪个字段读、怎么校验、怎么展开成探测
   - `FixedBindings`：节点带角色，只能编辑任务来改绑定，不能批量绑定或解绑
@@ -70,7 +82,7 @@ Lodestar 要做成自托管的个人中枢（目标见 [VISION.md](VISION.md)）
 - **Agent 能力**：Agent 在上报和心跳里带 `capabilities`。Server 只检查格式：小写标识符、不重复、最多 32 个，不认识的名字照样保留，所以更新的 Agent 不会因为多报了能力被拒。某种能力具体怎么用，由用到它的模块自己判断，例如 `AllowsUnlock`。
 - **前台区块开关**：`model.PublicSections` 列出可关的区块（`network` 延迟与回程、`unlock` 解锁检测、`billing` 价格与到期），另有「整个前台需要登录」。访客接口都经 `httpapi/public.go` 的 `a.public(区块, handler)`：需要登录时一律 401（`{"login":true}`），区块关掉时属于它的接口 404，节点列表里对应字段清空（`publicPolicy.strip`），观测按类型过滤。开关缓存 2 秒，后台保存时立即失效。前台从 `/theme-default.js` 的 `window.__lodestarPublic` 读到开关（`web/public-config.js`），管理员登录后看前台拿到的是全量数据，前台按同一规则去掉，版面与访客一致。
 - **任务入口**：「网络探测」的「创建任务」先选类型：延迟与回程、解锁检测、IP 被墙检测、地区偏移检测。前三种在核心的任务表里；地区偏移检测任务属于 regiondrift 模块（`ipguard_tasks`），和解锁检测一样一次选多台节点，只管检测哪些服务、是否启用、是否自动校正。每台节点不同的部分（目标地区、出口地址族、精确定位）是节点设置（`ipguard_node_settings`），在「节点管理 → 编辑节点 → 所在地区与定位」里设。调度器实际执行的每台节点的检测设置（`ipguard_policies`）不再直接编辑，由 `regiondrift.reconcile` 从两者推导：保存任务或节点设置后立即推导一次，之后每分钟一次（出口刚连上的节点据此补上）。没变化时不重写，以免打断进行中的检测；没设置目标地区或出口未连接的节点记在 `pending` 里给后台显示。一台节点只能属于一个地区偏移检测任务。迁移 regiondrift/2 把已有的每台节点设置拆成节点设置和任务（开关与服务相同的节点合进同一个任务）。
-- **后台页面**：`web/admin-pages.js` 是页面清单，每一项是 id、名称、图标和页面函数。侧栏、面包屑和切页都由这张清单生成，新模块加一项就有自己的页面。
+- **后台页面**：`web/admin-navigation.js` 定义六个功能区域及页面的稳定 id、名称和归属，`web/admin-pages.js` 绑定页面函数并生成导航。侧栏、面包屑和地址片段共用这份元数据；`admin-state.js` 保存页面与主要子页，支持刷新与浏览器前后退。首页「今天」优先展示待处理事项、日程与情报，模块状态作为摘要和折叠详情。手机提供常用入口及带焦点管理的导航抽屉。新增页面同时登记元数据与渲染函数，详见 [UI 重构记录](UI-REFACTOR-2026-11-16.md)。
 
 ### 管理通道
 
@@ -178,6 +190,6 @@ Lodestar 要做成自托管的个人中枢（目标见 [VISION.md](VISION.md)）
 
 Agent 的心跳在独立协程运行，采集阻塞、采集失败或指标上报失败不会阻塞连接诊断。成功指标在最近 10 秒内已证明在线时不再额外发送健康心跳。采集期限为 10 秒，默认心跳检查间隔 5 秒。旧 Server 对心跳返回 404/405 后，该 Agent 进程关闭心跳请求，继续原有 report/jobs 协议。
 
-SQLite schema 16 增加 `node_health` 存储连接与诊断；`nodes.last_seen` 内部仍只代表指标时间，流量差值摊分、采样与历史基线均不受心跳影响。对外 `last_seen` 合并最近联系，另给 `metrics_at`。采集失败的当前指标不对外伪装成新值；已保存的历史与累计用量保留。CPU/内存提醒在指标不可用时暂停评估，已触发的告警保留并标记待确认，未完成的持续计时重置；有效正常读数或关闭规则才解除。离线提醒继续依照连接判定。
+核心基线的 `node_health` 表存储连接与诊断；`nodes.last_seen` 内部仍只代表指标时间，流量差值摊分、采样与历史基线均不受心跳影响。对外 `last_seen` 合并最近联系，另给 `metrics_at`。采集失败的当前指标不对外伪装成新值；已保存的历史与累计用量保留。CPU/内存提醒在指标不可用时暂停评估，已触发的告警保留并标记待确认，未完成的持续计时重置；有效正常读数或关闭规则才解除。离线提醒继续依照连接判定。
 
 资源提醒使用现有 `alert_state` 保存三种评估结果：有效异常、有效正常、数据不可用。`PauseResourceAlert` 只清除连续观测起点 `since`，保留 `active`，不写事件；没有状态或已经暂停的记录不产生数据库写入。当前告警查询通过 `active=1 AND since=0` 判断暂停，不修改历史事件和通知重试快照。恢复观测后从新的有效读数开始累计持续时长。

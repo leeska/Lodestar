@@ -3,9 +3,8 @@
 // rates. A connector fetches items on a schedule (as a module.Job) and hands
 // them to the module that owns them; credentials it needs live in the vault.
 //
-// Nothing implements it yet: the intelligence and calendar modules will. The
-// interface is here so they share one shape for configuration, status and
-// items, and so the panel and agents can list sources the same way.
+// The intelligence module implements RSS, release and web page sources. Other
+// modules share this shape for configuration, status and items.
 package connector
 
 import (
@@ -44,6 +43,22 @@ type Connector interface {
 	// Schema is the JSON Schema of Config.
 	Schema() map[string]any
 	Fetch(ctx context.Context, config json.RawMessage, secret string) ([]Item, error)
+}
+
+type Cache struct {
+	ETag        string `json:"etag"`
+	Modified    string `json:"modified"`
+	Fingerprint string `json:"fingerprint"`
+}
+
+type Result struct {
+	Items       []Item
+	Cache       Cache
+	NotModified bool
+}
+
+type Conditional interface {
+	FetchCached(context.Context, json.RawMessage, string, Cache) (Result, error)
 }
 
 var (

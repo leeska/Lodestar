@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/leeska/Lodestar/internal/action"
 	"github.com/leeska/Lodestar/internal/model"
 )
 
@@ -21,7 +22,7 @@ func (s *Store) Audit(ctx context.Context, e model.AuditEntry) error {
 	}
 	s.writes.Lock()
 	defer s.writes.Unlock()
-	if _, err := s.db.ExecContext(ctx, "INSERT INTO audit_log(at,actor,source,action,node_id,status,detail) VALUES(?,?,?,?,?,?,?)", e.At, e.Actor, e.Source, e.Action, e.NodeID, e.Status, e.Detail); err != nil {
+	if _, err := s.db.ExecContext(ctx, "INSERT INTO audit_log(at,actor,source,action,node_id,status,detail,origin) VALUES(?,?,?,?,?,?,?,?)", e.At, e.Actor, e.Source, e.Action, e.NodeID, e.Status, e.Detail, action.OriginFrom(ctx)); err != nil {
 		return err
 	}
 	_, err := s.db.ExecContext(ctx, "DELETE FROM audit_log WHERE at<?", time.Now().AddDate(0, 0, -model.AuditRetentionDays).Unix())

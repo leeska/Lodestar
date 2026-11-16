@@ -1,0 +1,31 @@
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+const require=createRequire(path.join(process.env.LODESTAR_UI_DEPS||"/tmp/lodestar-ui-deps","package.json"));
+const {JSDOM}=require("jsdom"),{build}=require("esbuild");
+const bundle=await build({stdin:{contents:'export {securityPage} from "./web/admin-security.js"; export {state} from "./web/admin-state.js";',resolveDir:fileURLToPath(new URL("../",import.meta.url))},bundle:true,format:"iife",globalName:"Security",write:false});
+const dom=new JSDOM('<main id="admin-content"></main><dialog id="dialog"></dialog><div id="toast"></div>',{url:"http://localhost/admin",runScripts:"outside-only"}),window=dom.window;
+window.HTMLDialogElement.prototype.showModal=function(){this.open=true;};window.HTMLDialogElement.prototype.close=function(){this.open=false;};
+const writes=[],account={asset_id:"asset1",name:"<img src=x>",provider:"<script>bad</script>",two_factor:"unknown",recovery_location:"纸质保险柜",last_review:0,monitor_password:false,checked_at:0,breach_count:-1,has_password:true,has_recovery:true};
+window.fetch=async(url,options={})=>{
+  if(options.method&&options.method!=="GET"){writes.push({url,body:JSON.parse(options.body)});return new Response(null,{status:204});}
+  return new Response(JSON.stringify(url.endsWith("/settings")?{password_checks:false,dns_checks:false,login_alerts:true}:url.endsWith("/accounts")?{accounts:[account]}:{domains:[{id:"domain",name:"<img src=x>",domain:"example.com",days_left:null,dns_status:"unknown",dns_checked_at:0}],certificates:[]}));
+};
+window.eval(bundle.outputFiles[0].text);window.Security.state.container=window.document;window.Security.state.tab="security";
+await window.Security.securityPage();
+assert.equal(window.document.querySelector("#admin-content img"),null);assert.equal(window.document.querySelector("#admin-content script"),null);
+assert.equal(window.document.querySelector("#security-check").disabled,true);
+assert(window.document.querySelector("#admin-content").textContent.includes("未检查"));
+window.document.querySelector("[data-security-account]").click();
+const form=window.document.querySelector("#security-account-form");assert.equal(form.elements.monitor_password.checked,false);
+assert.equal(form.querySelectorAll(".form-footer button").length,2,"an explicit cancel must not be duplicated");
+form.elements.recovery_location.value="密码管理器的家庭保险库";
+await form.onsubmit(new window.Event("submit",{cancelable:true}));
+assert.equal(writes.at(-1).url,"/api/v1/admin/security/accounts/asset1");
+assert.equal(writes.at(-1).body.review_now,true);assert.equal(Object.hasOwn(writes.at(-1).body,"set_secrets"),false);
+window.document.querySelector("#security-settings").click();const settings=window.document.querySelector("#security-settings-form");
+assert.equal(settings.elements.password_checks.checked,false);assert.equal(settings.elements.dns_checks.checked,false);
+await settings.onsubmit(new window.Event("submit",{cancelable:true}));
+assert.deepEqual(writes.at(-1).body,{password_checks:false,dns_checks:false,login_alerts:true});
+dom.window.close();console.log("PASS: security metadata escapes text, preserves recovery secrets and defaults external queries off.");

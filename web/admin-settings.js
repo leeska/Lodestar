@@ -2,16 +2,20 @@ import { THEMES } from "./theme.js";
 import { PUBLIC_SECTIONS } from "./public-config.js";
 import { SKINS, registerThemes } from "./skins.js";
 import { api, send, toast, guard, modal, esc } from "./api.js";
-import { state, content, field, confirmAction } from "./admin-state.js";
+import { state, content, field, confirmAction, syncRoute } from "./admin-state.js";
 import { applyBrand, DEFAULT_NAME, MARK } from "./brand.js";
 import { CURRENCIES } from "./admin-nodes.js";
+import { assistantSettingsView, wireAssistantSettings } from "./admin-assistant.js";
+import { briefSettingsView, wireBriefSettings } from "./admin-brief.js";
 const MCP_DOC_URL = "https://github.com/leeska/Lodestar/blob/main/docs/MCP.md";
 const mcpDocs = () => `<p class="hint mcp-doc">接入文档：<a href="${MCP_DOC_URL}" target="_blank" rel="noopener noreferrer">${MCP_DOC_URL}</a></p>`;
 // 面板设置分三个子页：外观与品牌（站点品牌、默认外观、延迟色带）/ 账号与安全（后台账号、MCP Key）
 // / 数据（备份）。主题与插件各有自己的一栏，不在这里。显示项都走 /admin/panel 保存（见下方注释）。
 const VIEWS = [
   ["look", "外观与品牌"],
-  ["account", "账号与安全"],
+  ["account", "后台账号与安全"],
+  ["assistant", "模型接入"],
+  ["brief", "简报设置"],
   ["data", "数据"],
 ];
 export async function renderSettings(nodesReady) {
@@ -30,15 +34,18 @@ export async function renderSettings(nodesReady) {
   // 主题清单以服务端为准：默认皮肤下拉只列已安装的（内置现代极简 + 已安装的主题包）。
   if (themes) registerThemes(themes);
   const tabs = `<div class="segmented settings-tabs" role="tablist" aria-label="设置分类">${VIEWS.map(([id, label]) => `<button type="button" role="tab" data-settings-view="${id}" class="${view === id ? "active" : ""}" aria-selected="${view === id}">${label}</button>`).join("")}</div>`;
-  const body = { look: () => lookView(settings), account: () => accountView(acct, mcp) + totpPanel(twofa), data: dataView }[view]();
-  content().innerHTML = `<section data-part="page-heading" class="page-heading"><div><div class="eyebrow">SETTINGS</div><h1>面板设置</h1><p>站点品牌与公开面板的显示选项、后台账号与各类密钥、数据备份。</p></div></section>${tabs}${body}`;
+  const body = await { look: () => lookView(settings), account: () => accountView(acct, mcp) + totpPanel(twofa), assistant: assistantSettingsView, brief: briefSettingsView, data: dataView }[view]();
+  content().innerHTML = `<section data-part="page-heading" class="page-heading"><div><h1>偏好与账号</h1><p>管理站点偏好、后台登录和助理模型接入。</p></div></section>${tabs}${body}`;
   content().querySelectorAll("[data-settings-view]").forEach((b) =>
     (b.onclick = guard(async () => {
       state.settingsView = b.dataset.settingsView;
+      syncRoute();
       await renderSettings();
     })),
   );
   if (view === "look") wireLook(settings);
+  if (view === "assistant") wireAssistantSettings(renderSettings);
+  if (view === "brief") wireBriefSettings(renderSettings);
   if (view === "account") {
     wireAccountView(acct, mcp);
     wireTotp(twofa);

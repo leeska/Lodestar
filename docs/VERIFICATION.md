@@ -2,8 +2,8 @@
 
 这份文档写两件事：怎样验证一次修改，以及哪些行为只能在真实环境里验证。
 
-当前新部署基线与不兼容边界见 [新部署基线](FRESH-DEPLOYMENT.md)。数据库测试验证直接初始化、
-旧库拒绝且保留数据、失败原子回滚及当前备份重开，不再测试历代数据自动迁移。
+当前新部署与升级边界见 [新部署与数据兼容](FRESH-DEPLOYMENT.md)。数据库测试覆盖全新初始化、
+v2.0.0 原地升级、模块迁移只执行一次、失败回滚与重试、不支持的数据拒绝且保留，以及备份独立重开。
 
 ## 每次修改
 
@@ -16,12 +16,16 @@ go test -race ./...        # 没有 gcc 的机器去掉 -race
 `bash scripts/pipeline.sh check` 会一次跑完以上三项，外加 `web/*.js` 语法检查、`scripts/presentation-test.mjs` 和一次性 Server 上的前端集成检查（需要 Node ≥ 20.19 或 Bun；没有 Node 时自动用 Bun，jsdom 与 esbuild 也由它安装）。
 
 
-`scripts/component-workflow-ui-test.mjs` 覆盖首启一次确认：未确认不执行、精确摘要重核、
-权限/能力变化、失败保留输入、取消准备及默认停用日程。实际 HTTP/SQLite/签名管理包
-往返由 `internal/storage` 的 `TestWorkflowPreparationHTTPExactConsentAndLostApprovalReply` 覆盖。
-`TestWorkflowPreparationLinuxReadOnlyAcceptance` 及 `TestWorkflowPreparationLinuxPreservesLegacyTimers`
-默认跳过，必须使用固定 QA 目录及受保护的私有 state-root 挂载命名空间；分别验证
-干净节点只读准备与既有 timer 阻断。不能停止生产 timer、覆盖实际 Agent 或取消保护检查来通过测试。
+## 核心服务与 Agent 接入回归
+
+- 助理回归见 `internal/httpapi/assistant_test.go`、`internal/assistant/provider_test.go` 和流水线中的 `scripts/assistant-test.mjs`，覆盖多轮工具、确认防重放、重启继续、密钥遮盖、调用者范围和取消传播。
+
+- `internal/storage/migrate_test.go`：旧基线升级、重复启动、失败重试、更新迁移拒绝与审计。
+- `internal/httpapi/actions_test.go`：访问密钥的风险档和模块限制、高风险操作逐次确认、失效或吊销密钥拒绝、MCP 工具来自注册表、OpenAPI 与 Skill 覆盖全部能力，以及旧 MCP 密钥兼容。
+- `internal/vault/vault_test.go`：密钥文件与密文读写、附加数据绑定；`internal/assets/assets_test.go`：敏感字段加密、续期后提醒重置及各阶段只提醒一次。
+- `internal/timeline/timeline_test.go`：告警、审计与模块条目合并；`internal/jobs/jobs_test.go`：定时任务状态与失败、恢复的时间线事件。
+
+历史组件安装器审批与配套 CC 的测试不属于当前仓库，不作为当前版本的验收项；当时的验证记录保留在日期标注的审阅与整改文档中。
 
 ## 前端集成检查（ui-smoke）
 
@@ -33,7 +37,7 @@ go build -o bin/lodestar ./cmd/server
 mkdir -p /tmp/lodestar-ui-data
 ./bin/lodestar init --data /tmp/lodestar-ui-data > /tmp/lodestar-ui-credentials
 ./bin/lodestar --listen 127.0.0.1:25874 --data /tmp/lodestar-ui-data
-# 官方主题包（复古印刷 / 现代极简 / 二次元）打成 zip，ui-smoke 会把它们装到这台一次性 Server 上：
+# 官方主题包（液态玻璃 / 复古印刷 / 二次元）打成 zip，ui-smoke 会把它们装到这台一次性 Server 上：
 go run ./tools/themepack -out /tmp/lodestar-ui-themes themes/*
 # 另一个终端：
 LODESTAR_UI_DEPS=/tmp/lodestar-ui-deps \
@@ -78,7 +82,7 @@ jsdom 不做布局，排版类问题只有真浏览器量得出来。用法见�
 
 源码版本解析由 `cmd/server` 的版本测试覆盖精确 tag、开发分支、无 Git 的源码目录及安装旧 tag 的兼容路径。`scripts/theme-addons-test.mjs` 验证自定义设置主题仍可管理与删除附加包，且不再发出任何市场请求。
 
-Agent 的状态序号测试覆盖故障心跳在恢复报告之后到达、报告尚未应答时的心跳，以及服务端重启和 Agent 新会话。CC 的 `TestConcurrentFirstRegistration` 需配置独立测试数据库，跨两个连接池并发注册，验证仅一位首次管理员及关闭注册时的行为。
+Agent 的状态序号测试覆盖故障心跳在恢复报告之后到达、报告尚未应答时的心跳，以及服务端重启和 Agent 新会话。
 
 
 ## IP 被墙检测回归

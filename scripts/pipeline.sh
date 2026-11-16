@@ -116,6 +116,7 @@ check_web() {
   say "scripts/presentation-test.mjs"
   t0=$(now); "$JS" scripts/presentation-test.mjs; rc=$?
   note "presentation-test $(dur $t0) rc=$rc"; [ "$rc" = 0 ] || FAILED=1
+  "$JS" scripts/assistant-test.mjs || FAILED=1
 }
 
 # 角色包生成器（tools/character-pack）的离线自检：合成一张假立绘，跑去底 / 找牌子 / 拆双手 / 配色。
@@ -172,6 +173,12 @@ check_ui_smoke() {
   LODESTAR_UI_DEPS="$deps" "$JS" scripts/theme-addons-test.mjs || { FAILED=1; return; }
   LODESTAR_UI_DEPS="$deps" "$JS" scripts/alert-evaluation-test.mjs || { FAILED=1; return; }
   LODESTAR_UI_DEPS="$deps" "$JS" scripts/block-checks-test.mjs || { FAILED=1; return; }
+  LODESTAR_UI_DEPS="$deps" "$JS" scripts/intel-test.mjs || { FAILED=1; return; }
+  LODESTAR_UI_DEPS="$deps" "$JS" scripts/todo-test.mjs || { FAILED=1; return; }
+  LODESTAR_UI_DEPS="$deps" "$JS" scripts/finance-test.mjs || { FAILED=1; return; }
+  LODESTAR_UI_DEPS="$deps" "$JS" scripts/automation-test.mjs || { FAILED=1; return; }
+  LODESTAR_UI_DEPS="$deps" "$JS" scripts/navigation-test.mjs || { FAILED=1; return; }
+  LODESTAR_UI_DEPS="$deps" "$JS" scripts/security-test.mjs || { FAILED=1; return; }
   t0=$(now)
   LODESTAR_UI_DEPS="$deps" LODESTAR_TEST_URL="http://127.0.0.1:$port" LODESTAR_TEST_ADMIN_FILE="$TMP/data/admin-token" LODESTAR_TEST_CREDENTIALS_FILE="$TMP/credentials" LODESTAR_TEST_THEMES="$TMP/themes" \
     "$JS" scripts/ui-smoke.mjs 2>&1 | tail -20 | sed 's/^/   /'

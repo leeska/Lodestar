@@ -16,36 +16,70 @@ import (
 
 	"github.com/leeska/Lodestar/internal/action"
 	"github.com/leeska/Lodestar/internal/apikey"
+	"github.com/leeska/Lodestar/internal/assets"
+	"github.com/leeska/Lodestar/internal/automation"
+	"github.com/leeska/Lodestar/internal/brief"
+	"github.com/leeska/Lodestar/internal/calendar"
+	"github.com/leeska/Lodestar/internal/certs"
+	"github.com/leeska/Lodestar/internal/finance"
+	"github.com/leeska/Lodestar/internal/intel"
 	"github.com/leeska/Lodestar/internal/model"
 	"github.com/leeska/Lodestar/internal/module"
+	"github.com/leeska/Lodestar/internal/security"
 	"github.com/leeska/Lodestar/internal/storage"
+	"github.com/leeska/Lodestar/internal/timeline"
+	"github.com/leeska/Lodestar/internal/todo"
 	"github.com/leeska/Lodestar/internal/users"
+	"github.com/leeska/Lodestar/internal/vault"
 	"github.com/leeska/Lodestar/web"
 )
 
 type actionFixture struct {
-	t      *testing.T
-	store  *storage.Store
-	keys   *apikey.Store
-	server *httptest.Server
-	admin  string
+	t        *testing.T
+	store    *storage.Store
+	keys     *apikey.Store
+	server   *httptest.Server
+	admin    string
+	security *security.Module
 }
 
 func newActionFixture(t *testing.T) *actionFixture {
 	t.Helper()
 	usersMod := &users.Module{}
-	mods := []module.Module{usersMod}
-	s, err := storage.OpenWith(filepath.Join(t.TempDir(), "actions.db"), module.Migrations(mods))
+	briefMod := &brief.Module{}
+	intelMod := &intel.Module{}
+	vaultMod := &vault.Module{}
+	todoMod, calendarMod := &todo.Module{}, &calendar.Module{}
+	financeMod := &finance.Module{}
+	automationMod, timelineMod := &automation.Module{}, &timeline.Module{}
+	assetsMod, securityMod := &assets.Module{}, &security.Module{}
+	mods := []module.Module{usersMod, vaultMod, timelineMod, assetsMod, briefMod, intelMod, todoMod, calendarMod, financeMod, automationMod, securityMod}
+	migrations := append(module.Migrations(mods), certs.Migrations()...)
+	s, err := storage.OpenWith(filepath.Join(t.TempDir(), "actions.db"), migrations)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { s.Close() })
 	usersMod.Store = &users.Store{DB: s.DB()}
+	briefMod.DB = s.DB()
+	secrets, err := vault.New(s.DB(), make([]byte, 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+	vaultMod.Vault = secrets
+	intelMod.DB, intelMod.Vault = s.DB(), secrets
+	todoMod.DB, todoMod.Events, todoMod.Calendar = s.DB(), s, calendarMod
+	calendarMod.DB, calendarMod.Vault = s.DB(), secrets
+	financeMod.DB = s.DB()
+	timelineMod.DB = s.DB()
+	automationMod.DB, automationMod.Vault, automationMod.Timeline, automationMod.Events = s.DB(), secrets, timelineMod, s
+	assetsMod.Store = &assets.Store{DB: s.DB(), Vault: secrets}
+	securityMod.DB, securityMod.Assets, securityMod.Certs, securityMod.Events = s.DB(), assetsMod.Store, &certs.Store{DB: s.DB()}, s
 	admin := model.Secret()
 	keys := &apikey.Store{DB: s.DB()}
 	server := httptest.NewServer((&API{Store: s, AdminToken: admin, Assets: web.Handler(), Keys: keys, Modules: mods}).Handler())
 	t.Cleanup(server.Close)
-	return &actionFixture{t: t, store: s, keys: keys, server: server, admin: admin}
+	return &actionFixture{t: t, store: s, keys: keys, server: server, admin: admin, security: securityMod}
 }
 
 func (f *actionFixture) key(spec apikey.Spec) string {
@@ -113,6 +147,68 @@ func TestActionKeysLimitRiskAndModules(t *testing.T) {
 	}
 	if code, out := f.do("POST", "/api/v1/actions/users.create", usersOnly, `{"body":{"name":""},"extra":1}`); code != 400 {
 		t.Fatalf("unknown argument accepted: %d %v", code, out)
+	}
+}
+
+func TestTodoAndCalendarRouteBackedActions(t *testing.T) {
+	fixture := newActionFixture(t)
+	key := fixture.key(apikey.Spec{Name: "planner", MaxRisk: action.Write, Modules: []string{"todo", "calendar"}})
+	if status, _ := fixture.do("POST", "/api/v1/actions/todo.from_ref", key, `{"body":{"ref":"event:1"}}`); status != 403 {
+		t.Fatal("source conversion bypassed module scope", status)
+	}
+	status, output := fixture.do("POST", "/api/v1/actions/todo.create", key, `{"body":{"title":"检查备份","priority":2}}`)
+	if status != 200 {
+		t.Fatal(status, output)
+	}
+	id := output["result"].(map[string]any)["id"].(string)
+	body, _ := json.Marshal(map[string]any{"id": id, "body": map[string]any{"done": true}})
+	if status, output = fixture.do("POST", "/api/v1/actions/todo.complete", key, string(body)); status != 200 || output["result"].(map[string]any)["done_at"].(float64) == 0 {
+		t.Fatal(status, output)
+	}
+	status, output = fixture.do("POST", "/api/v1/actions/calendar.range", key, `{"from":1794700800,"to":1794787200}`)
+	if status != 200 || output["result"].(map[string]any)["events"] == nil {
+		t.Fatal("calendar query arguments not forwarded", status, output)
+	}
+	if status, output = fixture.do("POST", "/api/v1/actions/calendar.add_source", key, `{"body":{"name":"私有日历","timezone":"UTC","enabled":false,"set_url":"https://example.com/private-calendar-token.ics"}}`); status != 200 {
+		t.Fatal(status, output)
+	}
+	encoded, _ := json.Marshal(output)
+	if strings.Contains(string(encoded), "private-calendar-token") {
+		t.Fatal("calendar URL returned through action API")
+	}
+	if status, _ = fixture.do("GET", "/api/v1/admin/calendar/sources", key, ""); status != 401 {
+		t.Fatal("action key entered admin routes", status)
+	}
+}
+
+func TestFinanceActionsPreserveDecimalAmountsAndAllowBoundedCSV(t *testing.T) {
+	fixture := newActionFixture(t)
+	key := fixture.key(apikey.Spec{Name: "bookkeeper", MaxRisk: action.Write, Modules: []string{"finance"}})
+	status, output := fixture.do("POST", "/api/v1/actions/finance.add_account", key, `{"body":{"name":"本地记账","kind":"bank","currency":"CNY","opening_balance":"0.10"}}`)
+	if status != 200 {
+		t.Fatal(status, output)
+	}
+	id := output["result"].(map[string]any)["id"].(string)
+	body, _ := json.Marshal(map[string]any{"body": map[string]any{"account_id": id, "amount": "0.20"}})
+	if status, output = fixture.do("POST", "/api/v1/actions/finance.add_transaction", key, string(body)); status != 200 {
+		t.Fatal(status, output)
+	}
+	if status, output = fixture.do("POST", "/api/v1/actions/finance.accounts", key, "{}"); status != 200 || output["result"].(map[string]any)["net_worth"] != "0.30" {
+		t.Fatal(status, output)
+	}
+	csvData := "date,amount,note\n" + strings.Repeat("2026-11-15,-0.01,"+strings.Repeat("x", 1500)+"\n", 200)
+	body, _ = json.Marshal(map[string]any{"body": map[string]any{"account_id": id, "csv": csvData, "columns": map[string]string{"at": "date", "amount": "amount", "note": "note"}}})
+	if len(body) <= 256<<10 {
+		t.Fatal("fixture must exercise the default request limit")
+	}
+	if status, output = fixture.do("POST", "/api/v1/actions/finance.csv_preview", key, string(body)); status != 200 || output["result"].(map[string]any)["total"].(float64) != 200 {
+		t.Fatal("bounded large CSV not supported", status, output)
+	}
+	if status, output = fixture.do("POST", "/api/v1/actions/finance.recurring", key, "{}"); status != 200 || len(output["result"].(map[string]any)["items"].([]any)) != 0 {
+		t.Fatal("finance scope exposed other modules", status, output)
+	}
+	if status, _ := fixture.do("GET", "/api/v1/admin/finance/accounts", key, ""); status != 401 {
+		t.Fatal("finance key accessed admin routes", status)
 	}
 }
 

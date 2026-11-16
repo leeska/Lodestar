@@ -1,6 +1,8 @@
 # HTTP API v1
 
-全部 JSON。管理自动化用 `Authorization: Bearer <admin-token>`；Agent 用自己的节点令牌。浏览器通过 `POST /api/v1/login` 提交后台账号 `{ "username": "...", "password": "..." }` 获取 Cookie，管理密钥登录已移除。生产环境必须由 TLS 代理保护。
+全部 JSON。外部 agent 使用分权限访问密钥 `Authorization: Bearer ls_…` 调用能力 API 或 MCP，不能直接访问 `/api/v1/admin/*`；服务器本地管理自动化仍可使用 `Authorization: Bearer <admin-token>` 调用管理接口，节点 Agent 用自己的节点令牌。浏览器通过 `POST /api/v1/login` 提交后台账号 `{ "username": "...", "password": "..." }` 获取 Cookie，管理密钥登录已移除。生产环境必须由 TLS 代理保护。
+
+外部 agent 接入见 [MCP.md](MCP.md)。`GET /api/v1/actions` 返回当前密钥可用的能力，`POST /api/v1/actions/<能力名>` 执行，`GET /api/v1/openapi.json` 提供从同一注册表生成的文档。能力分 `read` / `write` / `danger`；高风险能力每次调用都要显式确认，能力 API 使用 `?confirm=true`，MCP 使用参数 `confirm: true`。
 
 密码校验前限制实际尝试速度：匿名请求共享 30 次突发额度，每 2 秒补充一次；持有效设备 Cookie 的请求使用独立的 10 次额度，每 6 秒补充一次。额度耗尽后在密码校验前直接返回 429，并通过 `Retry-After` 告知下一次额度恢复的等待秒数；正确密码同样遵守额度，成功和失败的校验都消耗额度。额度自动补充，不永久锁定账号；改密后旧设备 Cookie 失效。浏览器会话绑定登录时验证的密码版本；终端重置密码使所有旧会话失效，网页改密仅保留本次会话。
 
@@ -84,7 +86,9 @@
 
 首次接入请先阅读 [MCP 接入指南](MCP.md)，其中包含 Key 生成、客户端配置、工具清单及可运行的 curl 示例。
 
-请求头携带 `Authorization: Bearer <MCP API Key>`，Key 在“面板设置”生成，初始未配置时端点拒绝访问。管理密钥、面板会话 Cookie 与节点密钥不通行，MCP Key 也不能登录后台或访问管理 HTTP API，跨源写入按原有规则拒绝。写工具与面板共用同一套持久化与校验，因此 AI 客户端改出来的状态和面板改出来的完全一致。只接受 POST 与 `application/json`，GET / DELETE 返回 405；响应默认为 `application/json`，客户端只接受 `text/event-stream` 时用一条 SSE 消息回复同一条 JSON-RPC 消息。没有会话状态，每个请求独立处理。
+请求头携带 `Authorization: Bearer <访问密钥>`，在「Agent 接入」按风险档、模块与有效期创建；旧的「面板设置 → MCP API Key」生成的是一把兼容访问密钥。未配置有效密钥时端点拒绝访问。管理密钥、面板会话 Cookie 与节点密钥不通行，访问密钥也不能登录后台或直接调用管理 HTTP API，跨源写入按原有规则拒绝。写工具与面板共用同一套持久化与校验，因此 AI 客户端改出来的状态和面板改出来的完全一致。只接受 POST 与 `application/json`，GET / DELETE 返回 405；响应默认为 `application/json`，客户端只接受 `text/event-stream` 时用一条 SSE 消息回复同一条 JSON-RPC 消息。没有会话状态，每个请求独立处理。
+
+工具清单来自能力注册表并按当前密钥权限筛选，名称把能力名的点换成下划线，例如 `assets.upcoming` → `assets_upcoming`。资产、时间线、定时任务及其他业务模块的完整工具参数以 `tools/list` 和生成的 OpenAPI 为准；下文的旧工具名作为兼容别名保留。`annotations` 用 `readOnlyHint` / `destructiveHint` 标注风险，高风险调用不带确认时不执行。
 
 同一个地址支持两代协议：
 
@@ -198,13 +202,13 @@ Server 把任务展开为单项探测（checks × targets，目标自带 `checks
 
 `GET /admin/events?active=1` 在已触发的 CPU / 内存告警因指标不可用而暂停评估时返回 `evaluation_paused:true`。此时 `active:true` 表示该告警尚未获得解除依据，消息和采样时间仍是上次触发/重复事件的快照。恢复有效读数后，该字段消失：正常读数解除，高读数继续原告警。未达到持续要求的计时在数据缺失时重置。关闭或移除规则仍会解除告警。
 
-普通事件历史和通知投递快照不含这个实时字段，内容不随节点当前状态变化。暂停标记继续使用原有字段；Agent 状态排序使用 schema 17 的独立会话水位表。
+普通事件历史和通知投递快照不含这个实时字段，内容不随节点当前状态变化。暂停标记继续使用原有字段；Agent 状态排序使用核心基线内的独立会话水位表。
 
 ## Agent 状态排序
 
 新 Agent 在每次进程启动时生成随机 `agent_session`（64 位小写十六进制），在指标与诊断中共用递增的 `agent_sequence`（正整数）。同一故障的重复心跳保留序号；成功报告分配更大的序号，旧故障心跳晚到也不会覆盖恢复结果。服务端在同一事务中保存顺序水位。未知会话首次请求返回 HTTP 409 和 `{"agent_session_challenge":"<64位十六进制>"}`，不更新节点状态；Agent 将该值放入同一指标/诊断的 `agent_session_proof` 后重试。挑战绑定节点、请求会话和当前活动会话；活动会话变化后，旧挑战失效，必须重新确认。HTTP Agent 自动处理挑战，每次调用最多发送 3 次请求；普通限频 409 不重试。确认凭证不写入指标、历史或公开诊断。新会话确认并取代旧会话后，旧会话的在途请求被忽略。退役会话保留 7 天，当前会话不因离线清理。序号不依赖 Agent 或 Server 的墙上时钟。
 
-省略会话排序字段的旧 Agent 仍可接入，沿用接收顺序。升级时先部署 Server（自动迁移至 schema 17），再部署 Agent；新 Agent 的字段不应发送给旧 Server。回退旧 Server 前须恢复升级前的数据库备份。
+省略会话排序字段的旧 Agent 仍可接入，沿用接收顺序。升级时先部署 Server 并完成当前模块迁移，再部署 Agent；新 Agent 的字段不应发送给不支持它的旧 Server。数据兼容边界见 [FRESH-DEPLOYMENT.md](FRESH-DEPLOYMENT.md)，回退旧 Server 前须恢复升级前的数据库备份。
 
 
 ## 剩余价值

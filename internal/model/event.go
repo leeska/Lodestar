@@ -55,10 +55,15 @@ const (
 	EventCert   = "cert"
 	EventBackup = "backup"
 	// EventAsset is an asset's renewal reminder; NodeID is "asset:<id>".
-	EventAsset = "asset"
+	EventAsset      = "asset"
+	EventBrief      = "brief"
+	EventIntel      = "intel"
+	EventTodo       = "todo"
+	EventAutomation = "automation"
+	EventSecurity   = "security"
 )
 
 // IsNodeEvent reports whether e belongs to a node (and not to a module).
 func (e Event) IsNodeEvent() bool {
-	return e.Kind != EventCert && e.Kind != EventBackup && e.Kind != EventAsset
+	return e.Kind != EventCert && e.Kind != EventBackup && e.Kind != EventAsset && e.Kind != EventBrief && e.Kind != EventIntel && e.Kind != EventTodo && e.Kind != EventAutomation && e.Kind != EventSecurity
 }

@@ -110,7 +110,7 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o bin/linux-amd64/lode
 
 ARM 主机将两条命令的 `GOARCH` 和输出目录改为 arm64。将产物复制到目标主机；以下安装步骤假设二进制位于目标主机的 `bin/`。
 
-要让 Server 提供一键安装，先把两种架构的 Agent 放到 `internal/agentdist/bin/` 再编译 Server（见该目录的 README）；`scripts/pipeline.sh build` 的发行包和 Docker 镜像已包含。版本号通过 `-ldflags "-X github.com/leeska/Lodestar/internal/model.Version=v1.0.0"` 注入，不注入时为当前源码声明的开发版本（目前 `3.2.0-dev`）。发布 GitHub Release 用 `scripts/release.sh`（见 README）。
+要让 Server 提供一键安装，先把两种架构的 Agent 放到 `internal/agentdist/bin/` 再编译 Server（见该目录的 README）；`scripts/pipeline.sh build` 的发行包和 Docker 镜像已包含。版本号通过 `-ldflags "-X github.com/leeska/Lodestar/internal/model.Version=v1.0.0"` 注入，不注入时为当前源码声明的开发版本（目前 `3.9.0-dev`）。发布 GitHub Release 用 `scripts/release.sh`（见 README）。
 
 ## 2. 安装 Server
 
@@ -135,7 +135,7 @@ probe.example.com {
 
 用 nginx 时参考 [`deploy/nginx-site.conf`](../deploy/nginx-site.conf)。每个 Agent 每隔几秒就上报一次，全部写进访问日志一天会有上百 MB。安装脚本检测到本机有 nginx 时，会写入 `/etc/nginx/conf.d/lodestar-log.conf`，内容同 [`deploy/nginx-lodestar-log.conf`](../deploy/nginx-lodestar-log.conf)。它只定义变量 `$lodestar_loggable`：`/api/v1/agent/*` 返回 2xx、3xx 或 499 时取 0，其他请求取 1。站点的 server 块里写 `access_log /var/log/nginx/access.log combined if=$lodestar_loggable;` 才会生效，面板访问和 Agent 的报错照常记录。安装脚本不改任何站点配置；写入后 `nginx -t` 不通过会自动撤回。不需要时加 `--no-nginx`。
 
-安装脚本结束时打印后台用户名、密码（密码只在首次安装时显示一次）。访问 `https://probe.example.com/admin` 用用户名密码登录。MCP API Key 在“面板设置”中生成、重新生成或撤销，客户端配置和连接排错见 [MCP 接入指南](MCP.md)。用户名与密码在“面板设置 → 后台账号”修改。新增节点后，后台提供配置和安装脚本。
+安装脚本结束时打印后台用户名、密码（密码只在首次安装时显示一次）。访问 `https://probe.example.com/admin` 用用户名密码登录。外部 agent 在「Agent 接入」页创建分权限的访问密钥，旧的「面板设置 → MCP API Key」入口仍保留，客户端配置和连接排错见 [Agent 接入指南](MCP.md)。用户名与密码在“面板设置 → 后台账号”修改。新增节点后，后台提供配置和安装脚本。
 
 Agent 的 endpoint 必须是它能访问的 Server 地址。远程 Agent 不能使用 Server 的 `127.0.0.1` 或 `localhost` 地址。从正确的 HTTPS 地址访问后台再生成接入配置，通常不需要手动改 endpoint。
 
@@ -285,7 +285,7 @@ sudo chown -R lodestar:lodestar /var/lib/lodestar-restored
 
 ## 主题与插件
 
-Probe 不连接 Lodestar 或其他市场：主题包、附加包与插件都在后台「主题」「插件」页上传 zip 安装，Server 不为此访问外部服务。
+Lodestar 不连接市场：主题包、附加包与插件都在后台「主题」「插件」页上传 zip 安装，Server 不为此访问外部服务。
 旧版本的 `--cc-url` / `--cc-key` 参数与 `TZA_CC_URL` / `TZA_CC_KEYS` 环境变量仍被接受但会被忽略，启动日志给出提示；可以从单元文件或 compose 中删掉。
 旧数据目录里的 `cc-instance`、`themes/.market/`、`plugins/.market/` 与 `plugin-managers/` 不再使用，可以删除。
 

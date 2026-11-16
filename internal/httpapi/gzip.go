@@ -38,7 +38,7 @@ func (g *gzipResponse) WriteHeader(code int) {
 	if !g.decided {
 		g.decided = true
 		h := g.Header()
-		if code != http.StatusNoContent && code != http.StatusNotModified && h.Get("Content-Encoding") == "" {
+		if code != http.StatusNoContent && code != http.StatusNotModified && h.Get("Content-Encoding") == "" && !strings.HasPrefix(h.Get("Content-Type"), "text/event-stream") {
 			h.Del("Content-Length")
 			h.Set("Content-Encoding", "gzip")
 			g.zw = gzipWriters.Get().(*gzip.Writer)

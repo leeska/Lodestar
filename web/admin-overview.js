@@ -1,164 +1,132 @@
-// 后台总览：整个系统的汇总页，也是最常打开的一页。从上到下：
-// 1. 一排关键数字（在线、实时速率、本周期流量、平均 CPU、每月成本、正在告警）；
-// 2. 「需要处理」：把各模块卡片里语气为警告 / 严重的条目汇成一张待办，严重的排前面；
-//    旁边是「节点负载」，按 CPU / 内存 / 磁盘里最高的那项排序；
-// 3. 各模块的状态卡（GET /admin/overview），点卡片进对应页面；
-// 4. 最近的告警事件和最近的管理操作。
-// 停在本页时每 15 秒自动刷新一次；有弹窗或页面在后台时跳过。某一块读不到只影响那一块。
-import { api, esc } from "./api.js";
+import { api, esc, guard } from "./api.js";
 import { content, go, render, state } from "./admin-state.js";
-import { bytes, percent, kindName, monthlyCostIn, remainingValueIn, fxHint } from "./format.js";
 import { actionName } from "./admin-remote.js";
 
-const toneClass = { good: "good", warn: "warn", bad: "bad" };
-const REFRESH_MS = 15000;
+const REFRESH_MS = 60000;
+let generation = 0;
 let poller;
 
-const ago = (unix) => {
-  const s = Math.max(0, Math.round(Date.now() / 1000 - unix));
-  if (s < 60) return "刚刚";
-  if (s < 3600) return `${Math.floor(s / 60)} 分钟前`;
-  if (s < 86400) return `${Math.floor(s / 3600)} 小时前`;
-  if (s < 86400 * 30) return `${Math.floor(s / 86400)} 天前`;
-  return new Date(unix * 1000).toLocaleDateString("zh-CN");
-};
-// 审计里 HTTP 操作记的是「方法 路径」，总览里换成一句中文：删除 网站、同步 网站、新建 代理 · 规则模板。
 const RESOURCES = { assets: "资产", reveal: "敏感字段", jobs: "定时任务", "api-keys": "访问密钥", nodes: "节点", tasks: "任务", sites: "网站", proxy: "代理", inbounds: "入站", templates: "规则模板", sources: "外部订阅", forwards: "转发", tunnels: "隧道", users: "使用者", certs: "证书", dns: "DNS 账号", backups: "备份", docker: "Docker", containers: "容器", images: "镜像", compose: "Compose", "alert-rules": "告警规则", notification: "通知渠道", themes: "主题", plugins: "插件", panel: "面板设置", account: "账号", totp: "两步验证", agents: "Agent", "block-checks": "被墙检测", regiondrift: "地区偏移", "ip-guard": "地区偏移", events: "事件" };
 const VERBS = { sync: "同步", run: "执行", test: "测试", issue: "签发", renew: "续期", deploy: "下发", upgrade: "升级", restart: "重启", start: "启动", stop: "停止", reset: "重置", rotate: "轮换", order: "排序", import: "导入", export: "导出", locate: "定位", pause: "暂停", resume: "恢复", enable: "启用", disable: "停用" };
+
 export function auditLabel(action) {
-  const m = /^(GET|POST|PUT|PATCH|DELETE) \/api\/v1\/admin\/(.+)$/.exec(action || "");
-  if (!m) return actionName(action);
-  const parts = m[2].split("/").filter((p) => !p.startsWith("{"));
-  const names = parts.filter((p) => RESOURCES[p]).map((p) => RESOURCES[p]);
-  const last = parts[parts.length - 1];
-  const verb = VERBS[last] || { POST: "新建", PUT: "修改", PATCH: "修改", DELETE: "删除" }[m[1]] || "查看";
+  const match = /^(GET|POST|PUT|PATCH|DELETE) \/api\/v1\/admin\/(.+)$/.exec(action || "");
+  if (!match) return actionName(action);
+  const parts = match[2].split("/").filter((part) => !part.startsWith("{"));
+  const names = parts.filter((part) => RESOURCES[part]).map((part) => RESOURCES[part]);
+  const verb = VERBS[parts.at(-1)] || { POST: "新建", PUT: "修改", PATCH: "修改", DELETE: "删除" }[match[1]] || "查看";
   return `${verb} ${names.join(" · ") || parts.join("/")}`;
 }
-const fullTime = (unix) => new Date(unix * 1000).toLocaleString("zh-CN", { hour12: false });
-const loadTone = (v) => (v >= 90 ? "bad" : v >= 75 ? "warn" : "");
 
-function kpi(label, value, sub = "", tone = "", page = "") {
-  const tag = page ? "button" : "div";
-  const attrs = page ? ` type="button" data-go="${page}"` : "";
-  return `<${tag} class="ov-kpi ${tone}"${attrs}><span>${label}</span><strong>${value}</strong><small>${sub}</small></${tag}>`;
-}
+const clock = (seconds) => new Date(seconds * 1000).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
+const dateTime = (seconds) => new Date(seconds * 1000).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+const empty = (message) => `<p class="ov-empty">${esc(message)}</p>`;
+const heading = (title, page, label, view = "") => `<div class="panel-head"><h2>${esc(title)}</h2><button type="button" class="quiet" data-go="${page}"${view ? ` data-view="${view}"` : ""}>${esc(label)}</button></div>`;
 
-function kpis(nodes, firing) {
-  const online = nodes.filter((n) => n.online);
-  const live = online.filter((n) => n.metrics && !n.metrics_stale);
-  const rateIn = live.reduce((s, n) => s + (n.metrics.rate_in || 0), 0);
-  const rateOut = live.reduce((s, n) => s + (n.metrics.rate_out || 0), 0);
-  const traffic = nodes.reduce((s, n) => s + (n.traffic_used || 0), 0);
-  const cpu = live.length ? live.reduce((s, n) => s + (n.metrics.cpu || 0), 0) / live.length : null;
-  const costs = nodes.map((n) => monthlyCostIn(n, "CNY")).filter((v) => v != null);
-  const cost = costs.reduce((s, v) => s + v, 0);
-  const values = nodes.map((n) => remainingValueIn(n, "CNY")).filter((v) => v != null);
-  const value = values.reduce((s, v) => s + v, 0);
-  const offline = nodes.filter((n) => !n.online && n.last_seen).length;
-  return [
-    kpi("在线节点", `${online.length}<small> / ${nodes.length}</small>`, offline ? `${offline} 台离线` : nodes.length ? "全部在线" : "还没有节点", offline ? "bad" : nodes.length ? "good" : "", "nodes"),
-    kpi("实时上行", `${bytes(rateOut)}<small>/s</small>`, `${live.length} 台在报指标`),
-    kpi("实时下行", `${bytes(rateIn)}<small>/s</small>`, `${live.length} 台在报指标`),
-    kpi("本周期流量", bytes(traffic), "各节点按自己的账单周期"),
-    kpi("平均 CPU", cpu == null ? "—" : `${cpu.toFixed(1)}<small>%</small>`, "在线节点平均", cpu == null ? "" : loadTone(cpu)),
-    kpi("每月成本", costs.length ? `¥${cost.toFixed(0)}` : "—", costs.length ? `${costs.length} 台已计价 · 参考汇率` : "没有填价格"),
-    kpi("剩余价值", values.length ? `¥${value.toFixed(0)}` : "—", values.length ? `${values.length} 台已估算 · 参考汇率` : "没有填价格和到期"),
-    kpi("正在告警", firing == null ? "—" : String(firing.length), firing == null ? "读取失败" : firing.length ? "点开看详情" : "没有", firing?.length ? "bad" : firing ? "good" : "", "alerts"),
-  ].join("");
-}
-
-// 各卡片里需要处理的条目汇成一张表：卡片自己是警告 / 严重但没有条目时，用卡片的结论当一条。
-function attention(cards) {
+function attention(cards, todos, start) {
   const rows = [];
-  for (const c of cards) {
-    const items = (c.items || []).filter((i) => i.tone === "bad" || i.tone === "warn");
-    for (const i of items) rows.push({ tone: i.tone, label: i.label, note: i.note, from: c.title, page: c.page });
-    if (!items.length && (c.tone === "bad" || c.tone === "warn")) rows.push({ tone: c.tone, label: c.value, note: c.note, from: c.title, page: c.page });
+  for (const card of cards || []) {
+    if (card.page === "todo" && todos) continue;
+    const items = (card.items || []).filter((item) => ["bad", "warn"].includes(item.tone));
+    for (const item of items) rows.push({ ...item, from: card.title, page: card.page });
+    if (!items.length && ["bad", "warn"].includes(card.tone)) {
+      rows.push({
+        tone: card.tone, label: card.id === "automation" ? "有操作等待确认" : `${card.title}：${card.value}`,
+        note: card.note, from: card.title, page: card.page, view: card.id === "automation" ? "pending" : "",
+      });
+    }
   }
-  rows.sort((a, b) => (a.tone === b.tone ? 0 : a.tone === "bad" ? -1 : 1));
-  const bad = rows.filter((r) => r.tone === "bad").length;
-  const list = rows.slice(0, 12).map((r) => {
-    const tag = r.page ? "button" : "div";
-    return `<${tag} class="ov-todo ${r.tone}" title="${esc(`${r.label}：${r.note || ""}`)}"${r.page ? ` type="button" data-go="${esc(r.page)}"` : ""}><i aria-hidden="true"></i><span><b>${esc(r.label)}</b><small>${esc(r.note || "")}</small></span><em>${esc(r.from)}</em></${tag}>`;
-  }).join("");
-  const more = rows.length > 12 ? `<p class="ov-more">还有 ${rows.length - 12} 条，见各模块卡片。</p>` : "";
-  const head = rows.length ? `<span class="pill ${bad ? "bad" : "warn"}">${rows.length} 项${bad ? ` · ${bad} 项严重` : ""}</span>` : `<span class="pill good">全部正常</span>`;
-  return `<section data-part="panel" class="panel ov-panel"><div class="panel-head"><h3>需要处理</h3>${head}</div>${rows.length ? `<div class="ov-todos">${list}</div>${more}` : '<p class="ov-empty">没有需要处理的事项。节点在线、证书和备份正常，也没有快到期的机器。</p>'}</section>`;
+  for (const item of todos?.items || []) {
+    if (item.due_at > 0 && item.due_at < start) rows.push({
+      tone: "warn", label: item.title, note: `已逾期 · ${dateTime(item.due_at)}`, from: "待办", page: "todo", view: "open",
+    });
+  }
+  rows.sort((first, second) => (first.tone === second.tone ? 0 : first.tone === "bad" ? -1 : 1));
+  const list = rows.slice(0, 8).map((row) => `<button type="button" class="ov-todo ${row.tone}" data-go="${esc(row.page || "timeline")}"${row.view ? ` data-view="${row.view}"` : ""}><i aria-hidden="true"></i><span><b>${esc(row.label)}</b><small>${esc(row.note || "")}</small></span><em>${esc(row.from)}</em></button>`).join("");
+  const warnings = `${cards ? "" : empty("状态摘要读取失败，请刷新重试。")}${todos ? "" : empty("待办读取失败，尚不能确认是否有逾期事项。")}`;
+  return `<section data-part="panel" class="panel today-attention"><div class="panel-head"><div><h2>需要我处理</h2><p>先处理异常、到期与等待确认的事</p></div>${rows.length ? `<span class="pill warn">${rows.length} 项</span>` : ""}</div>${warnings}${list ? `<div class="ov-todos">${list}</div>` : cards && todos ? empty("当前没有需要处理的事项。") : ""}${rows.length > 8 ? empty(`还有 ${rows.length - 8} 项，请进入对应页面查看。`) : ""}</section>`;
 }
 
-function bar(label, value) {
-  if (value == null) return `<span class="ov-bar"><em>${label}</em><b>—</b></span>`;
-  return `<span class="ov-bar ${loadTone(value)}" title="${label} ${value.toFixed(1)}%"><em>${label}</em><i><s data-w="${Math.min(100, value).toFixed(1)}"></s></i><b>${value.toFixed(0)}%</b></span>`;
+function agenda(todos, calendar, start, end) {
+  const events = (calendar?.events || []).map((event) => ({
+    title: event.title, at: event.all_day ? start : Math.max(start, event.start_at), page: "todo", view: "calendar",
+    time: event.all_day ? "全天" : event.start_at < start ? "进行中" : clock(event.start_at),
+    note: [event.source_name, event.location].filter(Boolean).join(" · "),
+  }));
+  const tasks = (todos?.items || []).filter((item) => item.due_at >= start && item.due_at < end).map((item) => ({
+    title: item.title, at: item.due_at, page: "todo", view: "open", time: clock(item.due_at), note: "待办到期",
+  }));
+  const items = [...events, ...tasks].sort((first, second) => first.at - second.at);
+  const list = items.slice(0, 6).map((item) => `<li><button type="button" class="today-agenda-item" data-go="${item.page}" data-view="${item.view}"><time>${esc(item.time)}</time><span><b>${esc(item.title)}</b><small>${esc(item.note)}</small></span></button></li>`).join("");
+  const unscheduled = (todos?.items || []).filter((item) => !item.due_at).length;
+  return `<section data-part="panel" class="panel today-schedule">${heading("今天的安排", "todo", "查看日程", "calendar")}${!calendar ? empty("日历读取失败，请刷新重试。") : ""}${!todos ? empty("待办读取失败，请刷新重试。") : ""}${list ? `<ul class="today-agenda">${list}</ul>` : calendar && todos ? empty("今天没有已安排的日程或到期待办。") : ""}${items.length > 6 ? empty(`另有 ${items.length - 6} 项，进入日程查看。`) : ""}${unscheduled ? `<button type="button" class="today-unscheduled" data-go="todo" data-view="open">还有 ${unscheduled} 项待办未设时间</button>` : ""}</section>`;
 }
 
-function loadPanel(nodes) {
-  const live = nodes
-    .filter((n) => n.online && n.metrics && !n.metrics_stale)
-    .map((n) => {
-      const m = n.metrics;
-      const cpu = m.cpu ?? null;
-      const mem = m.memory_total ? percent(m.memory_used, m.memory_total) : null;
-      const disk = m.disk_total ? percent(m.disk_used, m.disk_total) : null;
-      return { n, cpu, mem, disk, peak: Math.max(cpu || 0, mem || 0, disk || 0) };
-    })
-    .sort((a, b) => b.peak - a.peak);
-  const rows = live.slice(0, 8).map(({ n, cpu, mem, disk }) => `<button type="button" class="ov-load-row" data-go="nodes"><span class="ov-node"><b>${esc(n.name)}</b><small>↑ ${bytes(n.metrics.rate_out || 0)}/s · ↓ ${bytes(n.metrics.rate_in || 0)}/s</small></span>${bar("CPU", cpu)}${bar("内存", mem)}${bar("磁盘", disk)}</button>`).join("");
-  const note = live.length > 8 ? `<p class="ov-more">按 CPU / 内存 / 磁盘中最高的一项排序，显示前 8 台，共 ${live.length} 台在报指标。</p>` : "";
-  return `<section data-part="panel" class="panel ov-panel"><div class="panel-head"><h3>节点负载</h3><button type="button" class="quiet" data-go="nodes">全部节点 →</button></div>${rows ? `<div class="ov-loads">${rows}</div>${note}` : '<p class="ov-empty">没有在线节点在报指标。</p>'}</section>`;
+function intelligence(data, brief) {
+  const items = data?.items || [];
+  const list = items.slice(0, 4).map((item) => `<li><button type="button" class="today-intel-item" data-go="intel" data-view="items"><span>${esc(item.source_name || "订阅更新")}</span><b>${esc(item.title)}</b><small>${esc(dateTime(item.at))}${item.starred ? " · 已星标" : ""}</small></button></li>`).join("");
+  const latest = brief?.entries?.[0];
+  return `<section data-part="panel" class="panel today-intelligence">${heading("值得关注", "intel", "查看情报")}${data ? list ? `<ul class="today-intel-list">${list}</ul>` : empty("还没有未读更新。可以在情报中添加订阅来源。") : empty("情报读取失败，请刷新重试。")}
+    <div class="today-brief"><div><h3>${latest ? esc(latest.title) : "每日简报"}</h3><p>${latest ? esc((latest.body || "").slice(0, 220)) : brief ? "把到期、日程和关注的更新汇成一份简报。" : "简报记录读取失败，请刷新重试。"}</p></div><button type="button" data-go="brief">${latest ? "查看简报" : "设置简报"}</button></div></section>`;
 }
 
 function cardHTML(card) {
-  const tag = card.page ? "button" : "div";
-  const attrs = card.page ? ` type="button" data-go="${esc(card.page)}" aria-label="${esc(card.title)}：${esc(card.value)}，打开${esc(card.title)}"` : "";
-  return `<${tag} class="overview-card ${toneClass[card.tone] || ""}" data-card="${esc(card.id)}"${attrs}><span class="overview-card-title">${esc(card.title)}</span><strong>${esc(card.value)}</strong><small>${esc(card.note || "")}</small></${tag}>`;
+  return `<button type="button" class="overview-card ${["good", "warn", "bad"].includes(card.tone) ? card.tone : ""}" data-card="${esc(card.id)}" data-go="${esc(card.page || "timeline")}"><span class="overview-card-title">${esc(card.title)}</span><strong>${esc(card.value)}</strong><small>${esc(card.note || "")}</small></button>`;
 }
 
-function eventsPanel(events) {
-  const body = events == null
-    ? '<p class="ov-empty">读取失败。</p>'
-    : events.length
-      ? `<ul class="ov-feed">${events.map((e) => `<li><time title="${esc(fullTime(e.at))}">${esc(ago(e.at))}</time><span><b>${esc(e.node_name || kindName[e.kind] || e.kind)}</b> ${esc(e.message)}</span>${e.active ? '<span class="pill bad">告警中</span>' : `<span class="pill">${esc(kindName[e.kind] || e.kind)}</span>`}</li>`).join("")}</ul>`
-      : '<p class="ov-empty">还没有事件。</p>';
-  return `<section data-part="panel" class="panel ov-panel"><div class="panel-head"><h3>最近事件</h3><button type="button" class="quiet" data-go="alerts" data-alert-view="events">全部事件 →</button></div>${body}</section>`;
-}
-
-function auditPanel(entries) {
-  // 审计的 node_id 有时是路径里的其他 id（如网站 id），只有对得上节点时才显示节点名。
-  const nodeName = (id) => state.nodes.find((n) => n.id === id)?.name || "";
-  const body = entries == null
-    ? '<p class="ov-empty">读取失败。</p>'
-    : entries.length
-      ? `<ul class="ov-feed">${entries.map((a) => `<li><time title="${esc(fullTime(a.at))}">${esc(ago(a.at))}</time><span><b title="${esc(a.action)}">${esc(auditLabel(a.action))}</b>${nodeName(a.node_id) ? ` · ${esc(nodeName(a.node_id))}` : ""}<small>${esc(a.actor || "")}${a.source ? ` · ${esc(a.source)}` : ""}</small></span>${a.status >= 400 ? `<span class="pill bad">${a.status}</span>` : ""}</li>`).join("")}</ul>`
-      : '<p class="ov-empty">还没有操作记录。</p>';
-  return `<section data-part="panel" class="panel ov-panel"><div class="panel-head"><h3>最近操作</h3><button type="button" class="quiet" data-go="audit">审计日志 →</button></div>${body}</section>`;
+function status(data) {
+  if (!data) return `<section class="today-status"><h2>状态摘要</h2>${empty("状态读取失败，请刷新重试。")}</section>`;
+  const primary = ["assets", "finance", "nodes", "security"];
+  const cards = data.cards || [];
+  const main = primary.map((id) => cards.find((card) => card.id === id)).filter(Boolean);
+  const rest = cards.filter((card) => !primary.includes(card.id));
+  return `<section class="today-status"><h2>状态摘要</h2><div class="today-status-grid">${main.map(cardHTML).join("")}</div>${rest.length ? `<details class="today-status-details"><summary>其他状态 <span>${rest.length} 项</span></summary><div class="overview-cards">${rest.map(cardHTML).join("")}</div></details>` : '<div class="overview-cards"></div>'}</section>`;
 }
 
 export async function overviewPage(nodesReady) {
   clearTimeout(poller);
-  const soft = (p) => p.catch(() => null);
-  const [, data, firing, events, audit] = await Promise.all([
+  const request = ++generation;
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000;
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() / 1000;
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const soft = (promise) => promise.catch(() => null);
+  const [data, todos, calendar, intel, brief] = await Promise.all([
+    soft(api("/admin/overview")),
+    soft(api("/admin/todo?state=open")),
+    soft(api(`/admin/calendar/today?timezone=${encodeURIComponent(timezone)}`)),
+    soft(api("/admin/intel/items?unread=1&limit=4")),
+    soft(api("/admin/timeline?sources=brief&limit=1")),
     nodesReady,
-    api("/admin/overview"),
-    soft(api("/admin/events?active=1&limit=500")),
-    soft(api("/admin/events?limit=8")),
-    soft(api("/admin/audit?limit=8")),
   ]);
+  if (request !== generation || state.tab !== "overview") return;
   const root = content();
-  const time = new Date(data.generated_at * 1000).toLocaleTimeString("zh-CN", { hour12: false });
-  root.innerHTML = `<section data-part="page-heading" class="page-heading"><div><div class="eyebrow">OVERVIEW</div><h1>总览</h1><p>整个系统的状态汇总。更新于 ${esc(time)}，停在本页时每 15 秒自动刷新。</p></div><div class="heading-actions"><button id="refresh-overview" class="quiet">↻ 刷新</button></div></section>
-  <div class="ov-kpis" title="${esc(fxHint)}">${kpis(state.nodes, firing)}</div>
-  <div class="ov-grid">${attention(data.cards)}${loadPanel(state.nodes)}</div>
-  <h2 class="ov-section">各模块</h2>
-  <div class="overview-cards">${data.cards.map(cardHTML).join("")}</div>
-  <div class="ov-grid">${eventsPanel(events)}${auditPanel(audit)}</div>`;
-  // 面板的 CSP 不许内联 style 属性，条的长度在渲染后经 CSSOM 设置。
-  root.querySelectorAll("[data-w]").forEach((el) => (el.style.width = `${el.dataset.w}%`));
-  root.querySelector("#refresh-overview").onclick = () => go("overview");
-  root.querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => go(b.dataset.go, b.dataset.alertView)));
+  const date = now.toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" });
+  root.innerHTML = `<div class="today-workspace"><section data-part="page-heading" class="page-heading today-heading"><div><h1>今天</h1><p>${esc(date)} · 按你的本地时间安排</p></div><div class="heading-actions"><button type="button" id="refresh-overview" class="quiet">刷新</button><button type="button" id="ask-assistant" class="primary">帮我梳理今天</button></div></section>
+    ${attention(data?.cards, todos, start)}
+    <div class="today-columns">${agenda(todos, calendar, start, end)}${intelligence(intel, brief)}</div>
+    ${status(data)}
+    <p class="today-updated">更新于 ${esc(clock(Date.now() / 1000))} · 每分钟自动刷新</p></div>`;
+  root.querySelector("#refresh-overview").onclick = guard(() => go("overview"));
+  root.querySelector("#ask-assistant").onclick = guard(async () => {
+    state.assistantPrompt = "帮我梳理今天的日程、到期待办和需要处理的事项";
+    await go("assistant");
+  });
+  root.querySelectorAll("[data-go]").forEach((button) => {
+    button.onclick = guard(async () => {
+      if (button.dataset.view) {
+        state.pageViews[button.dataset.go] = button.dataset.view;
+        if (button.dataset.go === "alerts") state.alertView = button.dataset.view;
+      }
+      await go(button.dataset.go);
+    });
+  });
   const tick = () => {
     if (state.tab !== "overview") return;
-    if (document.hidden || document.querySelector("dialog[open]")) poller = setTimeout(tick, REFRESH_MS);
-    else render().catch(() => (poller = setTimeout(tick, REFRESH_MS)));
+    if (document.hidden || document.querySelector("dialog[open]") || document.body.classList.contains("admin-nav-open")) {
+      poller = setTimeout(tick, REFRESH_MS);
+    } else render().catch(() => { poller = setTimeout(tick, REFRESH_MS); });
   };
   poller = setTimeout(tick, REFRESH_MS);
+  state.pageCleanup = () => clearTimeout(poller);
 }

@@ -43,6 +43,7 @@ export function modal(title, body) {
   d.querySelector(".close").onclick = () => d.close();
   // 每个表单底栏左侧补一枚「取消」：长表单（编辑节点要滚三四屏）里不必再回到顶部找 ×。
   for (const footer of d.querySelectorAll(".form-footer")) {
+    if (footer.querySelector("[data-cancel]")) continue;
     const cancel = document.createElement("button");
     cancel.type = "button";
     cancel.className = "cancel";

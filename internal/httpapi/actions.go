@@ -317,7 +317,12 @@ func (a *API) actionRoutes(mux *http.ServeMux, probe *mcp.Server) {
 		})
 	}))
 	mux.HandleFunc("POST /api/v1/actions/{name}", a.actionAuth(func(w http.ResponseWriter, r *http.Request) {
-		in, err := readBody(r, 1<<20)
+		limit := int64(1 << 20)
+		switch r.PathValue("name") {
+		case "finance.csv_columns", "finance.csv_preview", "finance.csv_import":
+			limit = 8 << 20
+		}
+		in, err := readBody(r, limit)
 		if err != nil {
 			actionError(w, action.Invalid("%v", err))
 			return

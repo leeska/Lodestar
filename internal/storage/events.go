@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/leeska/Lodestar/internal/action"
 	"strings"
 	"time"
 
@@ -78,7 +79,7 @@ func (s *Store) Transition(ctx context.Context, n model.Node, kind string, descr
 		if elapsed := now.Unix() - since; active && elapsed > 0 {
 			message += "\n本次条件持续：" + model.HumanDuration(time.Duration(elapsed)*time.Second)
 		}
-		if _, err = tx.ExecContext(ctx, "INSERT INTO events(node_id,node_name,kind,message,active,at) VALUES(?,?,?,?,?,?)", n.ID, n.Name, kind, message, active, now.Unix()); err != nil {
+		if _, err = tx.ExecContext(ctx, "INSERT INTO events(node_id,node_name,kind,message,active,at,origin) VALUES(?,?,?,?,?,?,?)", n.ID, n.Name, kind, message, active, now.Unix(), action.OriginFrom(ctx)); err != nil {
 			return err
 		}
 	}
@@ -95,7 +96,7 @@ func (s *Store) RecordEvent(ctx context.Context, e model.Event) error {
 	if e.At == 0 {
 		e.At = time.Now().Unix()
 	}
-	_, err := s.db.ExecContext(ctx, "INSERT INTO events(node_id,node_name,kind,message,active,at) VALUES(?,?,?,?,?,?)", e.NodeID, e.NodeName, e.Kind, e.Message, e.Active, e.At)
+	_, err := s.db.ExecContext(ctx, "INSERT INTO events(node_id,node_name,kind,message,active,at,origin) VALUES(?,?,?,?,?,?,?)", e.NodeID, e.NodeName, e.Kind, e.Message, e.Active, e.At, action.OriginFrom(ctx))
 	return err
 }
 

@@ -170,6 +170,10 @@ func telegramMessage(e model.Event) string { return messageText(e, "Telegram", t
 // message ("" leaves the line out); the reading is cut to keep the whole text
 // within limit UTF-16 code units.
 func messageText(e model.Event, channel string, limit int) string {
+	if e.Kind == model.EventBrief || e.Kind == model.EventIntel {
+		text := "Lodestar · " + singleLine(e.NodeName) + "\n\n" + e.Message
+		return strings.ReplaceAll(truncateUTF16(text, limit), truncatedNote, "\n…（完整内容见时间线）")
+	}
 	state := "⚪ 告警解除"
 	if e.Active {
 		state = "🔴 告警触发"

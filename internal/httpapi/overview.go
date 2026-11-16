@@ -8,6 +8,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/leeska/Lodestar/internal/action"
 	"github.com/leeska/Lodestar/internal/model"
 	"github.com/leeska/Lodestar/internal/module"
 )
@@ -16,7 +17,19 @@ import (
 // followed by each module's own. A card whose data cannot be read says so;
 // the page itself never fails on one of them.
 func (a *API) overview(w http.ResponseWriter, r *http.Request) {
+	now := time.Now()
 	ctx := r.Context()
+	if _, ok := action.ActorFrom(ctx); !ok {
+		actor, internal := internalActor(r)
+		if !internal {
+			actor = action.Owner(a.actor(r))
+		}
+		ctx = action.WithActor(ctx, actor)
+	}
+	write(w, 200, map[string]any{"cards": a.overviewCards(ctx), "generated_at": now.Unix()})
+}
+
+func (a *API) overviewCards(ctx context.Context) []module.Card {
 	now := time.Now()
 	cards := []module.Card{}
 	add := func(id, title string, build func(context.Context) (module.Card, error)) {
@@ -48,7 +61,7 @@ func (a *API) overview(w http.ResponseWriter, r *http.Request) {
 	add("tasks", "网络探测", a.tasksCard)
 	add("alerts", "告警", a.alertsCard)
 	cards = append(cards, module.Overview(ctx, a.Modules)...)
-	write(w, 200, map[string]any{"cards": cards, "generated_at": now.Unix()})
+	return cards
 }
 
 func nodesCard(nodes []model.NodeView) module.Card {

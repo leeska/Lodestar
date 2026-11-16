@@ -2,11 +2,33 @@ package web
 
 import (
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/leeska/Lodestar/internal/model"
 )
+
+func TestBackendReferenceRatesMatchFrontend(t *testing.T) {
+	source, err := os.ReadFile("format.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(model.ReferenceFXCNY) != len(model.PriceUnits) {
+		t.Fatal("reference rates and currency catalog differ")
+	}
+	for _, unit := range model.PriceUnits {
+		match := regexp.MustCompile(`\b` + unit + `:\s*([0-9.]+)`).FindSubmatch(source)
+		if len(match) != 2 {
+			t.Fatal("missing frontend rate", unit)
+		}
+		value, err := strconv.ParseFloat(string(match[1]), 64)
+		if err != nil || value != float64(model.ReferenceFXCNY[unit])/1e6 {
+			t.Fatal("backend/frontend reference rate mismatch", unit, value, err)
+		}
+	}
+}
 
 // 后台「前台默认外观」的可选值有两份清单：服务端的 model.PanelThemes / PanelSkins 管校验，
 // 浏览器这边 theme.js 的 ORDER、skins.js 的 SKINS 管渲染。两边对不上时，后台能存下一个

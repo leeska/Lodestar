@@ -47,8 +47,9 @@ type Entry struct {
 	Title  string `json:"title"`
 	Body   string `json:"body,omitempty"`
 	// Ref names the object: a node id, "asset:<id>" and so on.
-	Ref  string          `json:"ref,omitempty"`
-	Data json.RawMessage `json:"data,omitempty"`
+	Ref    string          `json:"ref,omitempty"`
+	Data   json.RawMessage `json:"data,omitempty"`
+	Origin string          `json:"origin,omitempty"`
 }
 
 // Query selects entries newest first.
@@ -75,6 +76,9 @@ func (m *Module) Migrations() []storage.Migration {
 			CREATE INDEX timeline_at ON timeline(at);
 			CREATE INDEX timeline_ref ON timeline(ref, at);`)
 		return err
+	}}, {Module: "timeline", Version: 2, Name: "action origin", Up: func(c *storage.MigrationContext) error {
+		_, err := c.Tx.Exec(`ALTER TABLE timeline ADD COLUMN origin TEXT NOT NULL DEFAULT ''`)
+		return err
 	}}}
 }
 
@@ -90,8 +94,8 @@ func (m *Module) Emit(ctx context.Context, e Entry) error {
 	if len(e.Data) > 0 {
 		data = string(e.Data)
 	}
-	_, err := m.DB.ExecContext(ctx, `INSERT INTO timeline(at, source, kind, level, title, body, ref, data) VALUES(?,?,?,?,?,?,?,?)`,
-		e.At, e.Source, e.Kind, e.Level, e.Title, e.Body, e.Ref, data)
+	_, err := m.DB.ExecContext(ctx, `INSERT INTO timeline(at, source, kind, level, title, body, ref, data, origin) VALUES(?,?,?,?,?,?,?,?,?)`,
+		e.At, e.Source, e.Kind, e.Level, e.Title, e.Body, e.Ref, data, action.OriginFrom(ctx))
 	return err
 }
 
@@ -105,7 +109,8 @@ func (m *Module) Prune(ctx context.Context) error {
 var eventKinds = map[string]string{
 	"offline": "离线", "online": "恢复上线", "expiry": "即将到期", "traffic": "流量", "throttle": "降速",
 	"cpu": "CPU", "memory": "内存", "disk": "磁盘", "renewal": "续费", "load": "负载",
-	"cert": "证书", "backup": "备份", "asset": "资产到期",
+	"cert": "证书", "backup": "备份", "asset": "资产到期", "intel": "情报更新",
+	"todo": "待办提醒", "automation": "自动化待确认", "security": "安全提醒",
 }
 
 // List merges events, audit entries and module entries, newest first.

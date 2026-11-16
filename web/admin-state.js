@@ -1,4 +1,5 @@
 import { api, esc, modal, guard } from "./api.js";
+import { routeFromHash } from "./admin-navigation.js";
 // 后台各页共用的状态与表单小工具。页面模块（admin-nodes / tasks / alerts / themes / plugins / settings）
 // 只经由这里互相知道对方：跨页跳转用 go()，重绘当前页用 render()，两者都由外壳
 // admin.js 注册；页面模块不反过来 import admin.js。
@@ -15,6 +16,7 @@ export const state = {
   alertView: "active",
   // 面板设置的子页：外观与品牌 / 账号与安全 / 数据。
   settingsView: "look",
+  pageViews: {},
 };
 let shellRender = async () => {};
 export function setRenderer(fn) {
@@ -22,9 +24,31 @@ export function setRenderer(fn) {
 }
 export const render = () => shellRender();
 export async function go(tab, alertView) {
-  state.tab = tab;
+  state.tab = routeFromHash(`#${tab}`).tab;
   if (alertView) state.alertView = alertView;
+  syncRoute();
   await render();
+}
+export function syncRoute(replace = false) {
+  const view = state.tab === "settings" ? state.settingsView
+    : state.tab === "alerts" ? state.alertView : state.pageViews[state.tab];
+  const hash = `#${state.tab}${view ? `/${encodeURIComponent(view)}` : ""}`;
+  if (location.hash !== hash) history[replace ? "replaceState" : "pushState"](null, "", hash);
+}
+export function restoreRoute() {
+  const route = routeFromHash(location.hash);
+  state.tab = route.tab;
+  if (route.tab === "settings") state.settingsView = route.view || "look";
+  else if (route.tab === "alerts") state.alertView = route.view || "active";
+  else state.pageViews[route.tab] = route.view;
+}
+export function pageView(fallback, allowed) {
+  const view = state.pageViews[state.tab];
+  return allowed.includes(view) ? view : fallback;
+}
+export function setPageView(view) {
+  state.pageViews[state.tab] = view;
+  syncRoute();
 }
 export const content = () => state.container.querySelector("#admin-content");
 // 重读节点列表并刷新顶栏。外壳切页时先发出它、把 promise 交给页面，页面和自己的接口一起

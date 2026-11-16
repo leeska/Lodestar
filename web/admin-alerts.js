@@ -1,7 +1,9 @@
 import { api, send, esc, toast, modal, guard } from "./api.js";
 import { pluginFields, pluginSettings } from "./notification-fields.js";
 import { date, kindName } from "./format.js";
-import { state, content, loadNodes, field, select, withCurrent, nodeName, confirmAction } from "./admin-state.js";
+import { wireTodoRefs } from "./admin-todo.js";
+import { state, content, loadNodes, field, select, withCurrent, nodeName, confirmAction, go, syncRoute } from "./admin-state.js";
+let pageGeneration = 0;
 // 提醒规则：每条规则一种类型、自己的参数与重复间隔，外加作用范围（全部节点 / 分组 / 指定节点）。
 // 同一台节点同一种类型只生效一条：指定节点 > 分组 > 全部节点。节点列表里的 alerts 是服务端
 // 按这个优先级算好的生效规则（带 id 与 scope），规则本身从 /admin/alert-rules 读。
@@ -218,10 +220,14 @@ function eventTable(rows, empty) {
 }
 // nodesReady 是外壳切页时已发出的节点请求；页内重画不传。
 export async function renderAlerts(nodesReady) {
+  const request = ++pageGeneration;
+  const tab = state.tab;
+  const notificationView = state.tab === "notifications";
+  if (!["active", "events", "rules"].includes(state.alertView)) state.alertView = "active";
   // 规则页的「生效 N 台」与逐台表格读的是节点上服务端算好的 alerts，必须和规则同一时刻读：
   // 只重读规则的话，MCP 那边刚改过的规则会显示成生效 0 台，直到手动刷新。
-  const rulesView = state.alertView === "rules";
-  const eventsView = state.alertView === "events";
+  const rulesView = !notificationView && state.alertView === "rules";
+  const eventsView = !notificationView && state.alertView === "events";
   const [settings, firing, rules, events, , plugins] = await Promise.all([
     api("/admin/notification"),
     api("/admin/events?active=1&limit=500"),
@@ -230,6 +236,7 @@ export async function renderAlerts(nodesReady) {
     nodesReady || (rulesView ? loadNodes() : null),
     api("/admin/plugins").catch(() => []),
   ]);
+  if (request !== pageGeneration || state.tab !== tab) return;
   const configured = settings.channel !== "none";
   const channelName = settings.telegram_configured
     ? "Telegram 机器人"
@@ -240,11 +247,11 @@ export async function renderAlerts(nodesReady) {
         : "尚未配置";
   notifyPlugins = (plugins || []).filter((p) => p.kind === "notify");
   const views = ALERT_VIEWS.map(([id, label]) => `<button type="button" data-alert-view="${id}" class="${state.alertView === id ? "active" : ""}" aria-pressed="${state.alertView === id}">${label}${id === "active" && firing.length ? ` <b class="count-badge">${firing.length}</b>` : ""}</button>`).join("");
-  const heading = `<section data-part="page-heading" class="page-heading"><div><div class="eyebrow">ALERTS & DELIVERY</div><h1>告警与通知</h1><p>正在告警的项目、事件记录、通知渠道与每台节点的提醒规则。</p></div><button id="refresh-events" class="quiet">↻ 刷新</button></section><div class="segmented alert-views" role="group" aria-label="告警页内容">${views}</div>`;
+  const heading = `<section data-part="page-heading" class="page-heading"><div><h1>${notificationView ? "通知渠道" : "告警与事件"}</h1><p>${notificationView ? "设置告警、简报和提醒送到哪里。" : "查看当前告警、事件记录与节点提醒规则。"}</p></div><button id="refresh-events" class="quiet">刷新</button></section>${notificationView ? "" : `<div class="segmented alert-views" role="group" aria-label="告警页内容">${views}</div>`}`;
   let body = "";
-  if (state.alertView === "active") {
+  if (!notificationView && state.alertView === "active") {
     // 没配通知渠道时在这里也提一句：正在告警却没人收到，比没有告警更该知道。
-    const warn = configured ? "" : `<div class="notice"><strong>通知渠道尚未配置</strong><span>下面的告警不会发到任何地方。到「提醒规则」页配置 Telegram、Webhook 或已安装的通知插件。</span></div>`;
+    const warn = configured ? "" : `<div class="notice"><strong>通知渠道尚未配置</strong><span>下面的告警不会发到任何地方。</span><button type="button" data-notifications>配置通知渠道</button></div>`;
     body = `${warn}<section data-part="panel" class="panel"><div class="panel-head"><h3>正在告警</h3><span class="muted">指标不可用时标记待确认</span></div>${eventTable(eventRows(firing, configured), "当前没有正在告警的项目。")}</section>`;
   } else if (eventsView) {
     const filtered = eventFilter.node_id || eventFilter.kind;
@@ -252,20 +259,29 @@ export async function renderAlerts(nodesReady) {
     const kindOptions = [["", "全部类型"], ...Object.entries(kindName).filter(([k]) => k !== "test")];
     body = `<section data-part="panel" class="panel"><div class="panel-head"><h3>事件记录</h3><span class="muted">保存 90 天 · 每次加载 ${EVENT_PAGE} 条</span></div><div class="catalog-filters event-filters"><label>节点<select id="event-node"><option value="">全部节点</option>${nodeOptions.filter(([v]) => v).map(([v, l]) => `<option value="${esc(v)}"${v === eventFilter.node_id ? " selected" : ""}>${esc(l)}</option>`).join("")}</select></label><label>类型<select id="event-kind">${kindOptions.map(([v, l]) => `<option value="${esc(v)}"${v === eventFilter.kind ? " selected" : ""}>${esc(l)}</option>`).join("")}</select></label></div>${eventTable(eventRows(events, configured), filtered ? "没有符合筛选条件的事件。" : "暂无事件。提醒规则在「提醒规则」页开启。")}<div class="catalog-toolbar event-more"><button id="more-events" class="quiet" ${events.length < EVENT_PAGE ? "hidden" : ""}>加载更多</button></div></section>`;
   } else {
-    body = `<section data-part="panel" class="panel webhook-panel"><div><h3>通知渠道 · ${channelName}</h3><p>支持 Telegram 机器人、Webhook 或已安装的通知插件（飞书、钉钉、ntfy 等，在「插件」页安装），发送告警触发与恢复通知。</p>${settings.plugin_error ? `<p class="warn-text">${esc(settings.plugin_error)}，通知暂时发不出去；请重新配置渠道。</p>` : ""}<small>投递失败采用退避重试，最多 10 次；超过 24 小时的事件不再补发。接收端按 event.id 去重。</small></div><div class="webhook-actions"><button id="configure-webhook" class="primary">配置渠道</button><button id="test-webhook" ${configured ? "" : "disabled"}>发送测试</button></div></section>${rulesPanel(rules)}${overviewPanel()}`;
+    const channelPanel = `<section data-part="panel" class="panel webhook-panel"><div><h3>通知渠道 · ${esc(channelName)}</h3><p>支持 Telegram 机器人、Webhook 或已安装的通知插件（飞书、钉钉、ntfy 等，在「插件」页安装），发送告警触发与恢复通知。</p>${settings.plugin_error ? `<p class="warn-text">${esc(settings.plugin_error)}，通知暂时发不出去；请重新配置渠道。</p>` : ""}<small>投递失败采用退避重试，最多 10 次；超过 24 小时的事件不再补发。接收端按 event.id 去重。</small></div><div class="webhook-actions"><button id="configure-webhook" class="primary">配置渠道</button><button id="test-webhook" ${configured ? "" : "disabled"}>发送测试</button></div></section>`;
+    body = notificationView ? channelPanel : `<div class="notice"><span>通知出口在系统设置中统一管理。</span><button type="button" data-notifications>通知渠道</button></div>${rulesPanel(rules)}${overviewPanel()}`;
   }
   content().innerHTML = heading + body;
+  const shown = eventsView ? events : !notificationView && state.alertView === "active" ? firing : [];
+  addTodoButtons(shown);
   content().querySelectorAll("[data-alert-view]").forEach(
     (b) =>
       (b.onclick = guard(async () => {
         state.alertView = b.dataset.alertView;
+        syncRoute();
         await renderAlerts();
       })),
   );
   content().querySelector("#refresh-events").onclick = guard(() => renderAlerts(loadNodes()));
   if (eventsView) wireEvents(events, configured);
-  if (rulesView) wireRules(settings, configured, rules);
+  content().querySelectorAll("[data-notifications]").forEach((button) => {
+    button.onclick = guard(() => go("notifications"));
+  });
+  if (rulesView) wireRulesPanel(rules);
+  if (notificationView) wireRules(settings, configured, rules);
 }
+export const notificationsPage = (nodesReady) => renderAlerts(nodesReady);
 function wireEvents(events, configured) {
   let last = events.at(-1)?.id || 0;
   const more = content().querySelector("#more-events");
@@ -274,6 +290,7 @@ function wireEvents(events, configured) {
     try {
       const page = await api(eventsURL(last));
       content().querySelector("#event-rows").insertAdjacentHTML("beforeend", eventRows(page, configured));
+      addTodoButtons(page);
       last = page.at(-1)?.id || last;
       more.hidden = page.length < EVENT_PAGE;
     } finally {
@@ -286,11 +303,22 @@ function wireEvents(events, configured) {
       await renderAlerts();
     });
 }
+function addTodoButtons(events) {
+  if (!events.length) return;
+  const rows = Array.from(content().querySelectorAll("#event-rows > tr")).slice(-events.length);
+  rows.forEach((row, index) => {
+    const cell = row.querySelector(".event-message");
+    if (!cell || cell.querySelector("[data-todo-ref]") || !events[index].id) return;
+    const button = document.createElement("button");
+    button.type = "button"; button.dataset.todoRef = "event:" + events[index].id; button.textContent = "转成待办";
+    cell.append(document.createElement("br"), button);
+  });
+  wireTodoRefs(content());
+}
 // 已安装的通知插件（/admin/plugins 里 kind 为 notify 的），配置出口的渠道下拉与插件表单用。
 let notifyPlugins = [];
 
 function wireRules(settings, configured, rules) {
-  wireRulesPanel(rules);
   content().querySelector("#test-webhook").onclick = guard(async () => {
     await send("/admin/notification/test", "POST");
     toast("测试通知已送达");

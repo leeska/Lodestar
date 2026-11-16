@@ -22,6 +22,16 @@ type Transport struct {
 	RoundTripper http.RoundTripper
 }
 
+type Summary struct {
+	Title string
+	Body  string
+	At    int64
+}
+
+func (s Transport) SendSummary(ctx context.Context, config Config, summary Summary) error {
+	return s.Send(ctx, config, model.Event{Kind: model.EventBrief, NodeID: "brief", NodeName: summary.Title, Message: summary.Body, At: summary.At})
+}
+
 func (s Transport) Send(ctx context.Context, c Config, event model.Event) error {
 	if err := c.Validate(); err != nil {
 		return err
@@ -47,7 +57,7 @@ var telegramTitles = map[string]string{
 	model.AlertOffline: "节点离线", model.AlertRenewal: "到期续费", model.AlertTraffic: "流量额度",
 	model.AlertThrottle: "达量降速", model.AlertCPU: "CPU 使用率", model.AlertMemory: "内存使用率",
 	"load":          "系统负载",
-	model.EventCert: "证书", model.EventBackup: "备份", model.EventAsset: "资产到期",
+	model.EventCert: "证书", model.EventBackup: "备份", model.EventAsset: "资产到期", model.EventBrief: "每日简报", model.EventIntel: "情报更新", model.EventTodo: "待办提醒",
 }
 
 type Telegram struct {

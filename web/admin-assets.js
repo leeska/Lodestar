@@ -3,6 +3,7 @@
 // 每次查看都记进审计日志。到期提醒由定时任务「资产到期提醒」经告警渠道发送。
 import { api, send, esc, toast, modal, guard } from "./api.js";
 import { monthlyCostIn, fxHint } from "./format.js";
+import { wireTodoRefs } from "./admin-todo.js";
 import { content, confirmAction, moreMenu, wireMoreMenus, render, go } from "./admin-state.js";
 
 let filter = { kind: "", q: "", archived: false };
@@ -31,7 +32,7 @@ export async function assetsPage() {
     const tags = a.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("");
     const secretCount = Object.keys(a.secrets || {}).length;
     const detail = k.fields.filter((f) => !f.secret && a.fields[f.key]).slice(0, 2).map((f) => `${esc(f.label)} ${esc(a.fields[f.key])}`).join(" · ");
-    const more = `${secretCount ? `<button data-reveal="${esc(a.id)}">查看敏感字段</button>` : ""}<button data-archive="${esc(a.id)}">${a.status === "active" ? "归档" : "恢复"}</button><button class="menu-danger" data-delete="${esc(a.id)}">删除</button>`;
+    const more = `<button data-todo-ref="asset:${esc(a.id)}">转成待办</button>${secretCount ? `<button data-reveal="${esc(a.id)}">查看敏感字段</button>` : ""}<button data-archive="${esc(a.id)}">${a.status === "active" ? "归档" : "恢复"}</button><button class="menu-danger" data-delete="${esc(a.id)}">删除</button>`;
     return `<tr class="${a.status === "archived" ? "muted-row" : ""}"><td data-label="名称"><strong>${esc(a.name)}</strong>${tags}<small>${detail}${secretCount ? `${detail ? " · " : ""}🔒 ${secretCount} 项敏感字段` : ""}</small></td><td data-label="类型">${esc(k.name)}</td><td data-label="费用">${a.cost ? `${money(a.cost, a.currency)}<small>${esc(a.period || "")}</small>` : '<span class="muted">—</span>'}</td><td data-label="到期">${a.expires_on ? `${esc(a.expires_on)}<small>${a.auto_renew ? "自动续费" : "手动续费"}</small>` : ""}</td><td data-label="剩余">${leftPill(a.days_left)}</td><td data-label="操作"><div class="row-actions"><button data-edit="${esc(a.id)}">编辑</button>${moreMenu(more)}</div></td></tr>`;
   }).join("");
   const upcomingRows = upcoming.items.map((u) => `<li><span>${leftPill(u.days_left)}</span><strong>${esc(u.name)}</strong><small>${esc(u.kind)} · ${esc(u.expires_on)}${u.cost ? ` · ${money(u.cost, u.currency)}${u.period ? " / " + esc(u.period) : ""}` : ""}</small>${u.source === "node" ? '<button type="button" data-go="nodes">节点</button>' : `<button type="button" data-edit="${esc(u.id)}">续期</button>`}</li>`).join("");
@@ -42,6 +43,17 @@ export async function assetsPage() {
   <section data-part="panel" class="panel"><div class="panel-head asset-filters"><select id="asset-kind" aria-label="类型">${kindOptions}</select><input type="search" id="asset-q" placeholder="搜索名称、备注、字段" value="${esc(filter.q)}" aria-label="搜索"><label class="checkbox"><input type="checkbox" id="asset-archived" ${filter.archived ? "checked" : ""}>含已归档</label></div><div class="table-scroll"><table class="stack"><thead><tr><th>名称</th><th>类型</th><th>费用</th><th>到期</th><th>剩余</th><th>操作</th></tr></thead><tbody>${rows || '<tr><td colspan="6" class="empty-cell">还没有资产。点「登记资产」把域名、订阅服务这些记进来。</td></tr>'}</tbody></table></div><p class="hint panel-foot">${esc(fxHint)}</p></section>`;
   const byId = (id) => data.assets.find((a) => a.id === id);
   wireMoreMenus(content());
+  content().querySelectorAll(".asset-upcoming > li").forEach((row,index) => {
+    const asset=upcoming.items[index];
+    if (asset.source !== "asset") return;
+    const button=document.createElement("button");
+    button.type="button"; button.textContent="转成待办"; button.dataset.todoRef="asset:"+asset.id;
+    const actions=document.createElement("div");
+    actions.className="row-actions asset-upcoming-actions";
+    const renew=row.querySelector("button"); if (renew) actions.append(renew);
+    actions.append(button); row.append(actions);
+  });
+  wireTodoRefs(content());
   content().querySelector("#add-asset").onclick = () => assetForm(data, null);
   content().querySelectorAll("[data-edit]").forEach((b) => (b.onclick = guard(async () => assetForm(data, byId(b.dataset.edit) || (await api(`/admin/assets/${b.dataset.edit}`))))));
   content().querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => go(b.dataset.go)));

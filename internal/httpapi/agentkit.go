@@ -25,7 +25,7 @@ var moduleNames = map[string]string{
 	"tasks": "探测任务", "blocks": "被墙检测", "settings": "设置与通知", "plugins": "插件", "themes": "主题",
 	"agents": "Agent", "proxy": "代理与转发", "users": "使用者", "remote": "远程管理", "docker": "Docker",
 	"certs": "证书", "sites": "网站", "backups": "备份", "regiondrift": "地区偏移",
-	"assets": "资产", "timeline": "时间线", "jobs": "定时任务",
+	"assets": "资产", "timeline": "时间线", "jobs": "定时任务", "assistant": "助理", "brief": "每日简报", "intel": "情报", "todo": "待办", "calendar": "日历", "finance": "财务", "automation": "自动化", "security": "数字身份与安全",
 }
 
 func moduleName(m string) string {

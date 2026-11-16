@@ -18,12 +18,18 @@ import (
 	"github.com/leeska/Lodestar/internal/account"
 	"github.com/leeska/Lodestar/internal/agentdist"
 	"github.com/leeska/Lodestar/internal/assets"
+	"github.com/leeska/Lodestar/internal/assistant"
+	"github.com/leeska/Lodestar/internal/automation"
 	"github.com/leeska/Lodestar/internal/backup"
 	"github.com/leeska/Lodestar/internal/brand"
+	"github.com/leeska/Lodestar/internal/brief"
+	"github.com/leeska/Lodestar/internal/calendar"
 	"github.com/leeska/Lodestar/internal/certs"
 	"github.com/leeska/Lodestar/internal/channel"
 	"github.com/leeska/Lodestar/internal/docker"
+	"github.com/leeska/Lodestar/internal/finance"
 	"github.com/leeska/Lodestar/internal/httpapi"
+	"github.com/leeska/Lodestar/internal/intel"
 	"github.com/leeska/Lodestar/internal/ipguard"
 	"github.com/leeska/Lodestar/internal/jobs"
 	"github.com/leeska/Lodestar/internal/model"
@@ -33,11 +39,13 @@ import (
 	"github.com/leeska/Lodestar/internal/proxy"
 	"github.com/leeska/Lodestar/internal/regiondrift"
 	"github.com/leeska/Lodestar/internal/remote"
+	"github.com/leeska/Lodestar/internal/security"
 	"github.com/leeska/Lodestar/internal/service"
 	"github.com/leeska/Lodestar/internal/sites"
 	"github.com/leeska/Lodestar/internal/storage"
 	"github.com/leeska/Lodestar/internal/theme"
 	"github.com/leeska/Lodestar/internal/timeline"
+	"github.com/leeska/Lodestar/internal/todo"
 	"github.com/leeska/Lodestar/internal/totp"
 	"github.com/leeska/Lodestar/internal/users"
 	"github.com/leeska/Lodestar/internal/vault"
@@ -155,6 +163,11 @@ func run() error {
 	var backupMod *backup.Module
 	var sitesMod *sites.Module
 	var jobsMod *jobs.Module
+	var assetsMod *assets.Module
+	var assistantMod *assistant.Module
+	var briefMod *brief.Module
+	var todoMod *todo.Module
+	var calendarMod *calendar.Module
 	vaultKey, err := vault.LoadKey(*dir)
 	if err != nil {
 		return err
@@ -172,6 +185,32 @@ func run() error {
 			modules[i] = timelineMod
 		case *assets.Module:
 			m.Store, m.Nodes, m.Events = &assets.Store{DB: store.DB(), Vault: secrets}, store, store
+			assetsMod = m
+		case *assistant.Module:
+			m.DB, m.Vault = store.DB(), secrets
+			if err := m.ProtectHistory(ctx); err != nil {
+				return err
+			}
+			assistantMod = m
+		case *brief.Module:
+			briefMod = m
+		case *intel.Module:
+			m.DB, m.Vault, m.Timeline, m.Events = store.DB(), secrets, timelineMod, store
+		case *todo.Module:
+			m.DB, m.Events = store.DB(), store
+			todoMod = m
+		case *calendar.Module:
+			m.DB, m.Vault = store.DB(), secrets
+			calendarMod = m
+		case *finance.Module:
+			m.DB, m.Assets, m.Nodes = store.DB(), assetsMod.Store, store
+		case *automation.Module:
+			m.DB, m.Vault, m.Timeline, m.Events = store.DB(), secrets, timelineMod, store
+			if err := m.Recover(ctx); err != nil {
+				return err
+			}
+		case *security.Module:
+			m.DB, m.Assets, m.Certs, m.Events = store.DB(), assetsMod.Store, &certs.Store{DB: store.DB()}, store
 		case *jobs.Module:
 			m.DB, m.Timeline = store.DB(), timelineMod
 			jobsMod = m
@@ -188,6 +227,14 @@ func run() error {
 		case *backup.Module:
 			m.DB, m.DataDir, m.Hub, m.Nodes, m.Events = store.DB(), *dir, hub, store, store
 			backupMod = m
+		}
+	}
+	briefMod.DB, briefMod.Assets, briefMod.Timeline, briefMod.JobsMod, briefMod.Nodes = store.DB(), assetsMod, timelineMod, jobsMod, store
+	todoMod.Calendar = calendarMod
+	briefMod.Channels, briefMod.Sender, briefMod.Rewrite = &service.Service{Store: store, Plugins: plugins}, sender, assistantMod.Summarize
+	for _, feature := range modules {
+		if extra, ok := feature.(brief.Extra); ok {
+			briefMod.Extras = append(briefMod.Extras, extra)
 		}
 	}
 	usersMod.Store = &users.Store{DB: store.DB()}
@@ -427,6 +474,6 @@ func shippedModules() ([]module.Module, *regiondrift.Module, *remote.Module, *us
 	// Docker 不建表，复用远程管理的通道与转接。
 	dockerMod := &docker.Module{Remote: remoteMod}
 	// 核心服务也是模块：保险箱、时间线、资产与定时任务（见 docs/ARCHITECTURE.md）。
-	core := []module.Module{&vault.Module{}, &timeline.Module{}, &assets.Module{}, &jobs.Module{}}
+	core := []module.Module{&vault.Module{}, &timeline.Module{}, &assets.Module{}, &jobs.Module{}, &assistant.Module{}, &brief.Module{}, &intel.Module{}, &todo.Module{}, &calendar.Module{}, &finance.Module{}, &automation.Module{}, &security.Module{}}
 	return append(core, drift, remoteMod, usersMod, proxyMod, dockerMod, &certs.Module{}, &backup.Module{}, &sites.Module{}), drift, remoteMod, usersMod, proxyMod
 }

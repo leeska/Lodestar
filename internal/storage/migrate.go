@@ -48,6 +48,10 @@ func CoreMigrations() []Migration {
 			_, err := c.Tx.Exec(apiKeysTable)
 			return err
 		}},
+		{Module: "core", Version: 4, Name: "action origin", Up: func(c *MigrationContext) error {
+			_, err := c.Tx.Exec(`ALTER TABLE events ADD COLUMN origin TEXT NOT NULL DEFAULT ''; ALTER TABLE audit_log ADD COLUMN origin TEXT NOT NULL DEFAULT '';`)
+			return err
+		}},
 	}
 }
 

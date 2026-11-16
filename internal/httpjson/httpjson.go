@@ -33,11 +33,15 @@ func Error(w http.ResponseWriter, status int, message string) {
 // Decode reads exactly one JSON value with no unknown fields into v. On a bad
 // request it has already answered, and returns false.
 func Decode(w http.ResponseWriter, r *http.Request, v any) bool {
+	return DecodeLimit(w, r, v, MaxBody)
+}
+
+func DecodeLimit(w http.ResponseWriter, r *http.Request, v any, limit int64) bool {
 	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
 		Error(w, 415, "请求须为 application/json")
 		return false
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, MaxBody)
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
 	d := json.NewDecoder(r.Body)
 	d.DisallowUnknownFields()
 	if err := d.Decode(v); err != nil {

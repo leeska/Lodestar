@@ -313,6 +313,35 @@ func (a *API) Handler() http.Handler {
 	a.mcpKeyRoutes(mux)
 	probe := &mcp.Server{Source: a.Store, Notifier: a.Notifier, Themes: a.Themes, Plugins: a.Plugins, Logo: a.Logo}
 	a.actions = a.buildActions(probe)
+	for _, feature := range a.Modules {
+		if binder, ok := feature.(interface {
+			BindOverview(func(context.Context) []module.Card)
+		}); ok {
+			binder.BindOverview(a.overviewCards)
+		}
+		if binder, ok := feature.(interface {
+			BindActions(*action.Registry, func(context.Context, string, json.RawMessage, bool) (any, error))
+		}); ok {
+			binder.BindActions(a.actions, a.runAction)
+		}
+		if binder, ok := feature.(interface {
+			BindActorResolver(func(context.Context, action.Actor) (action.Actor, error))
+		}); ok {
+			binder.BindActorResolver(func(ctx context.Context, creator action.Actor) (action.Actor, error) {
+				if creator.KeyID == "" {
+					return creator, nil
+				}
+				if a.Keys == nil {
+					return creator, &action.Error{Status: 403, Message: "访问密钥不可用"}
+				}
+				key, err := a.Keys.Get(ctx, creator.KeyID)
+				if err != nil || !key.Active(time.Now()) {
+					return creator, &action.Error{Status: 403, Message: "创建者访问密钥已撤销或过期"}
+				}
+				return key.Actor(), nil
+			})
+		}
+	}
 	a.actionRoutes(mux, probe)
 	a.keyRoutes(mux)
 	mux.HandleFunc("/mcp", func(w http.ResponseWriter, r *http.Request) {
@@ -491,6 +520,17 @@ func (a *API) audit(r *http.Request, e model.AuditEntry) {
 	e.Source = requestSource(r)
 	if err := a.Store.Audit(context.WithoutCancel(r.Context()), e); err != nil {
 		slog.Error("audit log write failed", "action", e.Action, "error", err)
+	}
+	if e.Action == "login" || e.Action == "login.failed" {
+		for _, feature := range a.Modules {
+			if observer, ok := feature.(interface {
+				ObserveLogin(context.Context, string, string, bool, bool) error
+			}); ok {
+				if err := observer.ObserveLogin(context.WithoutCancel(r.Context()), e.Actor, e.Source, e.Action == "login", a.loginBucket(r, time.Now()) != ""); err != nil {
+					slog.Error("login security observation failed", "error", err)
+				}
+			}
+		}
 	}
 }
 
@@ -936,7 +976,14 @@ type moduleRoutes struct {
 
 func (m moduleRoutes) Public(pattern string, h http.HandlerFunc) { m.mux.HandleFunc(pattern, h) }
 func (m moduleRoutes) Admin(pattern string, h http.HandlerFunc) {
-	m.mux.HandleFunc(pattern, m.a.admin(h))
+	m.mux.HandleFunc(pattern, m.a.admin(func(w http.ResponseWriter, r *http.Request) {
+		actor, ok := internalActor(r)
+		if !ok {
+			actor = action.Owner(m.a.actor(r))
+		}
+		ctx := context.WithValue(r.Context(), sourceKey{}, requestSource(r))
+		h(w, r.WithContext(action.WithActor(ctx, actor)))
+	}))
 }
 func (m moduleRoutes) Agent(pattern string, h func(http.ResponseWriter, *http.Request, string)) {
 	m.mux.HandleFunc(pattern, m.a.agent(h))

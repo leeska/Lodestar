@@ -43,6 +43,7 @@ type Kind struct {
 // Kinds are the built-in kinds; modules may add more later.
 var Kinds = []Kind{
 	{ID: "domain", Name: "域名", Fields: []Field{
+		{Key: "domain", Label: "域名", Hint: "可选；留空时安全检查使用资产名称"},
 		{Key: "registrar", Label: "注册商"}, {Key: "dns", Label: "DNS 服务商"},
 		{Key: "account", Label: "注册商账号"}, {Key: "password", Label: "注册商密码", Secret: true},
 	}},
